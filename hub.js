@@ -9,7 +9,7 @@
 (function () {
   var CODE = (window.HUB_CODE || 'VCCT');
   // 到期後要帶人去的地方。沒設就不顯示該連結，不會變成死連結。
-  var COURSE_URL = window.HUB_COURSE_URL || '';
+  var COURSE_URL = window.HUB_COURSE_URL || '/support';
   var BLOG_URL = window.HUB_BLOG_URL || '';
   // 到期後整支擋掉的工具。三支配息率工具不在內——那些數字部落格本來就免費看得到，
   // 擋了只是把人推走，也會讓性質變成「付錢才看得到配息率分析」。
@@ -118,7 +118,7 @@
       // 不留死巷：到期了也要有地方可以去
       if (cta) {
         var h = '';
-        if (COURSE_URL) h += '<a class="cta" href="' + COURSE_URL + '">看課程</a>';
+        if (COURSE_URL) h += '<a class="cta" href="' + COURSE_URL + '">贊助開通</a>';
         if (BLOG_URL) h += '<a href="' + BLOG_URL + '">回部落格版</a>';
         cta.innerHTML = h;
       }
@@ -126,7 +126,7 @@
       chip.className = 'hub-chip trial';
       chip.textContent = '體驗期' + (daysLeft == null ? '' : '剩 ' + daysLeft + ' 天');
       if (cta) cta.innerHTML = (daysLeft != null && daysLeft <= 3 && COURSE_URL)
-        ? '<a class="cta" href="' + COURSE_URL + '">看課程</a>' : '';
+        ? '<a class="cta" href="' + COURSE_URL + '">贊助開通</a>' : '';
     }
   }
 
@@ -225,7 +225,7 @@
       '三張保單的配息率清單在部落格上仍然免費，資料完全相同。<br>' +
       '你存過的自選清單我們留著，開通後原封不動還在。</p>' +
       '<div class="acts">';
-    if (COURSE_URL) h += '<a class="cta" href="' + COURSE_URL + '">看怎麼開通</a>';
+    if (COURSE_URL) h += '<a class="cta" href="' + COURSE_URL + '">贊助開通</a>';
     if (BLOG_URL) h += '<a href="' + BLOG_URL + '">回部落格版</a>';
     h += '<a href="/">回工具集</a></div></div>';
     document.body.innerHTML = h;
