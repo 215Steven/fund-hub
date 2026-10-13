@@ -5,6 +5,8 @@
  * 設有刪除是因為個資法下當事人可以要求刪除，你得有工具執行。
  */
 const crypto = require('crypto');
+const { normEmail } = require('./_auth');
+const { whitelist, setWhitelist, planOf, readJson, TRIAL_DAYS } = require('./_plan');
 
 function ok(req) {
   const want = process.env.ADMIN_KEY;
@@ -64,6 +66,21 @@ module.exports = async function handler(req, res) {
   const action = String((req.query && req.query.action) || 'list');
 
   try {
+    // 讀目前學員白名單
+    if (action === 'students') {
+      return res.status(200).json({ emails: await whitelist(true), trialDays: TRIAL_DAYS });
+    }
+
+    // 整份覆寫白名單。前端把貼上的文字切好後送 JSON { emails: [...] }
+    if (action === 'students-set') {
+      let body = req.body;
+      if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { body = {}; } }
+      const arr = (body && Array.isArray(body.emails)) ? body.emails : [];
+      if (arr.length > 5000) return res.status(400).json({ error: 'too many' });
+      const saved = await setWhitelist(arr);
+      return res.status(200).json({ emails: saved, count: saved.length });
+    }
+
     if (action === 'delete') {
       const email = String((req.query && req.query.email) || '').toLowerCase();
       if (!email) return res.status(400).json({ error: 'email required' });
@@ -82,10 +99,13 @@ module.exports = async function handler(req, res) {
     const rows = await allLeads();
 
     if (action === 'csv') {
-      const head = ['email', 'name', 'consent', 'via', 'at', 'ref'];
+      const wl2 = await whitelist(true);
+      const head = ['email', 'name', 'consent', 'via', 'plan', 'at', 'ref'];
       const lines = [head.join(',')];
       rows.forEach((r) => {
-        lines.push([r.email, r.name, r.consent ? 'Y' : 'N', r.via || 'email', r.at, r.ref].map(csvCell).join(','));
+        const n = normEmail(r.email);
+        lines.push([n, r.name, r.consent ? 'Y' : 'N', r.via || 'email',
+          wl2.indexOf(n) >= 0 ? 'student' : 'trial', r.at, r.ref].map(csvCell).join(','));
       });
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', 'attachment; filename="leads.csv"');
@@ -93,11 +113,44 @@ module.exports = async function handler(req, res) {
       return res.status(200).send('\uFEFF' + lines.join('\n'));
     }
 
+    // 同一個人可能有多筆（重複登入），依正規化後的 Email 併成一筆，
+    // 時間取最早的那次——體驗期是從第一次算起。
+    const byUser = {};
+    rows.forEach((r) => {
+      const n = normEmail(r.email);
+      if (!byUser[n]) {
+        byUser[n] = { email: n, name: r.name, consent: !!r.consent,
+                      via: r.via || 'email', at: r.at, hits: 1 };
+      } else {
+        const u = byUser[n];
+        u.hits++;
+        if (r.consent) u.consent = true;
+        if (r.name && !u.name) u.name = r.name;
+        if (r.via === 'google') u.via = 'google';
+        if (String(r.at || '') < String(u.at || '')) u.at = r.at;
+      }
+    });
+    const users = Object.keys(byUser).map((k) => byUser[k]);
+
+    const wl = await whitelist(true);
+    await Promise.all(users.map(async (u) => {
+      const prof = await readJson('user/' + crypto.createHash('sha256')
+        .update(u.email).digest('hex').slice(0, 32) + '.json');
+      const first = (prof && prof.firstAt) || u.at;
+      u.firstAt = first;
+      const p = await planOf(u.email, first);
+      u.plan = p.plan; u.active = p.active;
+      u.daysLeft = p.daysLeft; u.endsAt = p.endsAt;
+    }));
+    users.sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     return res.status(200).json({
-      total: rows.length,
-      consented: rows.filter((r) => r.consent).length,
-      rows: rows.map((r) => ({ email: r.email, name: r.name, consent: !!r.consent, via: r.via || 'email', verified: !!r.verified, at: r.at }))
+      total: users.length,
+      consented: users.filter((r) => r.consent).length,
+      students: wl.length,
+      trialDays: TRIAL_DAYS,
+      rows: users
     });
   } catch (e) {
     return res.status(500).json({ error: String((e && e.message) || e) });
