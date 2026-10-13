@@ -10,7 +10,7 @@
  */
 const { emailKey } = require('./_auth');
 const { planOf, readJson, writeJson, fetchJson, TRIAL_DAYS } = require('./_plan');
-const { sendMail, SITE } = require('./_mail');
+const { sendMail, SITE, esc } = require('./_mail');
 const { isOptedOut } = require('./unsub');
 
 const STAGES = [3, 1];
@@ -22,8 +22,10 @@ function allowed(req) {
   return /vercel-cron/i.test(req.headers['user-agent'] || '');
 }
 
-function body(daysLeft) {
-  const h = '<p style="font-size:15px;margin:0 0 14px">嗨，</p>';
+function body(daysLeft, name) {
+  // 有稱呼就帶上，沒有就維持單純的「嗨，」
+  const who = name ? String(name).trim().slice(0, 20) : '';
+  const h = '<p style="font-size:15px;margin:0 0 14px">嗨' + (who ? ' ' + esc(who) : '') + '，</p>';
   if (daysLeft <= 1) {
     return h +
       '<p style="font-size:15px;margin:0 0 14px">你在<b>基金配息率工具集</b>的體驗期<b>明天就到了</b>。</p>' +
@@ -57,6 +59,10 @@ module.exports = async function handler(req, res) {
   };
   const why = (k) => { out.why[k] = (out.why[k] || 0) + 1; out.skipped++; };
 
+  // 安全閥：單輪最多寄這麼多封。到期提醒一天本來就只有少數人，
+  // 真的爆量代表邏輯出錯，寧可漏寄也不要轟炸整份名單。
+  const MAX_PER_RUN = 50;
+
   try {
     const blobs = [];
     let cur;
@@ -85,13 +91,16 @@ module.exports = async function handler(req, res) {
 
       if (await isOptedOut(u.email)) { why('opted-out'); continue; }
 
+      if (out.sent >= MAX_PER_RUN) { why('hit-run-cap'); continue; }
+
       try {
         const r = await sendMail(u.email,
           stage <= 1 ? '你的體驗期明天到期' : '體驗期還剩 ' + stage + ' 天',
-          body(stage) + cta());
+          body(stage, u.name || u.firstName) + cta());
         if (r && r.skipped) { why('mail-not-configured'); continue; }
         // 寄成功才記，失敗下次還會再試
         u.notified = sentList.concat([stage]);
+        u.notifiedAt = Object.assign({}, u.notifiedAt || {}, { [stage]: Date.now() });
         await writeJson('user/' + emailKey(u.email) + '.json', u);
         out.sent++;
       } catch (e) {
