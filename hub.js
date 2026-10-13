@@ -11,6 +11,9 @@
   // 到期後要帶人去的地方。沒設就不顯示該連結，不會變成死連結。
   var COURSE_URL = window.HUB_COURSE_URL || '';
   var BLOG_URL = window.HUB_BLOG_URL || '';
+  // 到期後整支擋掉的工具。三支配息率工具不在內——那些數字部落格本來就免費看得到，
+  // 擋了只是把人推走，也會讓性質變成「付錢才看得到配息率分析」。
+  var PAID_ONLY = ['PF'];
   var KEY = 'fh-session';
   var s = null;
   try { s = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
@@ -48,6 +51,14 @@
     '.hub-chip.end{background:#fee2e2;color:#dc2626}' +
     '.hub-bar a.cta{background:#1d4ed8;color:#fff;border-color:#1d4ed8}' +
     '.hub-star.lock{color:#e2e8f0;cursor:not-allowed}' +
+    '.hub-gate{max-width:560px;margin:64px auto;padding:0 20px;text-align:center;' +
+      'font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC","PingFang TC",sans-serif;color:#1f2a37}' +
+    '.hub-gate h2{font-size:20px;margin:0 0 10px}' +
+    '.hub-gate p{color:#64748b;font-size:14.5px;line-height:1.75;margin:0 0 22px}' +
+    '.hub-gate .acts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}' +
+    '.hub-gate a{font-size:14px;font-weight:700;text-decoration:none;border-radius:10px;' +
+      'padding:11px 18px;border:1.5px solid #e2e8f0;color:#475569;background:#fff}' +
+    '.hub-gate a.cta{background:#1d4ed8;border-color:#1d4ed8;color:#fff}' +
     /* 手機版：關鍵一行與標籤列都多一個 22px 欄 */
     '@media(max-width:767px){' +
       '.mc-key,.mc-lhead{grid-template-columns:22px 50px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 38px !important}' +
@@ -206,6 +217,21 @@
     paintBar();
   }
 
+  // 到期後把整頁換掉。不留死巷：一定要有地方可以去。
+  function lockPage() {
+    var h = '<div class="hub-gate">' +
+      '<h2>體驗期已結束</h2>' +
+      '<p>組合試算是開通後才有的功能。<br>' +
+      '三張保單的配息率清單在部落格上仍然免費，資料完全相同。<br>' +
+      '你存過的自選清單我們留著，開通後原封不動還在。</p>' +
+      '<div class="acts">';
+    if (COURSE_URL) h += '<a class="cta" href="' + COURSE_URL + '">看怎麼開通</a>';
+    if (BLOG_URL) h += '<a href="' + BLOG_URL + '">回部落格版</a>';
+    h += '<a href="/">回工具集</a></div></div>';
+    document.body.innerHTML = h;
+    document.head.appendChild(st);
+  }
+
   function mount() {
     var tbl = document.querySelector('table');
     if (!tbl || !tbl.parentElement) return setTimeout(mount, 400);
@@ -220,6 +246,7 @@
   }
 
   load().then(function () {
+    if (!active && PAID_ONLY.indexOf(CODE) >= 0) { lockPage(); return; }
     mount();
     setInterval(decorate, 700);
   });
