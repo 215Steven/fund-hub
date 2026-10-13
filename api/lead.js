@@ -13,7 +13,7 @@ async function saveLead(rec) {
   const { put } = require('@vercel/blob');
   const name = 'leads/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.json';
   await put(name, JSON.stringify(rec), {
-    access: 'public',
+    access: 'private',   // 名單是個資，不能公開可讀
     contentType: 'application/json',
     addRandomSuffix: false
   });
