@@ -82,10 +82,10 @@ module.exports = async function handler(req, res) {
     const rows = await allLeads();
 
     if (action === 'csv') {
-      const head = ['email', 'name', 'consent', 'at', 'ref'];
+      const head = ['email', 'name', 'consent', 'via', 'at', 'ref'];
       const lines = [head.join(',')];
       rows.forEach((r) => {
-        lines.push([r.email, r.name, r.consent ? 'Y' : 'N', r.at, r.ref].map(csvCell).join(','));
+        lines.push([r.email, r.name, r.consent ? 'Y' : 'N', r.via || 'email', r.at, r.ref].map(csvCell).join(','));
       });
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', 'attachment; filename="leads.csv"');
@@ -97,7 +97,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       total: rows.length,
       consented: rows.filter((r) => r.consent).length,
-      rows: rows.map((r) => ({ email: r.email, name: r.name, consent: !!r.consent, at: r.at }))
+      rows: rows.map((r) => ({ email: r.email, name: r.name, consent: !!r.consent, via: r.via || 'email', verified: !!r.verified, at: r.at }))
     });
   } catch (e) {
     return res.status(500).json({ error: String((e && e.message) || e) });
