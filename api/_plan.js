@@ -10,16 +10,29 @@ const { normEmail, emailKey } = require('./_auth');
 const TRIAL_DAYS = Number(process.env.TRIAL_DAYS || 14);
 const DAY = 86400000;
 
+// 覆寫後的 Blob 網址不變，CDN 可能還端舊的內容出來，
+// 光靠 cache:'no-store' 擋不住邊緣節點。加一個每次都不同的參數強制繞過。
+function bust(url) {
+  return url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cb=' + Date.now() + Math.random().toString(36).slice(2, 6);
+}
+
+async function fetchJson(url) {
+  const r = await fetch(bust(url), {
+    cache: 'no-store',
+    headers: {
+      Authorization: 'Bearer ' + process.env.BLOB_READ_WRITE_TOKEN,
+      'Cache-Control': 'no-cache'
+    }
+  });
+  if (!r.ok) return null;
+  return await r.json();
+}
+
 async function readJson(path) {
   const { head } = require('@vercel/blob');
   try {
     const h = await head(path);
-    const r = await fetch(h.downloadUrl || h.url, {
-      cache: 'no-store',
-      headers: { Authorization: 'Bearer ' + process.env.BLOB_READ_WRITE_TOKEN }
-    });
-    if (!r.ok) return null;
-    return await r.json();
+    return await fetchJson(h.downloadUrl || h.url);
   } catch (e) { return null; }
 }
 
@@ -102,5 +115,5 @@ async function planOf(email, firstAt) {
 
 module.exports = {
   TRIAL_DAYS, planOf, isStudent, ensureUser,
-  whitelist, setWhitelist, readJson, writeJson
+  whitelist, setWhitelist, readJson, writeJson, fetchJson, bust
 };
