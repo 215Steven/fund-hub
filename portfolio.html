@@ -2980,7 +2980,7 @@ function renderPfWinRateHtml(s, idxR, period) {
           }).join('')
         + '<div class="bt-wr-note">區間以每個交易日為起點逐日取樣，彼此大量重疊，「共 N 個區間」是取樣數不是獨立樣本數——一段三年的資料最多只含三個互不重疊的一年期間，因此比例接近滿分時並不代表穩定度高，不宜單獨解讀。區間數少於 10 的持有期間已自動隱藏。「加上配息後」採「期末淨值－期初淨值＋期間內配息金額」計算，不含配息再投資之複利效果，與上方還原(含息)圖表之計算方式不同，僅供參考。</div>';
     }
-    return '<div class="bt-section-title">' + ICON.coin + ' 歷史區間回顧</div><div class="bt-loading" style="padding:14px 0">資料區間過短，尚無法計算任何持有期間之勝率</div>';
+    return '<div class="bt-section-title">' + ICON.coin + ' 歷史區間回顧</div><div class="bt-loading" style="padding:14px 0">資料區間過短，尚無法回顧任何持有期間</div>';
   }
   var rawWin = computeWinRates(winDates, rawNavs);
   if (rawWin.length) {
@@ -2995,7 +2995,7 @@ function renderPfWinRateHtml(s, idxR, period) {
         }).join('')
       + '</div><div class="bt-wr-note">區間以每個交易日為起點逐日取樣，彼此大量重疊，「共 N 個區間」是取樣數不是獨立樣本數——一段三年的資料最多只含三個互不重疊的一年期間，因此比例接近滿分時並不代表穩定度高，不宜單獨解讀。區間數少於 10 的持有期間已自動隱藏</div>';
   }
-  return '<div class="bt-section-title">' + ICON.coin + ' 歷史區間回顧</div><div class="bt-loading" style="padding:14px 0">資料區間過短，尚無法計算任何持有期間之勝率</div>';
+  return '<div class="bt-section-title">' + ICON.coin + ' 歷史區間回顧</div><div class="bt-loading" style="padding:14px 0">資料區間過短，尚無法回顧任何持有期間</div>';
 }
 function pfRenderWinRate() {
   var s = _pfState;
