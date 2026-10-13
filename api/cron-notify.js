@@ -9,7 +9,7 @@
  * 沒設 CRON_SECRET 就只允許 Vercel 自己的 user-agent，避免被外部亂打。
  */
 const { emailKey } = require('./_auth');
-const { planOf, readJson, writeJson, TRIAL_DAYS } = require('./_plan');
+const { planOf, readJson, writeJson, fetchJson, TRIAL_DAYS } = require('./_plan');
 const { sendMail, SITE } = require('./_mail');
 const { isOptedOut } = require('./unsub');
 
@@ -50,7 +50,12 @@ module.exports = async function handler(req, res) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return res.status(500).json({ error: 'blob not configured' });
 
   const { list } = require('@vercel/blob');
-  const out = { scanned: 0, sent: 0, skipped: 0, failed: 0, dry: !process.env.RESEND_API_KEY };
+  const out = {
+    scanned: 0, sent: 0, skipped: 0, failed: 0,
+    dry: !process.env.RESEND_API_KEY || !process.env.MAIL_FROM,
+    why: {}   // 跳過原因統計，排查時不用瞎猜
+  };
+  const why = (k) => { out.why[k] = (out.why[k] || 0) + 1; out.skipped++; };
 
   try {
     const blobs = [];
@@ -64,32 +69,27 @@ module.exports = async function handler(req, res) {
     for (const b of blobs) {
       out.scanned++;
       let u = null;
-      try {
-        const r = await fetch(b.downloadUrl || b.url, {
-          cache: 'no-store',
-          headers: { Authorization: 'Bearer ' + process.env.BLOB_READ_WRITE_TOKEN }
-        });
-        if (r.ok) u = await r.json();
-      } catch (e) {}
-      if (!u || !u.email) { out.skipped++; continue; }
+      // 走 fetchJson（帶破快取參數），否則剛寫進去的 notified 讀不到，會重寄
+      try { u = await fetchJson(b.downloadUrl || b.url); } catch (e) {}
+      if (!u || !u.email) { why('no-email'); continue; }
 
       const p = await planOf(u.email, u.firstAt);
-      if (p.plan === 'student' || !p.active) { out.skipped++; continue; }
+      if (p.plan === 'student' || !p.active) { why(p.plan === 'student' ? 'student' : 'expired'); continue; }
 
       // 只在剛好踩到 3 天與 1 天那兩天寄
       const stage = STAGES.indexOf(p.daysLeft) >= 0 ? p.daysLeft : null;
-      if (stage === null) { out.skipped++; continue; }
+      if (stage === null) { why('not-due'); continue; }
 
       const sentList = Array.isArray(u.notified) ? u.notified : [];
-      if (sentList.indexOf(stage) >= 0) { out.skipped++; continue; }
+      if (sentList.indexOf(stage) >= 0) { why('already-sent'); continue; }
 
-      if (await isOptedOut(u.email)) { out.skipped++; continue; }
+      if (await isOptedOut(u.email)) { why('opted-out'); continue; }
 
       try {
         const r = await sendMail(u.email,
           stage <= 1 ? '你的體驗期明天到期' : '體驗期還剩 ' + stage + ' 天',
           body(stage) + cta());
-        if (r && r.skipped) { out.skipped++; continue; }
+        if (r && r.skipped) { why('mail-not-configured'); continue; }
         // 寄成功才記，失敗下次還會再試
         u.notified = sentList.concat([stage]);
         await writeJson('user/' + emailKey(u.email) + '.json', u);
