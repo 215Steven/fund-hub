@@ -133,7 +133,9 @@ module.exports = async function handler(req, res) {
   // 這道門是為了識別使用者與收名單，不是資料授權；
   // 相同內容在部落格的免費版本上本來就公開。
   var isCron = process.env.CRON_SECRET && req.headers['x-cron'] === process.env.CRON_SECRET;
-  if (!isCron && !requireUser(req, res)) return;
+  // 配息率與報酬率本來就是公開資訊，部落格版也一直免費，因此不再要求登入。
+  // 需要身分的是「自選清單」(watch) 與「組合試算」，那兩支仍然擋著。
+  void isCron;
   const INSURANCE = String((req.query && req.query.code) || 'VCCT').toUpperCase();
   if (VALID.indexOf(INSURANCE) < 0) return res.status(400).json({ error: 'code' });
 
