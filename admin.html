@@ -29,6 +29,12 @@
   .tag{font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px}
   .yes{background:#dcfce7;color:#15803d}.no{background:#f1f5f9;color:#94a3b8}
   .g{background:#dbeafe;color:#1d4ed8}.m{background:#fef3c7;color:#b45309}
+  .stu{background:#ede9fe;color:#6d28d9}.tri{background:#f1f5f9;color:#475569}.exp{background:#fee2e2;color:#dc2626}
+  textarea{width:100%;box-sizing:border-box;min-height:120px;padding:10px 12px;font-size:13px;
+    font-family:ui-monospace,monospace;border:1.5px solid #e2e8f0;border-radius:9px;background:#f8fafc;outline:none}
+  h2{font-size:15px;margin:0 0 4px}
+  .hint{color:#64748b;font-size:12.5px;margin:0 0 10px}
+  .mt{margin-top:16px}
   .err{color:#dc2626;font-size:13px;margin-top:10px}
   .hide{display:none}
 </style>
@@ -53,19 +59,48 @@
       <input id="q" type="text" placeholder="搜尋 Email 或稱呼">
     </div>
     <div class="stat">
-      <div>總筆數<b id="t">—</b></div>
+      <div>帳號數<b id="t">—</b></div>
+      <div>學員<b id="s">—</b></div>
       <div>同意收信<b id="c">—</b></div>
     </div>
     <table><thead><tr>
-      <th>Email</th><th>稱呼</th><th>驗證</th><th>行銷同意</th><th>加入時間</th><th></th>
+      <th>Email</th><th>稱呼</th><th>驗證</th><th>方案</th><th>行銷同意</th><th>加入時間</th><th></th>
     </tr></thead><tbody id="tb"></tbody></table>
+  </div>
+
+  <div id="swrap" class="card mt hide">
+    <h2>學員名單</h2>
+    <p class="hint">一行一個 Email，或用逗號分隔。這份清單會整份覆寫，貼上後請確認是完整名單而不是增量。
+      清單裡的人登入後永久開通；其他人為 <span id="td">14</span> 天體驗期。</p>
+    <textarea id="sl" placeholder="student1@gmail.com&#10;student2@gmail.com"></textarea>
+    <div class="row" style="margin-top:10px">
+      <button class="p" id="ssave">儲存學員名單</button>
+      <span id="smsg" class="hint" style="margin:0"></span>
+    </div>
   </div>
 </div>
 
 <script>
 (function(){
   var $=function(i){return document.getElementById(i);};
-  var KEY="fh-admin-key", rows=[];
+  var KEY="fh-admin-key", rows=[], studs=[];
+  function planTag(r){
+    if(r.plan==="student") return "<span class=\"tag stu\">學員</span>";
+    if(!r.active) return "<span class=\"tag exp\">已到期</span>";
+    return "<span class=\"tag tri\">體驗 "+(r.daysLeft==null?"":r.daysLeft+" 天")+"</span>";
+  }
+  function splitEmails(s){
+    return String(s||"").split(/[\s,;]+/).map(function(x){return x.trim();}).filter(Boolean);
+  }
+  async function saveStudents(arr){
+    var r=await fetch("/api/admin?action=students-set&key="+encodeURIComponent(key()),{
+      method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({emails:arr})});
+    var j=await r.json();
+    if(j.error) throw new Error(j.error);
+    studs=j.emails||[];
+    return studs;
+  }
   function esc(s){return String(s==null?"":s).replace(/[&<>]/g,function(m){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[m];});}
   function fmt(iso){ if(!iso) return ""; var d=new Date(iso); return isNaN(d)?iso:
     d.toLocaleString("zh-TW",{timeZone:"Asia/Taipei",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}); }
@@ -80,9 +115,13 @@
     $("tb").innerHTML=list.map(function(r){
       return "<tr><td class=\"e\">"+esc(r.email)+"</td><td>"+esc(r.name||"")+"</td>"+
         "<td><span class=\"tag "+(r.via==="google"?"g":"m")+"\">"+(r.via==="google"?"Google":"自填")+"</span></td>"+
+        "<td>"+planTag(r)+"</td>"+
         "<td><span class=\"tag "+(r.consent?"yes":"no")+"\">"+(r.consent?"是":"否")+"</span></td>"+
         "<td>"+esc(fmt(r.at))+"</td>"+
-        "<td><button class=\"d\" data-del=\""+esc(r.email)+"\">刪除</button></td></tr>";
+        "<td>"+(r.plan==="student"
+          ? "<button data-un=\""+esc(r.email)+"\">取消學員</button>"
+          : "<button data-up=\""+esc(r.email)+"\">設為學員</button>")+
+        " <button class=\"d\" data-del=\""+esc(r.email)+"\">刪除</button></td></tr>";
     }).join("");
   }
 
@@ -94,6 +133,13 @@
     rows=j.rows||[];
     $("t").textContent=j.total;
     $("c").textContent=j.consented;
+    $("s").textContent=j.students;
+    if(j.trialDays) $("td").textContent=j.trialDays;
+    var sr=await fetch("/api/admin?action=students&key="+encodeURIComponent(key()));
+    var sj=await sr.json();
+    studs=sj.emails||[];
+    $("sl").value=studs.join("\n");
+    $("swrap").classList.remove("hide");
     paint();
   }
 
@@ -109,7 +155,27 @@
   $("csv").addEventListener("click", function(){
     location.href="/api/admin?action=csv&key="+encodeURIComponent(key());
   });
+  $("ssave").addEventListener("click", async function(){
+    var btn=this; btn.disabled=true; $("smsg").textContent="儲存中…";
+    try{
+      var arr=await saveStudents(splitEmails($("sl").value));
+      $("sl").value=arr.join("\n");
+      $("smsg").textContent="已儲存 "+arr.length+" 位學員";
+      await load();
+    }catch(err){ $("smsg").textContent="失敗："+err.message; }
+    btn.disabled=false;
+  });
+
   document.addEventListener("click", async function(e){
+    var up=e.target.closest("button[data-up]"), un=e.target.closest("button[data-un]");
+    if(up||un){
+      var em=(up||un).getAttribute(up?"data-up":"data-un");
+      (up||un).disabled=true;
+      var next=up ? studs.concat([em]) : studs.filter(function(x){return x!==em;});
+      try{ await saveStudents(next); $("sl").value=studs.join("\n"); await load(); }
+      catch(err){ alert(err.message); (up||un).disabled=false; }
+      return;
+    }
     var b=e.target.closest("button[data-del]"); if(!b) return;
     var em=b.getAttribute("data-del");
     if(!confirm("刪除 "+em+" 的名單與自選清單？此動作無法復原。")) return;
