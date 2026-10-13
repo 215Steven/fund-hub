@@ -29,7 +29,10 @@ async function writeJson(path, obj) {
     access: 'private',
     contentType: 'application/json',
     addRandomSuffix: false,
-    allowOverwrite: true
+    allowOverwrite: true,
+    // 不設這個的話 Blob 預設會讓 CDN 快取很久，
+    // 於是剛寫完的白名單或訂單，下一次讀到的還是舊版。
+    cacheControlMaxAge: 0
   });
 }
 
