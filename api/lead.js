@@ -50,7 +50,7 @@ module.exports = async function handler(req, res) {
   } catch (e) {
     // 名單寫入失敗不該擋住使用者，記下來就好
     console.error('saveLead failed:', e && e.message);
-    stored = 'error';
+    stored = 'error:' + String((e && e.message) || e).slice(0, 120);
   }
 
   return res.status(200).json({
