@@ -67,6 +67,24 @@ module.exports = async function handler(req, res) {
   const action = String((req.query && req.query.action) || 'list');
 
   try {
+    // 調整某人的體驗期剩餘天數。改的是 firstAt，往前推算。
+    // 用途：有人反映時間不夠想多試幾天，或是你要測提醒信。
+    // 注意這會連帶清掉已寄提醒的紀錄，否則調完天數提醒不會再寄。
+    if (action === 'trial') {
+      const email = normEmail((req.query && req.query.email) || '');
+      const left = Number((req.query && req.query.daysLeft));
+      if (!email) return res.status(400).json({ error: 'email required' });
+      if (!(left >= 0 && left <= 365)) return res.status(400).json({ error: 'daysLeft 0-365' });
+      const path = 'user/' + crypto.createHash('sha256').update(email).digest('hex').slice(0, 32) + '.json';
+      const u = (await readJson(path)) || { email: email };
+      u.email = email;
+      u.firstAt = new Date(Date.now() - (TRIAL_DAYS - left) * 86400000).toISOString();
+      u.notified = [];
+      await writeJson(path, u);
+      const p = await planOf(email, u.firstAt);
+      return res.status(200).json({ ok: true, email: email, firstAt: u.firstAt, plan: p });
+    }
+
     // 幫人產生退訂連結，或直接代為退訂。
     // 有人寫信說「不要再寄給我」時，你得有辦法立刻處理。
     if (action === 'unsub') {
