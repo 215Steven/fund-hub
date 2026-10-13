@@ -98,6 +98,10 @@
     .tier-body strong { display: block; font-size: 14px; color: #0f172a; margin-bottom: 3px; }
     .tier-body span { display: block; font-size: 12.5px; line-height: 1.65; color: #64748b; }
     @media (max-width: 560px) { .tiers { grid-template-columns: 1fr; } }
+    /* 已開通的人：身分列排到最上面，價值階梯就不用再看一次 */
+    main.wrap { display: flex; flex-direction: column; }
+    #hello { order: -1; }
+    main.wrap:has(#hello:not(.hide)) .tiers { display: none; }
   </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
