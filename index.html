@@ -71,6 +71,14 @@
   .hello button{border:1px solid var(--border);background:#fff;color:var(--muted);
     font-size:12px;font-family:inherit;padding:6px 12px;border-radius:8px;cursor:pointer}
 
+  .chip{font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap}
+  .chip.trial{background:#f1f5f9;color:#475569}
+  .chip.stu{background:#ede9fe;color:#6d28d9}
+  .chip.end{background:#fee2e2;color:#dc2626}
+  .hello .right{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .hello a.sup{font-size:12px;font-weight:700;text-decoration:none;color:#fff;background:var(--blue);
+    border:1px solid var(--blue);padding:7px 13px;border-radius:8px}
+  .hello a.sup.ghost{background:#fff;color:var(--muted);border-color:var(--border)}
   .disc{margin-top:26px;padding:18px 20px;font-size:12px;line-height:1.85;color:#8a7a52;
     background:#fffbeb;border:1px solid #fde68a;border-radius:12px}
   .disc b{color:#92400e}
@@ -130,8 +138,12 @@
 
   <!-- 已開通 -->
   <section id="hello" class="card hello hide">
-    <div><b id="h-name">你好</b>，自選清單已開通。</div>
-    <button id="h-out">登出</button>
+    <div><b id="h-name">你好</b><span id="h-state">，自選清單已開通。</span></div>
+    <div class="right">
+      <span id="h-chip" class="chip trial hide"></span>
+      <a id="h-sup" class="sup ghost" href="/support">贊助開發</a>
+      <button id="h-out">登出</button>
+    </div>
   </section>
 
   <div class="grid">
@@ -154,7 +166,7 @@
 </main>
 
 <footer>OO SAY HI　·　資料整理自富邦投資型保險專區<br>
-  <a href="/privacy">隱私權政策</a>·<a href="/terms">服務條款</a></footer>
+  <a href="/support">贊助開發</a>·<a href="/privacy">隱私權政策</a>·<a href="/terms">服務條款</a></footer>
 
 <script>
 (function(){
@@ -170,10 +182,41 @@
       $("gate").classList.add("hide");
       $("hello").classList.remove("hide");
       $("h-name").textContent = (s.name ? s.name : "你好");
+      loadPlan(s.token);
     } else {
       $("gate").classList.remove("hide");
       $("hello").classList.add("hide");
     }
+  }
+
+  // 方案狀態每次載入都重問一次。token 不用換，
+  // 所以剛贊助開通的人重新整理就會看到變成「永久開通」。
+  async function loadPlan(token){
+    var chip = $("h-chip"), sup = $("h-sup"), st = $("h-state");
+    try {
+      var r = await fetch("/api/me", { headers: { Authorization: "Bearer " + token } });
+      if (!r.ok) return;
+      var j = await r.json();
+      chip.classList.remove("hide", "trial", "stu", "end");
+      if (j.plan === "student") {
+        chip.classList.add("stu");
+        chip.textContent = "永久開通";
+        st.textContent = "，感謝你的贊助。";
+        sup.classList.add("hide");
+      } else if (!j.active) {
+        chip.classList.add("end");
+        chip.textContent = "體驗期已結束";
+        st.textContent = "，配息率清單仍可查看，自選與組合試算已暫停。";
+        sup.classList.remove("ghost");
+        sup.textContent = "贊助開通";
+      } else {
+        chip.classList.add("trial");
+        chip.textContent = "體驗期剩 " + j.daysLeft + " 天";
+        st.textContent = "，自選清單已開通。";
+        // 剩三天內才把按鈕變顯眼，平常不吵人
+        if (j.daysLeft <= 3) { sup.classList.remove("ghost"); sup.textContent = "贊助開通"; }
+      }
+    } catch (e) {}
   }
 
   $("h-out").addEventListener("click", function(){
