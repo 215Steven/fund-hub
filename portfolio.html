@@ -3,6 +3,48 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- 伺服器快照預熱：盡早把三支工具的每日快照塞進既有的 <code>-v2 快取，
+     讓後面的配息率排隊幾乎沒事可做。抓不到就什麼都不做，行為跟以前一樣。 -->
+<script>
+(function () {
+  var CODES = ["VCCT", "VBCT", "UND"];
+
+  // 與工具本身一致：快取到台灣時間隔日中午
+  function nextNoonTW() {
+    var tw = Date.now() + 8 * 3600000;
+    var noon = Math.floor(tw / 86400000) * 86400000 + 12 * 3600000;
+    if (noon <= tw) noon += 86400000;
+    return noon - 8 * 3600000;
+  }
+
+  var token = null;
+  try { token = (JSON.parse(localStorage.getItem("fh-session") || "null") || {}).token; } catch (e) {}
+  if (!token) return;
+
+  CODES.forEach(function (code) {
+    var key = code.toLowerCase() + "-v2";
+    // 已經有沒過期的快取就別浪費流量
+    try {
+      var cur = JSON.parse(localStorage.getItem(key) || "null");
+      if (cur && cur.expiry > Date.now() && cur.report && cur.report.length) return;
+    } catch (e) {}
+
+    fetch("/api/data?code=" + code, { headers: { Authorization: "Bearer " + token } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!j || !Array.isArray(j.report) || !j.report.length) return;
+        localStorage.setItem(key, JSON.stringify({
+          report: j.report,
+          totalFunds: j.totalFunds,
+          monthlyCount: j.monthlyCount,
+          savedAt: j.savedAt,
+          expiry: nextNoonTW()
+        }));
+      })
+      .catch(function () {});
+  });
+})();
+</script>
 <title>組合分析工具 | VBCT／VCCT／UND 自訂權重組合（非官方）</title>
 <style>
 /* ═══════════════════════════════════════════════
