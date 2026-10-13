@@ -2182,20 +2182,46 @@ function btStat(label, val, neg) {
 }
 // 抓取單一標的「全部」配息記錄（不限近6月），供回測還原使用
 async function fetchDividendHistory(r) {
-  if (!r.v40 || !r.v41) return [];
-  var isISh = isISharesName(r.name);
-  try {
-    if (r.v41 === 'C') {
-      var jtext = await fetchBig5('/ETFData/djjson/et050000json.djjson?a=' + r.v40);
-      return parseEtfDivJson(jtext, isISh);
-    } else if (r.v41 === 'B') {
-      return parseDivHtml(await fetchBig5('/w/wb/wb05.djhtm?a=' + r.v40), isISh);
-    } else if (r.v41 === 'A') {
-      return parseDivHtml(await fetchBig5('/w/wr/wr10.djhtm?a=' + r.v40), isISh);
+      // 舊版的 /w/wb/wb05.djhtm 已下架（回 404），改接新版 API。
+      // 基金與 ETF 是兩支不同端點、欄位也不同，統一轉成 { date, amount }。
+      const code = r && (r.code || r.v40 || r.assetFbCode);
+      if (!code) return [];
+
+      const now = new Date();
+      const pad = n => String(n).padStart(2, "0");
+      const today = now.getFullYear() + "/" + pad(now.getMonth() + 1) + "/" + pad(now.getDate());
+
+      async function pull(path) {
+        try {
+          const res = await fetch("/api/post?path=" + encodeURIComponent(path), {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ assetFbCode: code, startDate: "1990/01/01", endDate: today })
+          });
+          if (!res.ok) return [];
+          const j = await res.json();
+          return (j && Array.isArray(j.data)) ? j.data : [];
+        } catch (e) { return []; }
+      }
+
+      const isEtf = /ETF/i.test((r && r.type) || "");
+      const fundPath = "/api/fund/getFundDividends";
+      const etfPath  = "/api/etf/getEtfDividends";
+
+      // 先打型態對應的那支，沒資料再試另一支（型態標示偶有出入）
+      let rows = await pull(isEtf ? etfPath : fundPath);
+      if (!rows.length) rows = await pull(isEtf ? fundPath : etfPath);
+
+      return rows.map(function (x) {
+        // 基金用除息基準日 recordDate，ETF 只給 date
+        const raw = x.recordDate || x.date || x.dividendDate;
+        const amt = Number(x.dividendPerUnit != null ? x.dividendPerUnit : x.dividendAmount);
+        if (!raw || !isFinite(amt) || amt <= 0) return null;
+        return { date: String(raw).replace(/\//g, "-"), amount: amt };
+      }).filter(Boolean).sort(function (a, b) {
+        return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0);
+      });
     }
-  } catch (e) { /* 配息資料抓取失敗，不中斷回測流程，僅略過還原 */ }
-  return [];
-}
 // 將配息（月份粒度）對應至該月最後一個交易日，回傳 {索引: 配息金額}，供「還原(含息)」與「賺錢機率」共用
 function mapDivToIndex(dates, divs) {
   if (!divs || !divs.length) return null;
