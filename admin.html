@@ -92,7 +92,7 @@
 (function(){
   var $=function(i){return document.getElementById(i);};
   var KEY="fh-admin-key", rows=[], studs=[];
-  var orders=[];
+  var orders=[], localStatus={};   // 這一輪自己改過的狀態，蓋過可能讀到舊版的 Blob
   function fmtOrders(){
     var pend=orders.filter(function(o){return o.status==="pending";});
     $("ocount").textContent=pend.length?pend.length+" 筆待處理":"目前沒有";
@@ -116,7 +116,10 @@
     var r=await fetch("/api/admin?action=orders&key="+encodeURIComponent(key()));
     var j=await r.json();
     if(j.error) throw new Error(j.error);
-    orders=j.orders||[];
+    orders=(j.orders||[]).map(function(o){
+      if(localStatus[o.email]) o.status=localStatus[o.email];
+      return o;
+    });
     $("owrap").classList.remove("hide");
     fmtOrders();
   }
@@ -213,6 +216,7 @@
         "&email="+encodeURIComponent(em)+"&key="+encodeURIComponent(key()));
       var j=await r.json();
       if(j.error){ alert(j.error); (okb||nob).disabled=false; return; }
+      localStatus[em]=okb?"confirmed":"rejected";
       await load();
       return;
     }
