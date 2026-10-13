@@ -82,16 +82,22 @@ module.exports = async function handler(req, res) {
     }
 
     if (action === 'delete') {
-      const email = String((req.query && req.query.email) || '').toLowerCase();
+      // 兩邊都先正規化。名單列表顯示的是正規化後的 Email，
+      // 這裡若用原字串比對，有 + 別名的那幾筆會刪不掉。
+      const email = normEmail((req.query && req.query.email) || '');
       if (!email) return res.status(400).json({ error: 'email required' });
       const { del } = require('@vercel/blob');
       const rows = await allLeads();
-      const hit = rows.filter((r) => String(r.email || '').toLowerCase() === email);
+      const hit = rows.filter((r) => normEmail(r.email) === email);
       for (const h of hit) { try { await del(h._path); } catch (e) {} }
-      // 連自選清單一併刪掉
+      // 自選清單與使用者檔案一併刪掉，不然體驗期起算時間會留著
+      const key = crypto.createHash('sha256').update(email).digest('hex').slice(0, 32);
+      try { await del('watch/' + key + '.json'); } catch (e) {}
+      try { await del('user/' + key + '.json'); } catch (e) {}
+      // 也從學員白名單移除
       try {
-        const key = crypto.createHash('sha256').update(email).digest('hex').slice(0, 32);
-        await del('watch/' + key + '.json');
+        const wl = await whitelist(true);
+        if (wl.indexOf(email) >= 0) await setWhitelist(wl.filter((x) => x !== email));
       } catch (e) {}
       return res.status(200).json({ deleted: hit.length });
     }
