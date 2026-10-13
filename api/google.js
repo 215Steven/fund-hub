@@ -7,7 +7,8 @@
  * 必須檢查三件事：aud 是不是我們的 client id、iss 是不是 Google、email_verified。
  * 只檢查簽章不檢 aud 的話，別人網站的 token 也能拿來登入。
  */
-const { sign } = require('./_auth');
+const { sign, normEmail } = require('./_auth');
+const { ensureUser, planOf } = require('./_plan');
 
 const CLIENT_ID = '363837903541-k2gjq9hbcr32aqk37araiu24hilhd0q1.apps.googleusercontent.com';
 const ISS = ['accounts.google.com', 'https://accounts.google.com'];
@@ -50,7 +51,7 @@ module.exports = async function handler(req, res) {
   if (String(info.email_verified) !== 'true') return res.status(401).json({ error: 'email 未驗證' });
   if (Number(info.exp) * 1000 < Date.now()) return res.status(401).json({ error: 'token 已過期' });
 
-  const email = String(info.email || '').toLowerCase();
+  const email = normEmail(info.email);
   const name = String(info.name || '').slice(0, 40);
   const consent = !!body.consent;
 
@@ -71,11 +72,27 @@ module.exports = async function handler(req, res) {
     stored = 'error';
   }
 
+  // firstAt 只在第一次登入寫入，之後沿用。token 的 t 綁 firstAt，
+  // 所以重登、換裝置都不會把體驗期重置。
+  let plan = { plan: 'trial', active: true, daysLeft: null, endsAt: null };
+  let firstMs = Date.now();
+  try {
+    const u = await ensureUser(email);
+    firstMs = Date.parse(u.firstAt) || firstMs;
+    plan = await planOf(email, firstMs);
+  } catch (e) {
+    console.error('plan failed:', e && e.message);
+  }
+
   return res.status(200).json({
-    token: sign({ e: email, n: name, t: Date.now() }),
+    token: sign({ e: email, n: name, t: firstMs, i: Date.now() }),
     email: email,
     name: name,
     picture: info.picture || '',
+    plan: plan.plan,
+    active: plan.active,
+    daysLeft: plan.daysLeft,
+    endsAt: plan.endsAt,
     stored: stored
   });
 };
