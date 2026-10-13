@@ -16,7 +16,7 @@ module.exports = async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  if (!requireUser(req, res)) return;
+  // 逐日淨值與配息史同樣是公開資訊，分析功能不設門檻（自選與組合試算才需要身分）。
 
   const path = req.query.path;
   if (!path || !path.startsWith('/')) {
