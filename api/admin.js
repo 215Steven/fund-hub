@@ -147,6 +147,7 @@ module.exports = async function handler(req, res) {
       const key = crypto.createHash('sha256').update(email).digest('hex').slice(0, 32);
       try { await del('watch/' + key + '.json'); } catch (e) {}
       try { await del('user/' + key + '.json'); } catch (e) {}
+      try { await del('orders/' + key + '.json'); } catch (e) {}
       // 也從學員白名單移除
       try {
         const wl = await whitelist(true);
