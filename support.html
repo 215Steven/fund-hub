@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>贊助開發 — 基金配息率工具集</title>
+<style>
+  :root{--ink:#1f2a37;--dim:#64748b;--line:#e2e8f0;--blue:#1d4ed8}
+  *{box-sizing:border-box}
+  body{margin:0;background:#f3f6fb;color:var(--ink);line-height:1.75;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC",sans-serif}
+  .hero{background:linear-gradient(160deg,#0f2744,#1e3a5f);color:#fff;padding:44px 20px 38px}
+  .in{max-width:680px;margin:0 auto}
+  .hero h1{font-size:26px;margin:0 0 10px;letter-spacing:-.4px}
+  .hero p{margin:0;color:#c7d6ea;font-size:14.5px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px;margin:18px 0;
+    box-shadow:0 1px 3px rgba(15,39,68,.06)}
+  h2{font-size:17px;margin:0 0 12px}
+  p{font-size:14.5px}
+  .dim{color:var(--dim);font-size:13.5px}
+  ul{padding-left:20px;margin:10px 0}
+  li{font-size:14.5px;margin:5px 0}
+  .tiers{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin:14px 0 4px}
+  .tier{border:1.5px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;background:#f8fafc;text-align:center}
+  .tier.on{border-color:var(--blue);background:#eff4ff}
+  .tier b{display:block;font-size:20px;letter-spacing:-.5px}
+  .tier span{font-size:12.5px;color:var(--dim)}
+  .pay{background:#f8fafc;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:12px 0}
+  .pay dl{margin:0;display:grid;grid-template-columns:92px 1fr;gap:6px 10px;font-size:14px}
+  .pay dt{color:var(--dim)}
+  .pay dd{margin:0;font-family:ui-monospace,monospace}
+  label{display:block;font-size:13px;font-weight:700;margin:14px 0 5px}
+  input,textarea{width:100%;padding:11px 13px;font-size:14.5px;font-family:inherit;border:1.5px solid var(--line);
+    border-radius:10px;background:#f8fafc;outline:none}
+  input:focus,textarea:focus{border-color:var(--blue);background:#fff}
+  input[readonly]{color:var(--dim)}
+  button{width:100%;margin-top:16px;padding:13px;font-size:15px;font-weight:700;font-family:inherit;
+    border:none;border-radius:10px;background:var(--blue);color:#fff;cursor:pointer}
+  button:disabled{background:#94a3b8;cursor:default}
+  .msg{margin-top:12px;font-size:13.5px}
+  .msg.err{color:#dc2626}.msg.ok{color:#15803d}
+  .back{display:inline-block;margin:6px 0 0;color:var(--dim);font-size:13.5px;text-decoration:none}
+  .note{background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 14px;font-size:13px;color:#92400e}
+  .done{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;font-size:14px;color:#15803d}
+  .hide{display:none}
+  footer{text-align:center;padding:26px 20px 44px;color:#94a3b8;font-size:12.5px}
+  footer a{color:#94a3b8}
+</style>
+</head>
+<body>
+
+<div class="hero"><div class="in">
+  <h1>贊助開發</h1>
+  <p>這幾支工具是我自己要用才做的，放著免費給大家用。贊助是讓它繼續被維護。</p>
+</div></div>
+
+<div class="in" style="padding:0 20px 10px">
+
+  <div class="card">
+    <h2>贊助換到什麼</h2>
+    <ul>
+      <li>四支工具<b>永久</b>無廣告（未贊助為 14 天體驗期）</li>
+      <li>自選清單永久保留，四支工具共用，換裝置也讀得到</li>
+      <li>跨險種組合試算</li>
+    </ul>
+    <p class="dim" style="margin-top:14px">
+      三張保單的配息率清單在<span id="blogtxt">部落格</span>上一直是免費的，資料完全相同。
+      贊助買到的是便利性，不是別人看不到的資料，也不是投資建議。</p>
+  </div>
+
+  <div class="card" id="form-card">
+    <h2>贊助金額</h2>
+    <div class="tiers" id="tiers"></div>
+    <label for="amt">自訂金額（TWD）</label>
+    <input id="amt" type="number" min="1" step="1" inputmode="numeric" placeholder="例如 300">
+
+    <h2 style="margin-top:26px">匯款資訊</h2>
+    <div class="pay"><dl id="payinfo"></dl></div>
+
+    <h2 style="margin-top:26px">匯款後回報</h2>
+    <p class="dim" style="margin-top:-4px">我會自己對帳，通常一個工作天內開通。</p>
+    <label for="em">你的帳號（登入信箱，不用改）</label>
+    <input id="em" type="text" readonly>
+    <label for="l5">匯款帳號末 5 碼</label>
+    <input id="l5" type="text" inputmode="numeric" maxlength="5" placeholder="12345">
+    <label for="nt">備註（選填）</label>
+    <textarea id="nt" rows="2" placeholder="匯款時間、或任何想跟我說的"></textarea>
+    <button id="go">送出回報</button>
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <div class="card hide" id="done-card">
+    <div class="done" id="donetxt"></div>
+    <p class="dim" style="margin-top:14px">對完帳我會直接開通，你重新整理工具頁就會看到「學員・永久開通」。
+      超過兩個工作天還沒動靜，寫信給我。</p>
+  </div>
+
+  <div class="note">贊助屬自願支持，款項一經確認不予退還。贊助不構成任何投資建議或收益保證。</div>
+  <a class="back" href="/">← 回工具集</a>
+</div>
+
+<footer>
+  <a href="/privacy">隱私權政策</a> ・ <a href="/terms">服務條款</a><br>
+  非官方工具，與富邦人壽無關。資料僅供參考，不構成投資建議。
+</footer>
+
+<script>
+(function () {
+  /* ══ 要改的只有這一段 ══ */
+  var TIERS = [
+    { amount: 150, label: "喝杯咖啡" },
+    { amount: 300, label: "最多人選" },
+    { amount: 600, label: "幫大忙" }
+  ];
+  var PAY = {
+    "銀行": "（待填）",
+    "代號": "（待填）",
+    "戶名": "（待填）",
+    "帳號": "（待填）"
+  };
+  var BLOG_URL = "";
+  /* ══ 以上 ══ */
+
+  var $ = function (i) { return document.getElementById(i); };
+  var s = null;
+  try { s = JSON.parse(localStorage.getItem("fh-session") || "null"); } catch (e) {}
+  if (!s || !s.token) { location.replace("/"); return; }
+  $("em").value = s.email || "";
+
+  if (BLOG_URL) $("blogtxt").outerHTML = '<a href="' + BLOG_URL + '">部落格</a>';
+
+  $("payinfo").innerHTML = Object.keys(PAY).map(function (k) {
+    return "<dt>" + k + "</dt><dd>" + PAY[k] + "</dd>";
+  }).join("");
+
+  $("tiers").innerHTML = TIERS.map(function (t) {
+    return '<div class="tier" data-a="' + t.amount + '"><b>$' + t.amount + "</b><span>" + t.label + "</span></div>";
+  }).join("");
+  $("tiers").addEventListener("click", function (e) {
+    var el = e.target.closest(".tier"); if (!el) return;
+    [].forEach.call(this.children, function (c) { c.classList.remove("on"); });
+    el.classList.add("on");
+    $("amt").value = el.getAttribute("data-a");
+  });
+  $("amt").addEventListener("input", function () {
+    [].forEach.call($("tiers").children, function (c) {
+      c.classList.toggle("on", c.getAttribute("data-a") === $("amt").value);
+    });
+  });
+
+  function api(path, opt) {
+    opt = opt || {};
+    opt.headers = Object.assign({ Authorization: "Bearer " + s.token }, opt.headers || {});
+    return fetch(path, opt).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+    });
+  }
+
+  function showDone(o) {
+    $("form-card").classList.add("hide");
+    $("done-card").classList.remove("hide");
+    $("donetxt").textContent = "已收到你的回報：$" + o.amount + "，末 5 碼 " + o.last5 + "。";
+  }
+
+  /* 已經回報過就直接顯示狀態，避免重複送 */
+  api("/api/order").then(function (r) {
+    if (r.ok && r.j.order && r.j.order.status === "pending") showDone(r.j.order);
+    if (r.ok && r.j.plan === "student") {
+      $("form-card").classList.add("hide");
+      $("done-card").classList.remove("hide");
+      $("donetxt").textContent = "你已經是贊助者，四支工具都是永久開通。謝謝。";
+    }
+  }).catch(function () {});
+
+  $("go").addEventListener("click", function () {
+    var msg = $("msg"); msg.className = "msg"; msg.textContent = "";
+    var amount = Number($("amt").value);
+    var last5 = ($("l5").value || "").replace(/\D/g, "");
+    if (!(amount > 0)) { msg.className = "msg err"; msg.textContent = "請選擇或填入金額"; return; }
+    if (last5.length < 4) { msg.className = "msg err"; msg.textContent = "請填匯款帳號末 5 碼"; return; }
+    $("go").disabled = true; $("go").textContent = "送出中…";
+    api("/api/order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: amount, last5: last5, note: $("nt").value })
+    }).then(function (r) {
+      if (!r.ok || r.j.error) throw new Error(r.j.error || "送出失敗");
+      showDone(r.j.order);
+    }).catch(function (e) {
+      msg.className = "msg err"; msg.textContent = e.message;
+      $("go").disabled = false; $("go").textContent = "送出回報";
+    });
+  });
+})();
+</script>
+</body>
+</html>
