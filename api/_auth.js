@@ -1,6 +1,8 @@
 /**
  * 簽章式 token：不需資料庫就能驗身。
- * payload 是 Email 與簽發時間，後面接 HMAC-SHA256。
+ * payload：e = 正規化後的 Email，t = 這個帳號第一次出現的時間（體驗期由此起算），
+ * i = 這張 token 的簽發時間（只用來算 token 自己的壽命）。
+ * t 固定沿用既有的 firstAt，所以重新登入不會把體驗期重置。
  * 這道門的目的是識別使用者與收名單，不是防馭客——
  * 同一份資料在部落格上本來就是免費公開的。
  */
@@ -15,6 +17,22 @@ function b64u(buf) {
 }
 function unb64u(s) {
   return Buffer.from(String(s).replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+}
+/**
+ * Email 正規化。Gmail 的點沒有意義，+ 後面那段是別名，
+ * 不統一的話同一個人可以無限開分身，體驗期等於沒設。
+ */
+function normEmail(email) {
+  var s = String(email || '').trim().toLowerCase();
+  var at = s.lastIndexOf('@');
+  if (at < 1) return s;
+  var local = s.slice(0, at);
+  var domain = s.slice(at + 1);
+  if (domain === 'googlemail.com') domain = 'gmail.com';
+  if (domain === 'gmail.com') local = local.replace(/\./g, '');
+  var plus = local.indexOf('+');
+  if (plus > 0) local = local.slice(0, plus);
+  return local + '@' + domain;
 }
 function sign(payload) {
   const body = b64u(JSON.stringify(payload));
@@ -32,7 +50,9 @@ function verify(token) {
   let p;
   try { p = JSON.parse(unb64u(body)); } catch (e) { return null; }
   if (!p || !p.e || !p.t) return null;
-  if (Date.now() - p.t > MAX_AGE_DAYS * 86400000) return null;
+  // token 自身壽命看 i；舊 token 沒有 i 就退回看 t
+  var issued = p.i || p.t;
+  if (Date.now() - issued > MAX_AGE_DAYS * 86400000) return null;
   return p;
 }
 // 從 Authorization: Bearer xxx 或 ?token= 取
@@ -51,7 +71,7 @@ function requireUser(req, res) {
   return p;
 }
 function emailKey(email) {
-  return crypto.createHash('sha256').update(String(email).toLowerCase()).digest('hex').slice(0, 32);
+  return crypto.createHash('sha256').update(normEmail(email)).digest('hex').slice(0, 32);
 }
 
-module.exports = { sign, verify, tokenOf, requireUser, emailKey };
+module.exports = { sign, verify, tokenOf, requireUser, emailKey, normEmail };
