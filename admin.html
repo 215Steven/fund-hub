@@ -52,6 +52,14 @@
     <div id="err" class="err"></div>
   </div>
 
+  <div id="owrap" class="card hide">
+    <h2>待確認贊助 <span id="ocount" class="tag tri"></span></h2>
+    <p class="hint">對完帳按「確認」，系統會自動把這個信箱加進學員名單，對方重新整理就開通。</p>
+    <table><thead><tr>
+      <th>Email</th><th>金額</th><th>末 5 碼</th><th>備註</th><th>回報時間</th><th></th>
+    </tr></thead><tbody id="ob"></tbody></table>
+  </div>
+
   <div id="main" class="card hide">
     <div class="row">
       <button class="p" id="csv">匯出 CSV</button>
@@ -84,6 +92,34 @@
 (function(){
   var $=function(i){return document.getElementById(i);};
   var KEY="fh-admin-key", rows=[], studs=[];
+  var orders=[];
+  function fmtOrders(){
+    var pend=orders.filter(function(o){return o.status==="pending";});
+    $("ocount").textContent=pend.length?pend.length+" 筆待處理":"目前沒有";
+    var show=orders.slice().sort(function(a,b){
+      if((a.status==="pending")!==(b.status==="pending")) return a.status==="pending"?-1:1;
+      return String(b.at||"").localeCompare(String(a.at||""));
+    });
+    $("ob").innerHTML=show.map(function(o){
+      var st=o.status==="confirmed"?'<span class="tag stu">已確認</span>'
+           :o.status==="rejected"?'<span class="tag exp">已駁回</span>':"";
+      var act=o.status==="pending"
+        ? '<button class="p" data-ok="'+esc(o.email)+'">確認</button> '+
+          '<button class="d" data-no="'+esc(o.email)+'">駁回</button>'
+        : st;
+      return "<tr><td class=\"e\">"+esc(o.email)+"</td><td>$"+esc(o.amount)+"</td>"+
+        "<td class=\"e\">"+esc(o.last5)+"</td><td>"+esc(o.note||"")+"</td>"+
+        "<td>"+esc(fmt(o.at))+"</td><td>"+act+"</td></tr>";
+    }).join("");
+  }
+  async function loadOrders(){
+    var r=await fetch("/api/admin?action=orders&key="+encodeURIComponent(key()));
+    var j=await r.json();
+    if(j.error) throw new Error(j.error);
+    orders=j.orders||[];
+    $("owrap").classList.remove("hide");
+    fmtOrders();
+  }
   function planTag(r){
     if(r.plan==="student") return "<span class=\"tag stu\">學員</span>";
     if(!r.active) return "<span class=\"tag exp\">已到期</span>";
@@ -141,6 +177,7 @@
     $("sl").value=studs.join("\n");
     $("swrap").classList.remove("hide");
     paint();
+    try{ await loadOrders(); }catch(e){}
   }
 
   $("go").addEventListener("click", async function(){
@@ -167,6 +204,18 @@
   });
 
   document.addEventListener("click", async function(e){
+    var okb=e.target.closest("button[data-ok]"), nob=e.target.closest("button[data-no]");
+    if(okb||nob){
+      var em=(okb||nob).getAttribute(okb?"data-ok":"data-no");
+      if(nob && !confirm("駁回 "+em+" 的贊助回報？")) return;
+      (okb||nob).disabled=true;
+      var r=await fetch("/api/admin?action=order-set&status="+(okb?"confirmed":"rejected")+
+        "&email="+encodeURIComponent(em)+"&key="+encodeURIComponent(key()));
+      var j=await r.json();
+      if(j.error){ alert(j.error); (okb||nob).disabled=false; return; }
+      await load();
+      return;
+    }
     var up=e.target.closest("button[data-up]"), un=e.target.closest("button[data-un]");
     if(up||un){
       var em=(up||un).getAttribute(up?"data-up":"data-un");
