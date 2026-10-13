@@ -69,7 +69,7 @@
     <div class="stat">
       <div>帳號數<b id="t">—</b></div>
       <div>學員<b id="s">—</b></div>
-      <div>同意收信<b id="c">—</b></div>
+      <div>可寄送<b id="c">—</b></div>
     </div>
     <table><thead><tr>
       <th>Email</th><th>稱呼</th><th>驗證</th><th>方案</th><th>行銷同意</th><th>加入時間</th><th></th>
@@ -123,6 +123,11 @@
     $("owrap").classList.remove("hide");
     fmtOrders();
   }
+  function consentTag(r){
+    // 退訂優先顯示：就算當初勾過同意，退訂之後就是不能寄
+    if(r.optout) return "<span class=\"tag exp\">已退訂</span>";
+    return "<span class=\"tag "+(r.consent?"yes":"no")+"\">"+(r.consent?"是":"否")+"</span>";
+  }
   function planTag(r){
     if(r.plan==="student") return "<span class=\"tag stu\">學員</span>";
     if(!r.active) return "<span class=\"tag exp\">已到期</span>";
@@ -155,7 +160,7 @@
       return "<tr><td class=\"e\">"+esc(r.email)+"</td><td>"+esc(r.name||"")+"</td>"+
         "<td><span class=\"tag "+(r.via==="google"?"g":"m")+"\">"+(r.via==="google"?"Google":"自填")+"</span></td>"+
         "<td>"+planTag(r)+"</td>"+
-        "<td><span class=\"tag "+(r.consent?"yes":"no")+"\">"+(r.consent?"是":"否")+"</span></td>"+
+        "<td>"+consentTag(r)+"</td>"+
         "<td>"+esc(fmt(r.at))+"</td>"+
         "<td>"+(r.plan==="student"
           ? "<button data-un=\""+esc(r.email)+"\">取消學員</button>"
@@ -171,7 +176,7 @@
     if(j.error) throw new Error(j.error);
     rows=j.rows||[];
     $("t").textContent=j.total;
-    $("c").textContent=j.consented;
+    $("c").textContent=(j.rows||[]).filter(function(x){return x.consent && !x.optout;}).length;
     $("s").textContent=j.students;
     if(j.trialDays) $("td").textContent=j.trialDays;
     var sr=await fetch("/api/admin?action=students&key="+encodeURIComponent(key()));
