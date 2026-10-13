@@ -28,6 +28,7 @@
   td.e{font-family:ui-monospace,monospace;font-size:12.5px}
   .tag{font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px}
   .yes{background:#dcfce7;color:#15803d}.no{background:#f1f5f9;color:#94a3b8}
+  .g{background:#dbeafe;color:#1d4ed8}.m{background:#fef3c7;color:#b45309}
   .err{color:#dc2626;font-size:13px;margin-top:10px}
   .hide{display:none}
 </style>
@@ -56,7 +57,7 @@
       <div>同意收信<b id="c">—</b></div>
     </div>
     <table><thead><tr>
-      <th>Email</th><th>稱呼</th><th>行銷同意</th><th>加入時間</th><th></th>
+      <th>Email</th><th>稱呼</th><th>驗證</th><th>行銷同意</th><th>加入時間</th><th></th>
     </tr></thead><tbody id="tb"></tbody></table>
   </div>
 </div>
@@ -78,6 +79,7 @@
     });
     $("tb").innerHTML=list.map(function(r){
       return "<tr><td class=\"e\">"+esc(r.email)+"</td><td>"+esc(r.name||"")+"</td>"+
+        "<td><span class=\"tag "+(r.via==="google"?"g":"m")+"\">"+(r.via==="google"?"Google":"自填")+"</span></td>"+
         "<td><span class=\"tag "+(r.consent?"yes":"no")+"\">"+(r.consent?"是":"否")+"</span></td>"+
         "<td>"+esc(fmt(r.at))+"</td>"+
         "<td><button class=\"d\" data-del=\""+esc(r.email)+"\">刪除</button></td></tr>";
