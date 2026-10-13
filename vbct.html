@@ -437,6 +437,23 @@ table.vbct-tbl td.c { text-align: center; }
 .ret-na  { color: #d1d5db; }                   /* 無資料 */
 /* 6-month dividend mini table */
 .div-tbl { border-collapse: collapse; }
+    /* 配息欄：預設只顯示最新一期，其餘收起 */
+    .div-cell { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px;
+      font-family: 'Courier New', Courier, monospace; font-size: 11px; line-height: 1.45; }
+    .div-cell .d-date { color: #94a3b8; }
+    .div-cell > .d-amt { font-weight: 600; }
+    .d-trend { font-size: 10px; line-height: 1; }
+    .d-t-up { color: #dc2626; }
+    .d-t-down { color: #16a34a; }
+    .d-t-flat { color: #94a3b8; }
+    .d-more { border: 1px solid #e2e8f0; background: #f8fafc; color: #64748b;
+      border-radius: 4px; font-size: 10px; line-height: 1; padding: 2px 4px; cursor: pointer; }
+    .d-more:hover { background: #eef2f8; border-color: #cbd5e1; }
+    .d-rest { display: none; flex-basis: 100%; }
+    .div-cell.open .d-rest { display: block; }
+    /* 手機卡片版維持全部顯示 */
+    .mc-div6m .d-rest { display: block !important; }
+    .mc-div6m .d-more { display: none !important; }
 .div-tbl td {
   padding: 1px 3px 1px 0;
   font-family: 'Courier New', Courier, monospace;
@@ -1320,7 +1337,7 @@ header { padding-top: max(12px, env(safe-area-inset-top, 12px)); }
   <div id="disclaimer-card" style="background:#fff;border-radius:20px 20px 0 0;padding:32px 24px 44px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 -4px 40px rgba(0,0,0,0.25);">
     <div style="text-align:center;font-size:28px;margin-bottom:10px;">&#9888;&#65039;</div>
     <h2 style="font-size:18px;font-weight:700;color:#0f172a;margin:0 0 16px;text-align:center;">免責聲明</h2>
-    <p style="font-size:13.5px;color:#475569;line-height:1.8;margin:0 0 28px;">本工具資料僅供參考，不構成任何投資建議或要約。<br><br>配息率、淨值等數據來源自公開資訊，本站不保證資料之即時性與完整性。<br><br>投資涉及風險，配息並不等同報酬率，過去績效不代表未來結果，請自行評估並諮詢專業人士後再做決策。</p>
+    <p style="font-size:13.5px;color:#475569;line-height:1.8;margin:0 0 28px;">本工具資料僅供參考，不構成任何投資建議或要約。<br><br>配息率、淨值等數據來源自公開資訊，本站不保證資料之即時性與完整性。<br><br>投資涉及風險，配息並不等同報酬率，過去績效不代表未來結果。<br><br><strong>計算口徑</strong>：報酬率與配息均以<strong>基金計價幣別</strong>計算，未換算新臺幣，外幣計價標的的實際損益會再受匯率影響。<br><br>所有數字為<strong>基金層級</strong>表現，<strong>未扣除保單相關費用</strong>（保單管理費、保險成本等），非保戶實際可得之報酬。<br><br>夏普比率以<strong>無風險利率 0% </strong>計算，僅用於同一標的不同期間之比較，不宜跨工具對照，請自行評估並諮詢專業人士後再做決策。</p>
     <button id="disclaimer-agree" style="display:block;width:100%;padding:15px;background:#1e40af;color:#fff;font-size:15px;font-weight:600;border:none;border-radius:14px;cursor:pointer;letter-spacing:0.5px;">我已了解並同意</button>
   </div>
 </div>
@@ -1686,33 +1703,47 @@ function calcRate(nav, r6) {
 }
 // 渲染近6月配息 mini table
 function renderDivDetail(divs) {
-  if (!divs || divs.length === 0) return '—';
-  var r6 = divs.slice(0, 6);
-  var trend = '';
-  if (r6.length >= 2) {
-    var f0 = r6[0].amount, fn = r6[r6.length - 1].amount;
-    trend = f0 > fn ? '<span class="trend t-up">▲</span>'
-          : f0 < fn ? '<span class="trend t-down">▼</span>'
-          :            '<span class="trend t-flat">─</span>';
-  }
-  var rows = r6.map(function(d, idx) {
-    var yyMM = typeof d.date === 'string' ? d.date.substring(2, 7) : d.date;
-    var amtStr = d.amount.toFixed(4);
-    var anomaly = '';
-    if (idx < r6.length - 1) {
-      var prev = r6[idx + 1].amount;
-      if (prev > 0) {
-        var chg = (d.amount - prev) / prev;
-        if (chg >= 0.10) anomaly = 'd-up';
-        else if (chg <= -0.10) anomaly = 'd-down';
+      if (!divs || divs.length === 0) return '—';
+      var r6 = divs.slice(0, 6);
+      function ym(x) { return typeof x.date === 'string' ? x.date.substring(2, 7) : x.date; }
+
+      // 與「上一期」比較（台股慣例：紅＝增加、綠＝減少）
+      var sym = '';
+      if (r6.length >= 2) {
+        var cur = r6[0].amount, prv = r6[1].amount;
+        sym = cur > prv ? '<span class="d-trend d-t-up" title="較上期增加">▲</span>'
+            : cur < prv ? '<span class="d-trend d-t-down" title="較上期減少">▼</span>'
+            :             '<span class="d-trend d-t-flat" title="與上期持平">—</span>';
       }
+
+      var head = '<span class="d-date">' + ym(r6[0]) + '</span>'
+        + '<span class="d-amt d-first">' + r6[0].amount.toFixed(4) + '</span>' + sym;
+      if (r6.length < 2) return '<div class="div-cell">' + head + '</div>';
+
+      // 其餘月份預設收起，需要時才展開，讓同一畫面能看到更多標的
+      var rest = r6.slice(1).map(function (x, k) {
+        var prev = r6[k + 2] ? r6[k + 2].amount : null;
+        var anomaly = '';
+        if (prev > 0) {
+          var chg = (x.amount - prev) / prev;
+          if (chg >= 0.10) anomaly = ' d-up';
+          else if (chg <= -0.10) anomaly = ' d-down';
+        }
+        return '<tr><td class="d-date">' + ym(x) + '</td><td class="d-amt' + anomaly + '">' + x.amount.toFixed(4) + '</td></tr>';
+      }).join('');
+
+      return '<div class="div-cell">' + head
+        + '<button type="button" class="d-more" onclick="toggleDivCell(this)" title="展開其餘月份">+' + (r6.length - 1) + '</button>'
+        + '<div class="d-rest"><table class="div-tbl">' + rest + '</table></div>'
+        + '</div>';
     }
-    var cls = 'd-amt' + (idx === 0 ? ' d-first' : '') + (anomaly ? ' ' + anomaly : '');
-    return '<tr><td class="d-date">' + yyMM + '</td><td class="' + cls + '">' + amtStr + '</td></tr>';
-  }).join('');
-  return '<div style="display:inline-flex;align-items:flex-start">'
-       + '<table class="div-tbl">' + rows + '</table>' + trend + '</div>';
-}
+
+    // 展開／收起單一標的的其餘配息月份
+    function toggleDivCell(btn) {
+      var cell = btn.parentElement;
+      var open = cell.classList.toggle('open');
+      btn.textContent = open ? '−' : '+' + cell.querySelectorAll('.d-rest tr').length;
+    }
 // 取得基金頁面 URL（絕對路徑）
 // ───── 富邦新版 API 輔助（2026/10 改版）─────
 const PROXY_POST = '/api/post';
@@ -2399,10 +2430,6 @@ function buildNavChartSvg(dates, navs, navs2, activeIsSecond) {
       var w1 = sel2 ? "1.1" : "1.6", w2 = sel2 ? "1.6" : "1.1";
       var o1 = sel2 ? "0.45" : "1",  o2 = sel2 ? "1" : "0.45";
 
-      // 填色跟著目前選的那條
-      var fillPts = sel2 ? pts2 : pts;
-      var fillCol = sel2 ? "rgba(38,87,160,0.08)" : (has2 ? "rgba(220,38,38,0.07)" : "rgba(38,87,160,0.08)");
-      var areaPts = "M" + xf(0).toFixed(1) + "," + (h - padB) + " L" + fillPts.split(" ").join(" L") + " L" + xf(n - 1).toFixed(1) + "," + (h - padB) + " Z";
 
       var legend = has2
         ? '<rect x="' + padL + '" y="6" width="9" height="2.5" fill="' + RED + '"/>'
@@ -2413,7 +2440,6 @@ function buildNavChartSvg(dates, navs, navs2, activeIsSecond) {
 
       return '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;height:auto;display:block">'
         + gridLines + gridLabels + legend
-        + '<path d="' + areaPts + '" fill="' + fillCol + '" stroke="none"/>'
         + '<polyline points="' + pts + '" fill="none" stroke="' + c1 + '" stroke-width="' + w1 + '" opacity="' + o1 + '"/>'
         + (has2 ? '<polyline points="' + pts2 + '" fill="none" stroke="' + BLUE + '" stroke-width="' + w2 + '" opacity="' + o2 + '"/>' : "")
         + '<circle cx="' + xf(maxI).toFixed(1) + '" cy="' + yf(actMax).toFixed(1) + '" r="3.5" fill="#dc2626"/>'
