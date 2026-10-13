@@ -10,5 +10,26 @@
     "api/admin.js": {
       "maxDuration": 60
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/embed/:code",
+      "destination": "/:code"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/embed/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "frame-ancestors 'self' https://oosayhi.com https://*.oosayhi.com"
+        }
+      ]
+    }
+  ]
 }
