@@ -2143,34 +2143,72 @@ function computeWinRatesDual(navs, divCum) {
   return out;
 }
 // 手繪 SVG 淨值走勢圖（含期間最高／最低標記）
-function buildNavChartSvg(dates, navs) {
-  var w = 640, h = 220, padL = 46, padR = 10, padT = 14, padB = 24;
-  var n = navs.length;
-  if (n < 2) return '<div class="bt-loading">資料不足，無法繪製走勢圖</div>';
-  var minV = Math.min.apply(null, navs), maxV = Math.max.apply(null, navs);
-  var range = (maxV - minV) || 1;
-  var xf = function(i) { return padL + i / (n - 1) * (w - padL - padR); };
-  var yf = function(v) { return padT + (1 - (v - minV) / range) * (h - padT - padB); };
-  var pts = navs.map(function(v, i) { return xf(i).toFixed(1) + ',' + yf(v).toFixed(1); }).join(' ');
-  var maxI = navs.indexOf(maxV), minI = navs.indexOf(minV);
-  var gridLines = '', gridLabels = '';
-  for (var g = 0; g <= 4; g++) {
-    var gv = minV + range * g / 4;
-    var gy = yf(gv);
-    gridLines += '<line x1="' + padL + '" y1="' + gy.toFixed(1) + '" x2="' + (w - padR) + '" y2="' + gy.toFixed(1) + '" stroke="#eef2f8" stroke-width="1"/>';
-    gridLabels += '<text x="' + (padL - 6) + '" y="' + (gy + 3).toFixed(1) + '" font-size="9" fill="#94a3b8" text-anchor="end">' + gv.toFixed(2) + '</text>';
-  }
-  var areaPts = 'M' + xf(0).toFixed(1) + ',' + (h - padB) + ' L' + pts.split(' ').join(' L') + ' L' + xf(n - 1).toFixed(1) + ',' + (h - padB) + ' Z';
-  return '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;height:auto;display:block">'
-    + gridLines + gridLabels
-    + '<path d="' + areaPts + '" fill="rgba(38,87,160,0.08)" stroke="none"/>'
-    + '<polyline points="' + pts + '" fill="none" stroke="#2657a0" stroke-width="1.6"/>'
-    + '<circle cx="' + xf(maxI).toFixed(1) + '" cy="' + yf(maxV).toFixed(1) + '" r="3.5" fill="#dc2626"/>'
-    + '<circle cx="' + xf(minI).toFixed(1) + '" cy="' + yf(minV).toFixed(1) + '" r="3.5" fill="#16a34a"/>'
-    + '<text x="' + xf(0).toFixed(1) + '" y="' + (h - 6) + '" font-size="9" fill="#94a3b8">' + dates[0] + '</text>'
-    + '<text x="' + (w - padR - 58) + '" y="' + (h - 6) + '" font-size="9" fill="#94a3b8">' + dates[n - 1] + '</text>'
-    + '</svg>';
-}
+function buildNavChartSvg(dates, navs, navs2, activeIsSecond) {
+      var n = navs.length;
+      if (n < 2) return '<div class="bt-loading">資料不足，無法繪製走勢圖</div>';
+
+      // 兩條線畫在同一張圖：紅＝淨值（未還原），藍＝加上配息後，與下方賺錢機率同色
+      var has2 = Array.isArray(navs2) && navs2.length === n && navs2 !== navs;
+      var RED = "#dc2626", BLUE = "#2657a0";
+
+      var w = 640, h = 220, padL = 46, padR = 10, padT = has2 ? 28 : 14, padB = 24;
+
+      // 共用同一個 Y 軸，兩條才比得出來
+      var all = has2 ? navs.concat(navs2) : navs;
+      var minV = Math.min.apply(null, all), maxV = Math.max.apply(null, all);
+      var range = (maxV - minV) || 1;
+
+      var xf = function (i) { return padL + i / (n - 1) * (w - padL - padR); };
+      var yf = function (v) { return padT + (1 - (v - minV) / range) * (h - padT - padB); };
+      var poly = function (a) {
+        return a.map(function (v, i) { return xf(i).toFixed(1) + "," + yf(v).toFixed(1); }).join(" ");
+      };
+
+      var pts = poly(navs);
+      var pts2 = has2 ? poly(navs2) : "";
+
+      // 高低點標在目前選的那條上
+      var act = (has2 && activeIsSecond) ? navs2 : navs;
+      var actMax = Math.max.apply(null, act), actMin = Math.min.apply(null, act);
+      var maxI = act.indexOf(actMax), minI = act.indexOf(actMin);
+
+      var gridLines = "", gridLabels = "";
+      for (var g = 0; g <= 4; g++) {
+        var gv = minV + range * g / 4;
+        var gy = yf(gv);
+        gridLines += '<line x1="' + padL + '" y1="' + gy.toFixed(1) + '" x2="' + (w - padR) + '" y2="' + gy.toFixed(1) + '" stroke="#eef2f8" stroke-width="1"/>';
+        gridLabels += '<text x="' + (padL - 6) + '" y="' + (gy + 3).toFixed(1) + '" font-size="9" fill="#94a3b8" text-anchor="end">' + gv.toFixed(2) + '</text>';
+      }
+
+      // 只有單條（抓不到配息）時維持原本的藍線
+      var c1 = has2 ? RED : BLUE;
+      var sel2 = has2 && activeIsSecond;
+      var w1 = sel2 ? "1.1" : "1.6", w2 = sel2 ? "1.6" : "1.1";
+      var o1 = sel2 ? "0.45" : "1",  o2 = sel2 ? "1" : "0.45";
+
+      // 填色跟著目前選的那條
+      var fillPts = sel2 ? pts2 : pts;
+      var fillCol = sel2 ? "rgba(38,87,160,0.08)" : (has2 ? "rgba(220,38,38,0.07)" : "rgba(38,87,160,0.08)");
+      var areaPts = "M" + xf(0).toFixed(1) + "," + (h - padB) + " L" + fillPts.split(" ").join(" L") + " L" + xf(n - 1).toFixed(1) + "," + (h - padB) + " Z";
+
+      var legend = has2
+        ? '<rect x="' + padL + '" y="6" width="9" height="2.5" fill="' + RED + '"/>'
+          + '<text x="' + (padL + 13) + '" y="11" font-size="9" fill="#64748b">淨值（未還原）</text>'
+          + '<rect x="' + (padL + 108) + '" y="6" width="9" height="2.5" fill="' + BLUE + '"/>'
+          + '<text x="' + (padL + 121) + '" y="11" font-size="9" fill="#64748b">加上配息後</text>'
+        : "";
+
+      return '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;height:auto;display:block">'
+        + gridLines + gridLabels + legend
+        + '<path d="' + areaPts + '" fill="' + fillCol + '" stroke="none"/>'
+        + '<polyline points="' + pts + '" fill="none" stroke="' + c1 + '" stroke-width="' + w1 + '" opacity="' + o1 + '"/>'
+        + (has2 ? '<polyline points="' + pts2 + '" fill="none" stroke="' + BLUE + '" stroke-width="' + w2 + '" opacity="' + o2 + '"/>' : "")
+        + '<circle cx="' + xf(maxI).toFixed(1) + '" cy="' + yf(actMax).toFixed(1) + '" r="3.5" fill="#dc2626"/>'
+        + '<circle cx="' + xf(minI).toFixed(1) + '" cy="' + yf(actMin).toFixed(1) + '" r="3.5" fill="#16a34a"/>'
+        + '<text x="' + xf(0).toFixed(1) + '" y="' + (h - 6) + '" font-size="9" fill="#94a3b8">' + dates[0] + '</text>'
+        + '<text x="' + (w - padR - 58) + '" y="' + (h - 6) + '" font-size="9" fill="#94a3b8">' + dates[n - 1] + '</text>'
+        + '</svg>';
+    }
 function pctStr(v, digits) {
   if (v === null || v === undefined || isNaN(v)) return '—';
   digits = digits === undefined ? 2 : digits;
@@ -2426,7 +2464,7 @@ function renderBtMain() {
   var el = $('bt-main');
   if (!el) return;
   if (!stats) { el.innerHTML = '<div class="bt-loading">' + ICON.warn + ' 資料不足無法計算</div>'; return; }
-  var chartHtml = buildNavChartSvg(dates, navs);
+  var chartHtml = buildNavChartSvg(dates, rawNavs, adjNavsSliced, navs === adjNavsSliced);
   var hasDivData = !!s.divByMonth;
   var divStats = hasDivData ? computeDivStats(s.divByMonth, dates[0].substring(0, 7), dates[dates.length - 1].substring(0, 7)) : { total: 0, freq: null };
   var divTotalStr = hasDivData ? divStats.total.toFixed(4) : '無';
