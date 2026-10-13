@@ -8,7 +8,7 @@
 const ALLOWED_BASE = 'https://invest.fubonlife.com.tw';
 const ALLOWED_PREFIX = ['/api/asset/', '/api/fund/', '/api/etf/', '/api/option/'];
 
-const { requireUser } = require('./_auth');
+  // 逐日淨值與配息史同樣是公開資訊，分析功能不設門檻（自選與組合試算才需要身分）。
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
