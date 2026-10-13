@@ -17,7 +17,42 @@
   var KEY = 'fh-session';
   var s = null;
   try { s = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
-  if (!s || !s.token) { location.replace('/'); return; }
+  // 沒開通也看得到三支配息率工具——那些數字部落格本來就免費，擋住只會把人推走。
+  // 需要開通的只有「自選清單」，需要贊助或學員身分的只有「組合試算」。
+  if (!s || !s.token) {
+    if (PAID_ONLY.indexOf(CODE) >= 0) { location.replace('/'); return; }
+    publicBar();
+    return;
+  }
+
+  function publicBar() {
+    if (document.getElementById('hub-public')) return;
+    var tbl = document.querySelector('table');
+    if (!tbl || !tbl.parentElement || !tbl.parentElement.parentElement) return setTimeout(publicBar, 400);
+
+    var st = document.createElement('style');
+    st.textContent =
+      '#hub-public{display:flex;align-items:center;gap:12px;flex-wrap:wrap;'
+      + 'margin:0 0 12px;padding:11px 14px;border:1px solid #dbe4f0;border-left:3px solid #2657a0;'
+      + 'border-radius:8px;background:#f7f9fc;font-size:13px;line-height:1.65;color:#334155}'
+      + '#hub-public b{color:#0f172a}'
+      + '#hub-public .hp-txt{flex:1 1 320px;min-width:0}'
+      + '#hub-public .hp-cta{flex:0 0 auto;display:inline-block;padding:7px 14px;border-radius:7px;'
+      + 'background:#2657a0;color:#fff;text-decoration:none;font-weight:600;font-size:13px;white-space:nowrap}'
+      + '#hub-public .hp-cta:hover{background:#1d4580}';
+    document.head.appendChild(st);
+
+    var bar = document.createElement('div');
+    bar.id = 'hub-public';
+    bar.innerHTML =
+      '<div class="hp-txt"><b>這份清單免費，不用註冊。</b>'
+      + '篩選、排序、個別標的的配息與報酬分析都可以直接用。'
+      + '留個 Email 可以多一個自選清單，四支工具共用、換裝置也讀得到。</div>'
+      + '<a class="hp-cta" href="/">開通自選清單</a>';
+
+    var box = tbl.parentElement;
+    box.parentElement.insertBefore(bar, box);
+  }
 
   var of = window.fetch;
   window.fetch = function (input, init) {
