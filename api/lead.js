@@ -4,7 +4,8 @@
  * 個資注意：表單邊已有蒐集告知，行銷同意是獨立勾選、且不影響開通。
  * 沒設 BLOB_READ_WRITE_TOKEN 時不會失敗，只是名單不會落地（方便先試流程）。
  */
-const { sign } = require('./_auth');
+const { sign, normEmail } = require('./_auth');
+const { ensureUser, planOf } = require('./_plan');
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -29,7 +30,7 @@ module.exports = async function handler(req, res) {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { body = {}; } }
   body = body || {};
 
-  const email = String(body.email || '').trim().toLowerCase();
+  const email = normEmail(body.email);
   const name  = String(body.name || '').trim().slice(0, 40);
   const consent = !!body.consent;
 
@@ -53,8 +54,22 @@ module.exports = async function handler(req, res) {
     stored = 'error:' + String((e && e.message) || e).slice(0, 120);
   }
 
+  let plan = { plan: 'trial', active: true, daysLeft: null, endsAt: null };
+  let firstMs = Date.now();
+  try {
+    const u = await ensureUser(email);
+    firstMs = Date.parse(u.firstAt) || firstMs;
+    plan = await planOf(email, firstMs);
+  } catch (e) {
+    console.error('plan failed:', e && e.message);
+  }
+
   return res.status(200).json({
-    token: sign({ e: email, n: name, t: Date.now() }),
+    token: sign({ e: email, n: name, t: firstMs, i: Date.now() }),
+    plan: plan.plan,
+    active: plan.active,
+    daysLeft: plan.daysLeft,
+    endsAt: plan.endsAt,
     stored: stored
   });
 };
