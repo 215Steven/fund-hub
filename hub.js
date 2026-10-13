@@ -8,6 +8,9 @@
    否則多一欄會把所有索引推掉一格，排序就全錯了。 */
 (function () {
   var CODE = (window.HUB_CODE || 'VCCT');
+  // 到期後要帶人去的地方。沒設就不顯示該連結，不會變成死連結。
+  var COURSE_URL = window.HUB_COURSE_URL || '';
+  var BLOG_URL = window.HUB_BLOG_URL || '';
   var KEY = 'fh-session';
   var s = null;
   try { s = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
@@ -39,6 +42,12 @@
     'th.hub-th,td.hub-td{width:34px;min-width:34px;max-width:34px;padding-left:4px !important;' +
       'padding-right:4px !important;text-align:center !important}' +
     'tr.vr.hub-off{display:none !important}' +
+    '.hub-chip{font-size:12px;font-weight:700;padding:7px 11px;border-radius:999px}' +
+    '.hub-chip.trial{background:#f1f5f9;color:#475569}' +
+    '.hub-chip.stu{background:#ede9fe;color:#6d28d9}' +
+    '.hub-chip.end{background:#fee2e2;color:#dc2626}' +
+    '.hub-bar a.cta{background:#1d4ed8;color:#fff;border-color:#1d4ed8}' +
+    '.hub-star.lock{color:#e2e8f0;cursor:not-allowed}' +
     /* 手機版：關鍵一行與標籤列都多一個 22px 欄 */
     '@media(max-width:767px){' +
       '.mc-key,.mc-lhead{grid-template-columns:22px 50px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 38px !important}' +
@@ -49,14 +58,19 @@
   document.head.appendChild(st);
 
   var set = {}, onlyFav = false, dirty = false;
+  var plan = 'trial', active = true, daysLeft = null;
   function keyOf(code) { return CODE + '-' + code; }
   function load() {
     return fetch('/api/watch').then(function (r) { return r.json(); }).then(function (j) {
       set = {};
       (j.list || []).forEach(function (k) { set[k] = 1; });
+      if (j.plan) plan = j.plan;
+      if (typeof j.active === 'boolean') active = j.active;
+      daysLeft = (typeof j.daysLeft === 'number') ? j.daysLeft : null;
     }).catch(function () {});
   }
   function save() {
+    if (!active) { dirty = false; return; }
     if (!dirty) return;
     dirty = false;
     fetch('/api/watch', {
@@ -70,13 +84,39 @@
 
   var bar = document.createElement('div');
   bar.className = 'hub-bar';
-  bar.innerHTML = '<a href="/">← 工具集</a><button type="button" id="hub-fav"></button>';
+  bar.innerHTML = '<a href="/">← 工具集</a><button type="button" id="hub-fav"></button>' +
+    '<span id="hub-plan" class="hub-chip"></span><span id="hub-cta"></span>';
   function paintBar() {
     var b = document.getElementById('hub-fav');
     if (!b) return;
     var n = Object.keys(set).filter(function (k) { return k.indexOf(CODE + '-') === 0; }).length;
     b.textContent = '只看自選' + (n ? '（' + n + '）' : '');
     b.classList.toggle('on', onlyFav);
+    b.disabled = false;
+
+    var chip = document.getElementById('hub-plan');
+    var cta = document.getElementById('hub-cta');
+    if (!chip) return;
+    if (plan === 'student') {
+      chip.className = 'hub-chip stu';
+      chip.textContent = '學員・永久開通';
+      if (cta) cta.innerHTML = '';
+    } else if (!active) {
+      chip.className = 'hub-chip end';
+      chip.textContent = '體驗期已結束';
+      // 不留死巷：到期了也要有地方可以去
+      if (cta) {
+        var h = '';
+        if (COURSE_URL) h += '<a class="cta" href="' + COURSE_URL + '">看課程</a>';
+        if (BLOG_URL) h += '<a href="' + BLOG_URL + '">回部落格版</a>';
+        cta.innerHTML = h;
+      }
+    } else {
+      chip.className = 'hub-chip trial';
+      chip.textContent = '體驗期' + (daysLeft == null ? '' : '剩 ' + daysLeft + ' 天');
+      if (cta) cta.innerHTML = (daysLeft != null && daysLeft <= 3 && COURSE_URL)
+        ? '<a class="cta" href="' + COURSE_URL + '">看課程</a>' : '';
+    }
   }
 
   function tdsOf(tr) {
@@ -102,6 +142,7 @@
     el.title = '加入自選';
     el.addEventListener('click', function (ev) {
       ev.stopPropagation(); ev.preventDefault();
+      if (!active) { alert('體驗期已結束，自選清單暫停使用。\n既有的清單仍保留著，開通後原封不動還在。'); return; }
       if (set[k]) { delete set[k]; } else { set[k] = 1; }
       dirty = true;
       paintStar(row, k);
@@ -116,6 +157,7 @@
     for (var i = 0; i < list.length; i++) {
       list[i].textContent = on ? '\u2605' : '\u2606';
       list[i].classList.toggle('on', on);
+      list[i].classList.toggle('lock', !active);
     }
   }
 
