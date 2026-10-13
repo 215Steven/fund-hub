@@ -1,6 +1,11 @@
 {
   "cleanUrls": true,
   "functions": {
-    "api/data.js": { "maxDuration": 60 }
-  }
+    "api/data.js": { "maxDuration": 60 },
+    "api/cron-notify.js": { "maxDuration": 60 },
+    "api/admin.js": { "maxDuration": 60 }
+  },
+  "crons": [
+    { "path": "/api/cron-notify", "schedule": "0 1 * * *" }
+  ]
 }
