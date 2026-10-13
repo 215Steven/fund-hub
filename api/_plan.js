@@ -35,10 +35,13 @@ async function writeJson(path, obj) {
 
 /* ---------- 學員白名單 ---------- */
 
+// 快取只留 10 秒。白名單是跨 function 的共用狀態，admin 改完之後
+// 其他 function 的執行實例不會知道，快取太久會變成「設成學員了卻還沒開通」。
+const WL_TTL = 10000;
 let _wl = null, _wlAt = 0;
 
 async function whitelist(force) {
-  if (!force && _wl && Date.now() - _wlAt < 60000) return _wl;
+  if (!force && _wl && Date.now() - _wlAt < WL_TTL) return _wl;
   const j = await readJson('students/index.json');
   const arr = Array.isArray(j) ? j : (j && Array.isArray(j.emails) ? j.emails : []);
   _wl = arr.map(normEmail);
