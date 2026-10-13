@@ -97,6 +97,37 @@ function calcRate(nav, r6) {
 
 const { requireUser } = require('./_auth');
 
+const SNAP_TTL = 12 * 3600 * 1000;
+function snapPath(code) { return 'snap/' + code + '.json'; }
+async function readSnap(code) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
+  try {
+    const { head } = require('@vercel/blob');
+    const info = await head(snapPath(code));
+    if (!info) return null;
+    const url = info.downloadUrl || info.url;
+    const r = await fetch(url, {
+      cache: 'no-store',
+      headers: { Authorization: 'Bearer ' + process.env.BLOB_READ_WRITE_TOKEN }
+    });
+    if (!r.ok) return null;
+    const j = await r.json();
+    if (!j || !j.fetchedAt || Date.now() - j.fetchedAt > SNAP_TTL) return null;
+    return j;
+  } catch (e) { return null; }
+}
+async function saveSnap(code, payload) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return;
+  const { put } = require('@vercel/blob');
+  await put(snapPath(code), JSON.stringify(payload), {
+    access: 'private',
+    contentType: 'application/json',
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    cacheControlMaxAge: 0
+  });
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   // 這道門是為了識別使用者與收名單，不是資料授權；
@@ -105,6 +136,13 @@ module.exports = async function handler(req, res) {
   if (!isCron && !requireUser(req, res)) return;
   const INSURANCE = String((req.query && req.query.code) || 'VCCT').toUpperCase();
   if (VALID.indexOf(INSURANCE) < 0) return res.status(400).json({ error: 'code' });
+
+  // 有效快照就直接回，避免每次重跑一輪
+  const cached = await readSnap(INSURANCE);
+  if (cached) {
+    res.setHeader('Cache-Control', 'private, no-store');
+    return res.status(200).json(cached);
+  }
 
   try {
     // ① 一次拿全部標的，再篩出本險種
@@ -180,12 +218,11 @@ module.exports = async function handler(req, res) {
       month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
     });
 
-    // 資料太少就不要讓 CDN 快取，免得一整天都回壞資料
-    res.setHeader('Cache-Control', rated >= 10
-      ? 's-maxage=43200, stale-while-revalidate=86400'
-      : 'no-store');
+    // 這支要驗 token，不能進共用 CDN 快取
+    // （否則第一個已登入者的回應會被 CDN 拿去服務未登入者，等於沒鎖）
+    res.setHeader('Cache-Control', 'private, no-store');
 
-    return res.status(200).json({
+    const payload = {
       insurance: INSURANCE,
       report: report,
       totalFunds: report.length,
@@ -193,7 +230,10 @@ module.exports = async function handler(req, res) {
       rated: rated,
       savedAt: savedAt,
       fetchedAt: Date.now()
-    });
+    };
+    // 寫回 Blob，下一個請求就不用重算（失敗不影響本次回應）
+    if (rated >= 10) { saveSnap(INSURANCE, payload).catch(function () {}); }
+    return res.status(200).json(payload);
   } catch (e) {
     res.setHeader('Cache-Control', 'no-store');
     return res.status(502).json({ error: String((e && e.message) || e) });
