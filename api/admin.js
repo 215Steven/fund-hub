@@ -6,7 +6,7 @@
  */
 const crypto = require('crypto');
 const { normEmail } = require('./_auth');
-const { whitelist, setWhitelist, planOf, readJson, writeJson, TRIAL_DAYS } = require('./_plan');
+const { whitelist, setWhitelist, planOf, readJson, writeJson, fetchJson, TRIAL_DAYS } = require('./_plan');
 const { sigOf, isOptedOut, setOptOut } = require('./unsub');
 
 function ok(req) {
@@ -152,6 +152,19 @@ module.exports = async function handler(req, res) {
     }
 
     // 讀目前學員白名單
+    // 原始 user/ blob 傾印，排查用
+    if (action === 'users') {
+      const { list } = require('@vercel/blob');
+      const page = await list({ prefix: 'user/', limit: 100 });
+      const rows = [];
+      for (const b of page.blobs) {
+        let j = null;
+        try { j = await fetchJson(b.downloadUrl || b.url); } catch (e) {}
+        rows.push({ path: b.pathname, size: b.size, uploadedAt: b.uploadedAt, data: j });
+      }
+      return res.status(200).json({ count: page.blobs.length, rows: rows });
+    }
+
     if (action === 'students') {
       return res.status(200).json({ emails: await whitelist(true), trialDays: TRIAL_DAYS });
     }
