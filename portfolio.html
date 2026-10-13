@@ -1,0 +1,3474 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>組合分析工具 | VBCT／VCCT／UND 自訂權重組合（非官方）</title>
+<style>
+/* ═══════════════════════════════════════════════
+   VBCT 配息率工具 — 全域樣式
+   ═══════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy:        #1a3a5c;
+  --blue:        #2657a0;
+  --blue-mid:    #3b82c4;
+  --blue-pale:   #e8f0fe;
+  --bg:          #eef2f8;
+  --surface:     #ffffff;
+  --border:      #d8e4f0;
+  --border-soft: #e8f0fa;
+  --text:        #1a2535;
+  --muted:       #637080;
+  --shadow:      0 1px 6px rgba(26,58,92,0.08), 0 4px 20px rgba(26,58,92,0.06);
+  --shadow-sm:   0 1px 4px rgba(26,58,92,0.07);
+  --green:       #16a34a;
+  --orange:      #ea580c;
+  --red:         #dc2626;
+  --yellow:      #ca8a04;
+  --accent-bar:  3px solid var(--blue);
+  --radius:      10px;
+}
+body {
+  font-family: '微軟正黑體','Microsoft JhengHei','PingFang TC','Noto Sans TC',Arial,sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100dvh;
+}
+/* ── Icon 系統（取代 Emoji，統一線性圖示）─────── */
+.i {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  vertical-align: -2px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.i-sm { width: 11px; height: 11px; vertical-align: -1px; }
+.i-lg { width: 17px; height: 17px; vertical-align: -3px; }
+@keyframes i-spin { to { transform: rotate(360deg); } }
+.i-spin { animation: i-spin 0.9s linear infinite; }
+/* ── 互動焦點樣式（鍵盤可達性）───────────────── */
+a:focus-visible, button:focus-visible {
+  outline: 2px solid var(--blue-mid);
+  outline-offset: 2px;
+}
+/* ── Header ─────────────────────────────────── */
+.vbct-header {
+  background: linear-gradient(135deg, #0f2744 0%, var(--navy) 40%, var(--blue) 75%, #2e6ec5 100%);
+  color: #fff;
+  padding: 0;
+  padding-top: env(safe-area-inset-top, 0px);
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  box-shadow: 0 2px 12px rgba(10,30,60,0.36), 0 1px 0 rgba(255,255,255,0.07) inset;
+}
+.vbct-header-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 20px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.09);
+}
+.vbct-title-block { flex: 1; min-width: 0; }
+.vbct-title {
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.vbct-title-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: rgba(255,255,255,0.55);
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.18);
+  padding: 2px 7px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+.vbct-subtitle {
+  font-size: 11px;
+  opacity: 0.65;
+  margin-top: 3px;
+  letter-spacing: 0.1px;
+}
+.vbct-btn {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.28);
+  color: rgba(255,255,255,0.92);
+  padding: 7px 16px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.vbct-btn:hover {
+  background: rgba(255,255,255,0.22);
+  border-color: rgba(255,255,255,0.45);
+}
+.vbct-btn:active { transform: scale(0.96); }
+/* ── Main Container ──────────────────────────── */
+.vbct-main {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 16px 16px 60px;
+}
+/* ── Stats Cards ─────────────────────────────── */
+.vbct-stats {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.vbct-stat {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 13px 16px 11px;
+  border: 1px solid var(--border);
+  border-top: var(--accent-bar);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.18s, transform 0.18s;
+}
+.vbct-stat:hover {
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+.vbct-stat-num {
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--navy);
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+}
+.vbct-stat-label {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+/* ── Config Warning ──────────────────────────── */
+.vbct-config-warn {
+  display: none;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-left: 4px solid #f59e0b;
+  border-radius: 0 10px 10px 0;
+  padding: 14px 18px;
+  font-size: 13px;
+  color: #78350f;
+  margin-bottom: 14px;
+  line-height: 1.7;
+}
+.vbct-config-warn code {
+  background: #fef3c7;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 12px;
+}
+/* ── Progress Bar ────────────────────────────── */
+.vbct-progress-wrap {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 20px 22px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.vbct-progress-msg {
+  font-size: 13px;
+  color: var(--navy);
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.vbct-progress-track {
+  height: 8px;
+  background: #e5eaf2;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.vbct-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4fc3f7, var(--navy));
+  border-radius: 4px;
+  width: 0%;
+  transition: width 0.35s ease;
+}
+/* ── Error ───────────────────────────────────── */
+.vbct-error {
+  display: none;
+  background: #fef2f2;
+  border-left: 4px solid var(--red);
+  border-radius: 0 10px 10px 0;
+  padding: 14px 18px;
+  font-size: 13px;
+  color: #7f1d1d;
+  margin-bottom: 14px;
+  line-height: 1.7;
+}
+/* ── Filter Panel ────────────────────────────── */
+.vbct-filter-panel {
+  display: none;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 14px 18px 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.vbct-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+/* 手機排序列：桌機隱藏，手機顯示 */
+.vbct-mobile-sort {
+  display: none;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+.vbct-mobile-sort .vbct-filter-item { flex: 1; min-width: 0; }
+.vbct-mobile-sort .vbct-filter-item select { width: 100%; }
+.vbct-filter-item label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.vbct-filter-item input,
+.vbct-filter-item select {
+  padding: 7px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 7px;
+  font-size: 13px;
+  font-family: inherit;
+  background: #f7fafd;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.vbct-filter-item input:focus,
+.vbct-filter-item select:focus {
+  border-color: var(--blue-mid);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(59,130,196,0.12);
+}
+.vbct-filter-item input#ffs { width: 160px; }
+.vbct-filter-item input#ffr { width: 82px; }
+.vbct-filter-item select { min-width: 118px; }
+.vbct-reset-btn {
+  padding: 7px 16px;
+  background: #4b6278;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 700;
+  margin-top: 19px;
+  transition: background 0.18s, transform 0.1s;
+  letter-spacing: 0.2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.vbct-reset-btn:hover { background: #364e62; }
+.vbct-reset-btn:active { transform: scale(0.96); }
+/* ── Table Container ─────────────────────────── */
+.vbct-table-wrap {
+  display: none;
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.vbct-row-count {
+  font-size: 11.5px;
+  color: var(--muted);
+  padding: 9px 16px 8px;
+  border-bottom: 1px solid var(--border-soft);
+  background: #f5f8fc;
+  font-weight: 600;
+  letter-spacing: 0.1px;
+}
+.vbct-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-height: calc(100vh - 290px);
+  overflow-y: auto;
+}
+/* ── Data Table ──────────────────────────────── */
+table.vbct-tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+table.vbct-tbl thead tr {
+  background: linear-gradient(to right, #152d4a, #1d3f65);
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+table.vbct-tbl th {
+  padding: 10px 18px 10px 9px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  border-right: 1px solid rgba(255,255,255,0.08);
+  transition: background 0.12s;
+  position: relative;
+}
+table.vbct-tbl th:hover { background: rgba(255,255,255,0.1); }
+table.vbct-tbl th:last-child { border-right: none; }
+table.vbct-tbl th.r { text-align: right; }
+table.vbct-tbl th.c { text-align: center; }
+table.vbct-tbl th.sort-asc::after,
+table.vbct-tbl th.sort-desc::after {
+  content: '';
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+}
+table.vbct-tbl th.sort-asc::after  { border-bottom: 5px solid rgba(255,255,255,0.9); transform: translateY(-5px); }
+table.vbct-tbl th.sort-desc::after { border-top: 5px solid rgba(255,255,255,0.9); transform: translateY(0px); }
+table.vbct-tbl th .th-sub {
+  font-weight: 400;
+  font-size: 10px;
+  opacity: 0.7;
+  display: block;
+  margin-top: 1px;
+}
+table.vbct-tbl td {
+  padding: 7px 9px;
+  border-bottom: 1px solid #eef2f8;
+  vertical-align: top;
+  transition: background 0.1s;
+}
+table.vbct-tbl tbody tr:nth-child(even) td { background: #fafcff; }
+table.vbct-tbl tbody tr:hover td { background: #eef5ff !important; }
+table.vbct-tbl td.r { text-align: right; }
+table.vbct-tbl td.c { text-align: center; }
+/* Fund name link */
+.fund-link {
+  color: var(--navy);
+  text-decoration: none;
+  border-bottom: 1px dotted rgba(26,58,92,0.45);
+  line-height: 1.45;
+  display: inline-block;
+  max-width: 230px;
+  word-break: break-word;
+  transition: color 0.12s;
+}
+.fund-link:hover { color: var(--blue-mid); border-color: var(--blue-mid); }
+/* Frequency badges */
+.freq-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+}
+.fb-月配  { background: #2563eb; }
+.fb-季配  { background: #0891b2; }
+.fb-半年配 { background: #7c3aed; }
+.fb-年配  { background: #059669; }
+.freq-none { color: #b0b8c4; font-size: 11px; }
+/* Rate color coding */
+.rate-h { color: #dc2626; font-weight: 800; } /* ≥8% 高警示 */
+.rate-m { color: #ea580c; font-weight: 700; } /* 5–8% 中 */
+.rate-l { color: #16a34a; font-weight: 700; } /* <5%  低 */
+.rate-x { color: #d1d5db; }                    /* 無資料 */
+/* RR risk level — pill badge */
+.rr-1, .rr-2, .rr-3, .rr-4, .rr-5 {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  vertical-align: middle;
+}
+.rr-1 { background: #05966912; color: #059669; border: 1px solid #059669; }
+.rr-2 { background: #16a34a12; color: #16a34a; border: 1px solid #16a34a; }
+.rr-3 { background: #2563eb12; color: #2563eb; border: 1px solid #2563eb; }
+.rr-4 { background: #d9770612; color: #d97706; border: 1px solid #d97706; }
+.rr-5 { background: #dc262612; color: #dc2626; border: 1px solid #dc2626; }
+/* Return rate color coding */
+.ret-pos { color: #1d4ed8; font-weight: 700; } /* 正報酬 */
+.ret-neg { color: #dc2626; font-weight: 700; } /* 負報酬 */
+.ret-na  { color: #d1d5db; }                   /* 無資料 */
+/* 6-month dividend mini table */
+.div-tbl { border-collapse: collapse; }
+.div-tbl td {
+  padding: 1px 3px 1px 0;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  white-space: nowrap;
+  line-height: 1.45;
+}
+.d-date  { color: #94a3b8; padding-right: 4px; }
+.d-amt   { text-align: right; min-width: 52px; padding: 1px 4px; border-radius: 3px; }
+.d-first { color: #1d4ed8; font-weight: 700; }
+.d-up    { background: #fef2f2; color: #dc2626; font-weight: 700; } /* 較前月增≥10% */
+.d-down  { background: #f0fdf4; color: #16a34a; font-weight: 700; } /* 較前月減≥10% */
+.trend   { font-size: 10px; margin-left: 2px; display: inline-block; vertical-align: top; margin-top: 1px; }
+.t-up    { color: #dc2626; }
+.t-down  { color: #16a34a; }
+.t-flat  { color: #94a3b8; }
+/* ── RWD：卡片模式（≤ 768px，手機 / iPad 直立）── */
+@media (max-width: 767px) {
+  .vbct-mobile-sort { display: flex; }
+  .vbct-table-scroll {
+    overflow-x: hidden;
+    max-height: none;
+  }
+  table.vbct-tbl          { display: block; }
+  table.vbct-tbl thead    { display: none; }
+  table.vbct-tbl tbody    { display: flex; flex-direction: column; gap: 10px; padding: 4px 2px 8px; }
+  /* 每列 → 卡片 */
+  table.vbct-tbl tr.vr {
+    display: block;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+  /* 取消 stripe / hover 效果（卡片模式不需要） */
+  table.vbct-tbl tbody tr:nth-child(even) td { background: transparent; }
+  table.vbct-tbl tbody tr:hover td           { background: transparent !important; }
+  /* 每個 td → 標籤 + 值 水平排 */
+  table.vbct-tbl td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #f0f4f8;
+    padding: 7px 14px;
+    text-align: right !important;
+    min-height: 34px;
+  }
+  table.vbct-tbl td:last-child { border-bottom: none; }
+  table.vbct-tbl td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--muted);
+    font-size: 11px;
+    flex-shrink: 0;
+    text-align: left;
+    margin-right: 10px;
+    white-space: nowrap;
+  }
+  /* 基金名稱：佔滿全寬，垂直排列，加深底色 */
+  table.vbct-tbl td[data-label="基金名稱"] {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 10px 14px 9px;
+    background: linear-gradient(135deg, #f0f5fc 0%, #f8faff 100%);
+    border-bottom: 2px solid var(--border);
+    text-align: left !important;
+  }
+  table.vbct-tbl td[data-label="基金名稱"]::before {
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #94a3b8;
+    margin-right: 0;
+  }
+  table.vbct-tbl td[data-label="基金名稱"] .fund-link {
+    max-width: 100%;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--navy);
+    white-space: normal;
+    word-break: break-word;
+    border-bottom: none;
+  }
+  /* 年化配息率：放大突出 */
+  table.vbct-tbl td[data-label="年化配息率"] {
+    padding-top: 9px;
+    padding-bottom: 9px;
+    background: #fafcff;
+    font-size: 15px;
+  }
+  /* 近6月配息：垂直排列（mini-table 展開） */
+  table.vbct-tbl td[data-label="近6月配息"] {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    text-align: left !important;
+  }
+  table.vbct-tbl td[data-label="近6月配息"]::before {
+    margin-right: 0;
+  }
+}
+/* ── RWD：寬螢幕小字（769–1100px，iPad 橫向等）── */
+@media (min-width: 769px) and (max-width: 1100px) {
+  table.vbct-tbl { font-size: 11.5px; }
+  table.vbct-tbl th, table.vbct-tbl td { padding: 7px 7px; }
+}
+/* ── Notices（免責聲明 + 重要事項合併）────────── */
+.vbct-notices {
+  margin-top: 14px;
+  background: #fffdf5;
+  border: 1px solid #fde68a;
+  border-left: 4px solid #f59e0b;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 14px 18px 16px;
+  font-size: 12px;
+  color: #6b4209;
+  line-height: 1.75;
+}
+.vbct-notices-title {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #92400e;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.vbct-notices-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #fde68a;
+}
+.vbct-notices-disclaimer {
+  font-weight: 400;
+  margin-bottom: 4px;
+}
+.vbct-notices-disclaimer strong { font-weight: 800; }
+.anm-note {
+  margin-top: 5px;
+  font-size: 11px;
+  color: #78350f;
+}
+.anm-chip {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 3px;
+  font-size: 10.5px;
+  font-weight: 600;
+  margin: 0 2px;
+}
+.vbct-notices-divider {
+  margin: 12px 0 10px;
+  border: none;
+  border-top: 1px solid #fde68a;
+}
+.vbct-notices-legal-title {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #92400e;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  margin-bottom: 8px;
+}
+.vbct-notices ol {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.vbct-notices ol li {
+  display: flex;
+  gap: 8px;
+  font-size: 11.5px;
+  color: #6b4209;
+  line-height: 1.65;
+}
+.vbct-notices ol li .note-num {
+  flex-shrink: 0;
+  font-weight: 800;
+  color: #92400e;
+  font-size: 10.5px;
+  background: #fef3c7;
+  border-radius: 3px;
+  padding: 1px 5px;
+  height: fit-content;
+  margin-top: 1px;
+}
+/* ── Footer notice ───────────────────────────── */
+.vbct-footer {
+  margin-top: 16px;
+  padding: 14px 0 6px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.vbct-footer-left {
+  font-size: 11px;
+  color: #8fa0b4;
+}
+.vbct-footer-right {
+  font-size: 10.5px;
+  color: #aab8c8;
+}
+/* 舊版相容 */
+.vbct-notice {
+  text-align: center;
+  font-size: 10.5px;
+  color: #94a3b8;
+  margin-top: 14px;
+  padding-bottom: 8px;
+}
+/* ── Responsive ──────────────────────────────── */
+/* Tablet（≤1024px）*/
+@media (max-width: 1024px) {
+  .vbct-stats { grid-template-columns: repeat(3, 1fr); }
+  .fund-link { max-width: 200px; }
+}
+/* Tablet 中小（≤767px）*/
+@media (max-width: 767px) {
+  .vbct-main { padding: 12px 12px 60px; }
+  .vbct-header-inner { padding: 10px 14px 8px; gap: 10px; }
+  .vbct-title { font-size: 16px; }
+  .vbct-subtitle { display: none; }
+  .vbct-stats { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .vbct-filter-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .vbct-filter-item { min-width: 0; }
+  .vbct-filter-item:first-child { grid-column: span 2; }
+  .vbct-filter-item input,
+  .vbct-filter-item select { width: 100%; }
+  .vbct-filter-item input#ffs { width: 100%; }
+  .vbct-reset-btn { width: 100%; margin-top: 0; }
+  table.vbct-tbl th { padding: 9px 7px; font-size: 10px; }
+  table.vbct-tbl td { padding: 6px 7px; }
+  .vbct-table-scroll { max-height: calc(100vh - 250px); }
+}
+/* Mobile（≤599px）*/
+@media (max-width: 599px) {
+  /* ── 底部安全區域 ── */
+  .vbct-main { padding: 10px 10px calc(60px + env(safe-area-inset-bottom, 0px)); }
+  /* ── Stats ── */
+  .vbct-stats { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .vbct-stat { padding: 10px 12px 9px; }
+  .vbct-stat:last-child { grid-column: span 2; }
+  .vbct-stat-num { font-size: 19px; }
+  /* ── Header ── */
+  .vbct-header-inner { padding: 8px 12px 7px; }
+  .vbct-title { font-size: 14px; gap: 6px; }
+  .vbct-btn { padding: 6px 12px; font-size: 11px; min-height: 36px; }
+  /* ── Filters ── */
+  .vbct-filter-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .vbct-filter-item { min-width: 0; }
+  .vbct-filter-item:first-child { grid-column: span 2; }
+  .vbct-filter-item input,
+  .vbct-filter-item select { width: 100%; }
+  .vbct-filter-item input#ffs { width: 100%; }
+  .vbct-reset-btn { width: 100%; margin-top: 0; }
+  /* ── iOS 防自動縮放：所有 input/select 至少 16px ── */
+  input, select, textarea,
+  .vbct-filter-item input,
+  .vbct-filter-item select,
+  .pf-weight-input,
+  .pf-search-row input,
+  .pf-search-row select,
+  .pf-invest-row input,
+  .bt-custom-range input[type="date"] { font-size: 16px !important; }
+  /* ── Table ── */
+  table.vbct-tbl { font-size: 11px; }
+  table.vbct-tbl th { padding: 7px 5px; font-size: 9.5px; }
+  table.vbct-tbl td { padding: 5px 5px; }
+  .fund-link { max-width: 130px; font-size: 11px; }
+  .vbct-table-scroll { max-height: calc(100svh - 230px - env(safe-area-inset-top, 0px)); }
+  .vbct-row-count { font-size: 10.5px; padding: 7px 12px; }
+  .vbct-footer { flex-direction: column; align-items: flex-start; gap: 3px; }
+  .vbct-footer-left, .vbct-footer-right { font-size: 10px; }
+}
+/* ≤480px：Header 按鈕只顯示圖示 */
+@media (max-width: 480px) {
+  .vbct-btn-text { display: none; }
+  .vbct-btn { min-width: 36px; justify-content: center; }
+}
+/* ── 回測按鈕 & Modal ─────────────────────────── */
+.bt-open-btn {
+  background: var(--blue-pale);
+  border: 1px solid #c3d8f5;
+  color: var(--blue);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, transform 0.1s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.bt-open-btn:hover { background: #d7e6fc; }
+.bt-open-btn:active { transform: scale(0.95); }
+.bt-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15,30,50,0.55);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+.bt-overlay.show { opacity: 1; }
+.bt-modal {
+  background: var(--surface);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 920px;
+  max-height: 88vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  transform: translateY(10px) scale(0.98);
+  opacity: 0;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+.bt-overlay.show .bt-modal { transform: translateY(0) scale(1); opacity: 1; }
+.bt-modal-head {
+  position: sticky;
+  top: 0;
+  background: linear-gradient(135deg, #0f2744, var(--navy));
+  color: #fff;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 14px 14px 0 0;
+  z-index: 5;
+}
+.bt-modal-title { font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 7px; }
+.bt-close-btn {
+  background: rgba(255,255,255,0.14);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: #fff;
+  width: 28px; height: 28px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, transform 0.1s;
+}
+.bt-close-btn:hover { background: rgba(255,255,255,0.26); }
+.bt-close-btn:active { transform: scale(0.92); }
+.bt-modal-body { padding: 18px 20px 24px; }
+.bt-loading { text-align: center; padding: 40px 0; color: var(--muted); font-size: 13px; }
+.bt-meta { font-size: 11.5px; color: var(--muted); margin-bottom: 10px; font-weight: 600; }
+.bt-cap-note {
+  font-size: 11px;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 7px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+.bt-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin: 14px 0 18px;
+}
+.bt-stat {
+  background: #f7fafd;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 10px;
+}
+.bt-stat-label { font-size: 10px; color: var(--muted); font-weight: 700; margin-bottom: 3px; }
+.bt-stat-val { font-size: 14px; font-weight: 800; color: var(--navy); font-family: 'Courier New',monospace; }
+.bt-stat-inline-note { font-size: 11px; font-weight: 500; color: var(--muted); font-family: -apple-system, sans-serif; margin-left: 6px; white-space: nowrap; vertical-align: middle; }
+.bt-section-title { font-size: 12.5px; font-weight: 800; color: var(--navy); margin: 16px 0 10px; display: flex; align-items: center; gap: 6px; }
+@keyframes bt-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+#bt-main > *, #bt-winrate > * { animation: bt-fade-in 0.22s ease; }
+.wr-bars { display: flex; flex-direction: column; gap: 8px; }
+.wr-row { display: flex; align-items: center; gap: 10px; font-size: 11.5px; }
+.wr-label { width: 44px; flex-shrink: 0; color: var(--muted); font-weight: 700; }
+.wr-track { flex: 1; height: 14px; background: #eef2f8; border-radius: 7px; overflow: hidden; }
+.wr-fill { height: 100%; border-radius: 7px; transition: width 0.3s; }
+.wr-pct { width: 48px; flex-shrink: 0; text-align: right; font-weight: 800; color: var(--text); font-family: 'Courier New',monospace; }
+.bt-wr-note { font-size: 10.5px; color: #b0b8c4; margin-top: 8px; }
+/* 還原(含息)模式切換 */
+.bt-mode-toggle { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 4px; }
+.bt-asof-note { font-size: 11px; color: var(--muted); white-space: nowrap; margin-left: 2px; }
+.bt-export-row { display: flex; justify-content: flex-end; margin: -6px 0 14px; }
+.bt-export-btn {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--navy);
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.bt-export-btn:hover { background: #eef2f8; border-color: var(--navy); }
+.bt-mode-btn {
+  flex: 1;
+  border: 1px solid var(--border);
+  background: #f7fafd;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 7px 8px;
+  border-radius: 7px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.bt-mode-btn:hover:not(.active) { background: #eef2f8; }
+.bt-mode-btn.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+/* 回測區間切換（全部／3年／4年／5年／自訂） */
+.bt-range-toggle { display: flex; gap: 6px; margin-bottom: 14px; }
+.bt-range-btn {
+  flex: 1;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.bt-range-btn:hover:not(.active) { background: #f5f8fc; }
+.bt-range-btn.active { background: #eef2f8; color: var(--navy); border-color: var(--navy); }
+.bt-custom-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -6px 0 14px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.bt-custom-range input[type="date"] {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 11.5px;
+  font-family: inherit;
+  color: var(--text);
+  background: #fff;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.bt-custom-range input[type="date"]:focus {
+  border-color: var(--blue-mid);
+  box-shadow: 0 0 0 3px rgba(59,130,196,0.12);
+}
+.bt-div-note {
+  font-size: 11px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 7px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+/* 賺錢機率：淨值 vs 加上配息後，單條雙色呈現 */
+.wr-legend { display: flex; gap: 16px; font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+.wr-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.wr-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.wr-row-dual { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; font-size: 11.5px; }
+.wr-track-dual { position: relative; flex: 1; height: 12px; background: #eef2f8; border-radius: 6px; }
+.wr-seg-raw { position: absolute; left: 0; top: 0; height: 100%; background: #dc2626; border-radius: 6px 0 0 6px; }
+.wr-seg-raw.wr-seg-full { border-radius: 6px; }
+.wr-seg-add { position: absolute; top: 0; height: 100%; background: #2657a0; border-radius: 0 6px 6px 0; }
+.wr-seg-add.wr-seg-full { border-radius: 6px; }
+.wr-pct-dual { width: 108px; flex-shrink: 0; text-align: right; font-weight: 800; color: var(--text); font-family: 'Courier New',monospace; font-size: 11px; }
+@media (max-width: 599px) {
+  /* ── Stats grid ── */
+  .bt-stats-grid { grid-template-columns: repeat(2, 1fr); }
+  /* ── 回測按鈕觸控目標放大 ── */
+  .bt-open-btn {
+    min-height: 44px;
+    padding: 0 14px;
+    font-size: 12px;
+  }
+  /* ── Bottom Sheet modal ── */
+  .bt-overlay {
+    align-items: flex-end;
+    justify-content: stretch;
+    padding: 0;
+  }
+  .bt-modal {
+    max-width: 100%;
+    width: 100%;
+    max-height: 92dvh;
+    border-radius: 20px 20px 0 0;
+    transform: translateY(100%);
+    opacity: 1;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .bt-modal::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: rgba(0,0,0,0.15);
+    border-radius: 2px;
+    margin: 10px auto 0;
+  }
+  .bt-overlay.show .bt-modal {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  .bt-modal-head {
+    border-radius: 20px 20px 0 0;
+  }
+  /* 把 scale 動畫改回 opacity，避免與 translateY 衝突 */
+  .bt-overlay.show .bt-modal { opacity: 1; }
+  /* ── 關閉按鈕觸控目標 ── */
+  .bt-close-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+  /* ── 步進按鈕觸控目標 ── */
+  .pf-step-btn {
+    width: 36px;
+    height: 44px;
+    border-radius: 8px;
+  }
+  /* ── 移除按鈕觸控目標 ── */
+  .pf-remove-btn {
+    padding: 10px 14px;
+    min-height: 40px;
+  }
+  /* ── 加入按鈕觸控目標 ── */
+  .pf-add-btn {
+    padding: 10px 16px;
+    min-height: 40px;
+    font-size: 13px;
+  }
+  /* ── CTA / 次要按鈕觸控目標 ── */
+  .pf-cta-btn { min-height: 44px; }
+  .pf-sec-btn { min-height: 40px; }
+  /* ── 權重輸入框加寬 ── */
+  .pf-weight-input { width: 72px; }
+  /* ── Win rate bars ── */
+  .wr-label { width: 36px; font-size: 10.5px; }
+  .wr-pct-dual { width: 88px; font-size: 10px; }
+}
+/* ═══════════════════════════════════════════════
+   組合分析工具 — 新增樣式（搜尋／組合建立器）
+   ═══════════════════════════════════════════════ */
+.pf-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+.pf-card-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--navy);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+.pf-card-sub { font-size: 11.5px; color: var(--muted); margin: -6px 0 12px; }
+.pf-search-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+.pf-search-row input[type="text"] {
+  flex: 1 1 220px;
+  padding: 8px 11px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 13px;
+  background: var(--bg);
+}
+.pf-search-row select {
+  padding: 8px 11px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 13px;
+  background: var(--bg);
+  color: var(--text);
+}
+.pf-search-row input:focus, .pf-search-row select:focus { outline: 2px solid var(--blue-mid); border-color: transparent; }
+/* ── 險種分頁標籤（文件夾式） ── */
+.pf-tabs {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+  margin: 0 0 14px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.pf-tabs::-webkit-scrollbar { display: none; }
+.pf-tab {
+  appearance: none;
+  border: 1px solid var(--border);
+  border-bottom: none;
+  background: #f1f5f9;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  padding: 9px 16px;
+  border-radius: 9px 9px 0 0;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  position: relative;
+  bottom: -1px;
+  transition: background 0.15s, color 0.15s;
+}
+.pf-tab:hover { background: #e6edf5; color: var(--text); }
+.pf-tab:focus-visible { outline: 2px solid var(--blue-mid); outline-offset: -2px; }
+.pf-tab[data-src="VBCT"] { --tab-accent: var(--blue); }
+.pf-tab[data-src="VCCT"] { --tab-accent: #c2410c; }
+.pf-tab[data-src="UND"]  { --tab-accent: #15803d; }
+.pf-tab[aria-selected="true"] {
+  background: var(--surface);
+  color: var(--tab-accent);
+  box-shadow: inset 0 3px 0 0 var(--tab-accent);
+  padding-bottom: 10px;
+}
+.pf-tab-count {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 20px;
+  background: rgba(15, 23, 42, 0.08);
+  color: var(--muted);
+}
+.pf-tab[aria-selected="true"] .pf-tab-count {
+  background: var(--tab-accent);
+  color: #fff;
+}
+/* ── 年化配息率呈現 ── */
+.pf-rate { color: #b45309; font-weight: 800; font-size: 13px; }
+.pf-rate-loading { font-size: 11px; color: var(--muted); }
+/* ── 快速篩選器 ── */
+.pf-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: flex-end;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: #f7fafd;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+}
+.pf-filter-item { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.pf-filter-item label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+.pf-filter-item select {
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--text);
+  min-height: 34px;
+  cursor: pointer;
+}
+.pf-filter-item select:focus { outline: 2px solid var(--blue-mid); border-color: transparent; }
+.pf-filter-reset {
+  padding: 6px 14px;
+  min-height: 34px;
+  background: #e2e8f0;
+  color: #475569;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.pf-filter-reset:hover { background: #cbd5e1; }
+@media (max-width: 599px) {
+  .pf-filters { gap: 8px; padding: 10px; }
+  .pf-filter-item { flex: 1 1 calc(50% - 4px); }
+  .pf-filter-item select { width: 100%; min-height: 40px; }
+  .pf-filter-reset { flex: 1 1 100%; min-height: 40px; }
+}
+.src-badge { display: inline-block; padding: 1px 7px; border-radius: 5px; font-size: 10.5px; font-weight: 700; color: #fff; white-space: nowrap; }
+.src-VBCT { background: var(--blue); }
+.src-VCCT { background: #c2410c; }
+.src-UND  { background: #15803d; }
+.pf-results-note { font-size: 11.5px; color: var(--muted); margin-bottom: 8px; }
+.pf-add-btn {
+  background: var(--blue-pale);
+  color: var(--blue);
+  border: none;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.15s;
+}
+.pf-add-btn:hover { background: #d7e6fc; }
+.pf-add-btn:disabled { background: #f0f3f7; color: #b0b8c4; cursor: default; }
+.pf-remove-btn {
+  background: #fef2f2;
+  color: #dc2626;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.pf-remove-btn:hover { background: #fde2e2; }
+.pf-empty { text-align: center; padding: 28px 0; color: var(--muted); font-size: 13px; }
+.pf-fund-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.pf-fund-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+}
+.pf-fund-row-main { flex: 1; min-width: 0; }
+.pf-fund-row-name { font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pf-fund-row-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.pf-weight-wrap { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.pf-weight-input {
+  width: 64px;
+  padding: 6px 7px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  text-align: right;
+  font-family: monospace;
+}
+.pf-weight-input:focus { outline: 2px solid var(--blue-mid); border-color: transparent; }
+/* ── 步進按鈕（權重 +/- 5%）── */
+.pf-step-btn {
+  width: 26px;
+  height: 32px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, color 0.12s;
+  flex-shrink: 0;
+}
+.pf-step-btn:hover { background: var(--blue-pale); color: var(--blue); border-color: var(--blue-mid); }
+.pf-step-btn:active { transform: scale(0.93); }
+/* ── 搜尋結果捲動區（限制最大高度，不佔滿螢幕）── */
+.pf-search-scroll {
+  max-height: min(340px, 45dvh);
+  overflow-y: auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.pf-invest-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 13px; color: var(--text); }
+.pf-invest-row label { font-weight: 700; }
+.pf-invest-row input#pf-invest-amt { width: 90px; }
+.pf-invest-row span { color: var(--muted); font-size: 12px; }
+.pf-builder-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-top: 4px; }
+.pf-builder-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.pf-sec-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 7px;
+  padding: 7px 13px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.pf-sec-btn:hover { background: var(--blue-pale); }
+.pf-cta-btn {
+  background: linear-gradient(135deg, var(--blue), var(--navy));
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 13.5px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(38,87,160,0.25);
+}
+.pf-cta-btn:hover { filter: brightness(1.06); }
+.pf-cta-btn:disabled { background: #c3cdd9; cursor: default; box-shadow: none; }
+.pf-weight-sum {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 11px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.pf-weight-sum.ok { background: #f0fdf4; color: #16a34a; }
+.pf-weight-sum.warn { background: #fffbeb; color: #b45309; }
+.pf-analysis-wrap { display: none; }
+.pf-breakdown-note { font-size: 11.5px; color: var(--muted); margin: 6px 0 10px; }
+@media (max-width: 720px) {
+  .pf-fund-row { flex-wrap: wrap; }
+  .pf-weight-wrap { margin-left: auto; }
+}
+/* ═══════════════════════════════════════════════════════════
+   手機密集清單（< 768px）
+   關鍵一行：代號｜年化配息率｜一年｜三年｜風險，其餘點列展開。
+   每筆自 208px 降至約 50px，一個畫面由 2.9 檔increase到 12 檔。
+   放在既有 .mc-* 規則之後，少數屬性需 !important 才能覆蓋。
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+  table.vbct-tbl tbody tr.vr.mc-built > td { display: none !important; }
+  table.vbct-tbl tbody { gap: 0 !important; padding: 0 !important; }
+  table.vbct-tbl tr.vr {
+    border: none !important; border-bottom: 1px solid #eff3f8 !important;
+    border-radius: 0 !important; box-shadow: none !important;
+    background: var(--surface) !important;
+  }
+  table.vbct-tbl tr.vr:last-child { border-bottom: none !important; }
+  /* 吸頂欄位列（可點擊排序）。祖先的 overflow/max-height 由 JS 解除，否則 sticky 失效 */
+  .mc-lhead {
+    display: grid;
+    grid-template-columns: 54px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 38px;
+    gap: 6px; padding: 8px 10px; background: #f2f6fb;
+    border-bottom: 1px solid var(--border);
+    position: sticky; z-index: 15; box-shadow: 0 1px 0 rgba(0,0,0,.06);
+    font-size: 9.5px; font-weight: 700; color: #8a98a8; letter-spacing: .3px;
+  }
+  .mc-lhead i { font-style: normal; text-align: right; cursor: default;
+    padding: 3px 0; border-radius: 4px; user-select: none;
+    -webkit-tap-highlight-color: transparent; white-space: nowrap; }
+  .mc-lhead i:first-child { text-align: left; }
+  .mc-lhead i:last-child  { text-align: center; }
+  .mc-lhead i:active { background: #e2eaf4; }
+  .mc-lhead i.ms-on  { color: var(--blue); font-weight: 800; }
+  .mobile-card { display: block; padding: 6px 10px 7px !important;
+    cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .mobile-card:active { background: #f5f9ff; }
+  .mc-key { display: grid;
+    grid-template-columns: 54px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 38px;
+    gap: 6px; align-items: center; }
+  .mc-code { font-family: ui-monospace,'Courier New',monospace;
+    font-size: 12.5px; font-weight: 800; color: var(--navy); letter-spacing: -.2px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mc-v { text-align: right; font-size: 13px; font-weight: 800;
+    font-variant-numeric: tabular-nums; letter-spacing: -.3px;
+    white-space: nowrap; overflow: hidden; }
+  .mc-rate { color: #b45309; }
+  .mc-rate.mc-hi { color: #dc2626; }
+  .mc-pos { color: #1d4ed8; }
+  .mc-neg { color: #dc2626; }
+  .mc-na  { color: #c3ccd8; font-weight: 600; }
+  .mc-rr { justify-self: center; width: 36px; padding: 2px 0; text-align: center;
+    border-radius: 4px !important; font-size: 9.5px; font-weight: 800; letter-spacing: .2px; }
+  .mc-rr1{background:#0596691a;color:#059669}.mc-rr2{background:#16a34a1a;color:#16a34a}
+  .mc-rr3{background:#2563eb1a;color:#2563eb}.mc-rr4{background:#d977061a;color:#d97706}
+  .mc-rr5{background:#dc26261a;color:#dc2626}
+  .mc-nm { font-size: 11px; color: var(--muted); margin-top: 1px !important;
+    line-height: 1.45; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mobile-card.mc-open .mc-nm { white-space: normal; overflow: visible; }
+  .mc-extra { display: none !important; margin-top: 7px; padding: 7px 0 0 !important;
+    background: none !important; border-top: 1px dashed #e3eaf3; }
+  .mobile-card.mc-open .mc-extra { display: block !important; }
+  .mc-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 7px 5px; }
+  .mc-g { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .mc-g i { font-style: normal; font-size: 9px; color: #9aa7b5; font-weight: 700; white-space: nowrap; }
+  .mc-g b { font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* 近6月配息原本繼承通用 td 的 min-height:34px，六列疊起來達 408px；改橫向後約 30px */
+  .mc-div6m { margin-top: 8px; }
+  .mc-div6m-title { font-size: 9px; color: #9aa7b5; font-weight: 700; margin-bottom: 3px; }
+  .mc-div6m > div { display: block !important; width: 100% !important; }
+  .mc-div6m .trend { display: none !important; }
+  .mc-div6m .div-tbl { display: grid !important; grid-auto-flow: column !important;
+    grid-auto-columns: minmax(44px,1fr) !important; gap: 6px; width: 100% !important; font-size: 10.5px; }
+  .mc-div6m .div-tbl tbody { display: contents !important; }
+  .mc-div6m .div-tbl tr { display: flex !important; flex-direction: column;
+    align-items: flex-end; min-height: 0 !important; }
+  .mc-div6m .div-tbl td { display: block !important; padding: 0 !important; border: none !important;
+    min-height: 0 !important; min-width: 0 !important; text-align: right !important;
+    line-height: 1.35 !important; background: none !important; }
+  .mc-div6m .div-tbl .d-date { font-size: 9px; color: #9aa7b5; }
+  .mc-analyze { margin-top: 9px; }
+  .mc-analyze button, .mc-analyze a { width: 100%; min-height: 40px; display: inline-flex;
+    align-items: center; justify-content: center; gap: 5px;
+    font-size: 13px !important; padding: 0 12px !important; }
+}
+
+    /* 平板（768–1200px）：名稱欄太窄會折行撐高列，收緊 padding 換取名稱寬度 */
+    @media (min-width: 768px) and (max-width: 1200px) {
+      table.vbct-tbl > thead > tr > th:nth-child(1),
+      table.vbct-tbl > tbody > tr.vr > td:nth-child(1) { min-width: 176px !important; }
+      table.vbct-tbl > thead > tr > th,
+      table.vbct-tbl > tbody > tr.vr > td { padding-left: 6px !important; padding-right: 6px !important; }
+    }
+  
+    @media (max-width: 767px) {
+      /* 名稱列尾端箭頭提示可展開（組合分析保留表頭排序，因無膠囊列） */
+      .mc-nm::after { content: ' ⌄'; color: #b9c4d2; font-weight: 700; }
+      .mobile-card.mc-open .mc-nm::after { content: ' ⌃'; }
+      .mc-ext-wrap { margin-top: 9px; }
+      .mc-ext {
+        display: block; text-align: center; min-height: 36px; line-height: 36px;
+        border: 1px solid var(--border); border-radius: 8px;
+        font-size: 12.5px; font-weight: 700; color: var(--blue);
+        text-decoration: none; background: #f7fafd;
+      }
+    }
+  
+    @media (max-width: 767px) {
+      /* 保險：舊版卡片的收合動畫若留有 max-height:0，展開區會被裁掉 */
+      .mobile-card.mc-open .mc-extra { max-height: none !important; overflow: visible !important; }
+    }
+  
+    @media (max-width: 767px) {
+      /* 統計卡改為可換行的標籤，原本橫向捲動會把最後一張裁成一半 */
+      .vbct-stats { display: flex !important; flex-wrap: wrap !important; overflow: visible !important;
+                     gap: 6px !important; padding: 8px 0 8px !important; }
+      .vbct-stat { flex: 0 0 auto !important; display: inline-flex !important;
+                    flex-direction: row-reverse !important; align-items: baseline !important;
+                    gap: 4px !important; padding: 5px 9px !important; min-width: 0 !important;
+                    border-radius: 7px !important; }
+      .vbct-stat-num { font-size: 14px !important; line-height: 1.2 !important; }
+      .vbct-stat-label { font-size: 10.5px !important; line-height: 1.2 !important; letter-spacing: 0 !important; }
+      /* 排序膠囊列（與另外三支工具一致） */
+      .mob-ctrl-bar { display: flex; gap: 6px; padding: 8px 0 4px; align-items: center;
+                      position: sticky; z-index: 40; background: var(--bg, #f3f6fb); }
+      .mob-sort-pill { flex: 1 1 0; padding: 9px 4px; border: 1.5px solid #e2e8f0; border-radius: 8px;
+                       background-color: #fff; color: #475569; font-size: 12px; font-weight: 500;
+                       font-family: inherit; cursor: pointer; text-align: center; white-space: nowrap;
+                       -webkit-tap-highlight-color: transparent; transition: transform .1s; }
+      .mob-sort-pill.ms-active { background-color: #1d4ed8; color: #fff; border-color: #1d4ed8; font-weight: 700; }
+      .mob-sort-pill:active { transform: scale(0.96); }
+    }
+  </style>
+</head>
+<body>
+<!-- ═══════════════════════════════════════════════════════════
+     組合分析工具（VBCT／VCCT／UND 混合自訂權重組合）Web 版
+     非官方工具，與富邦人壽無任何關聯
+     資料來源：invest.fubonlife.com.tw
+     本金（淨值）與配息分開計算，邏輯與單一標的分析工具一致
+     ═══════════════════════════════════════════════════════════ -->
+<header class="vbct-header">
+  <div class="vbct-header-inner">
+    <div class="vbct-title-block">
+      <div class="vbct-title">
+        <svg class="i i-lg" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+        組合分析工具
+        <span class="vbct-title-badge">非官方</span>
+      </div>
+      <div class="vbct-subtitle">自訂權重組合 VBCT／VCCT／UND 多檔標的，本金（淨值）與配息分開計算　｜　點基金名稱可開啟富邦官網頁面</div>
+    </div>
+    <button class="vbct-btn" onclick="loadFundUniverse(true)" aria-label="重新載入基金清單"><svg class="i" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg><span class="vbct-btn-text"> 重新載入基金清單</span></button>
+  </div>
+</header>
+<div class="vbct-main">
+  <!-- 搜尋並加入基金 -->
+  <div class="pf-card">
+    <div class="pf-card-title"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> 搜尋並加入基金</div>
+    <div class="pf-card-sub" id="pf-search-status">初始化中...</div>
+    <div class="pf-tabs" role="tablist" aria-label="險種切換">
+      <button class="pf-tab" role="tab" data-src="VBCT" aria-selected="true" onclick="pfSetSrc('VBCT')">VBCT<span class="pf-tab-count" id="pf-tabcount-VBCT">—</span></button>
+      <button class="pf-tab" role="tab" data-src="VCCT" aria-selected="false" onclick="pfSetSrc('VCCT')">VCCT<span class="pf-tab-count" id="pf-tabcount-VCCT">—</span></button>
+      <button class="pf-tab" role="tab" data-src="UND" aria-selected="false" onclick="pfSetSrc('UND')">UND<span class="pf-tab-count" id="pf-tabcount-UND">—</span></button>
+    </div>
+    <div class="pf-search-row">
+      <input id="pf-search-q" type="text" placeholder="輸入基金名稱或代碼搜尋..." oninput="pfSearchDebounced()" autocomplete="off">
+    </div>
+    <div class="pf-filters" id="pf-filters">
+      <div class="pf-filter-item">
+        <label for="pf-f-rate">年化配息率 ≥</label>
+        <select id="pf-f-rate" onchange="pfApplyFilters()">
+          <option value="">不限</option>
+          <option value="3">3%</option>
+          <option value="5">5%</option>
+          <option value="6">6%</option>
+          <option value="8">8%</option>
+          <option value="10">10%</option>
+        </select>
+      </div>
+      <div class="pf-filter-item">
+        <label for="pf-f-ret1y">一年報酬 ≥</label>
+        <select id="pf-f-ret1y" onchange="pfApplyFilters()">
+          <option value="">不限</option>
+          <option value="0">0%（不虧）</option>
+          <option value="5">5%</option>
+          <option value="10">10%</option>
+          <option value="20">20%</option>
+        </select>
+      </div>
+      <div class="pf-filter-item">
+        <label for="pf-f-ret3y">三年報酬 ≥</label>
+        <select id="pf-f-ret3y" onchange="pfApplyFilters()">
+          <option value="">不限</option>
+          <option value="0">0%（不虧）</option>
+          <option value="20">20%</option>
+          <option value="50">50%</option>
+        </select>
+      </div>
+      <div class="pf-filter-item">
+        <label for="pf-f-rr">風險上限</label>
+        <select id="pf-f-rr" onchange="pfApplyFilters()">
+          <option value="">不限</option>
+          <option value="RR2">RR2 以下</option>
+          <option value="RR3">RR3 以下</option>
+          <option value="RR4">RR4 以下</option>
+        </select>
+      </div>
+      <div class="pf-filter-item">
+        <label for="pf-f-cur">幣別</label>
+        <select id="pf-f-cur" onchange="pfApplyFilters()">
+          <option value="">不限</option>
+          <option value="台幣">台幣</option>
+          <option value="美元">美元</option>
+        </select>
+      </div>
+      <div class="pf-filter-item">
+        <label for="pf-f-freq">配息頻率</label>
+        <select id="pf-f-freq" onchange="pfApplyFilters()">
+          <option value="">不限</option>
+          <option value="月配">月配</option>
+          <option value="季配">季配</option>
+        </select>
+      </div>
+      <button class="pf-filter-reset" onclick="pfResetFilters()">清除條件</button>
+    </div>
+    <div class="pf-results-note" id="pf-results-note"></div>
+    <div class="pf-results-note" id="pf-rate-status"></div>
+    <div class="pf-search-scroll">
+      <table class="vbct-tbl">
+        <thead>
+          <tr>
+            <th onclick="pfSortBy(0)">基金名稱</th>
+            <th onclick="pfSortBy(1)">來源</th>
+            <th onclick="pfSortBy(2)">代碼</th>
+            <th onclick="pfSortBy(3)">幣別</th>
+            <th onclick="pfSortBy(4)" class="c">配息頻率</th>
+            <th onclick="pfSortBy(5)" class="c">風險<span class="th-sub">RR1～RR5</span></th>
+            <th onclick="pfSortBy(6)" class="r">當日淨值</th>
+            <th onclick="pfSortBy(7)" class="r">年化配息率<span class="th-sub">近6月均×12÷淨值</span></th>
+            <th onclick="pfSortBy(8)" class="r">六個月<span class="th-sub">含息報酬(%)</span></th>
+            <th onclick="pfSortBy(9)" class="r">一年<span class="th-sub">含息報酬(%)</span></th>
+            <th onclick="pfSortBy(10)" class="r">三年<span class="th-sub">含息報酬(%)</span></th>
+            <th class="c">操作</th>
+          </tr>
+        </thead>
+        <tbody id="pf-results-tbody"><tr><td colspan="12" class="pf-empty">載入中...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <!-- 組合建立器 -->
+  <div class="pf-card">
+    <div class="pf-card-title"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y2="18"/><path d="M15 9.5a2.5 2.5 0 0 0-2.5-2.5h-1A2.5 2.5 0 0 0 9 9.5c0 1.38 1.12 2.1 2.5 2.5l1 .29c1.38.39 2.5 1.1 2.5 2.4A2.5 2.5 0 0 1 12.5 17h-1A2.5 2.5 0 0 1 9 14.5"/></svg> 組合建立器</div>
+    <div class="pf-card-sub">設定各基金佔比權重（建議加總為 100%；未滿 100% 時，分析時將自動依比例正規化，不會擋下分析）</div>
+    <div class="pf-fund-list" id="pf-fund-list"></div>
+    <div class="pf-builder-actions">
+      <div class="pf-builder-btns">
+        <button class="pf-sec-btn" onclick="equalizeWeights()"><svg class="i i-sm" viewBox="0 0 24 24"><rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="6" width="4" height="14" rx="1"/><rect x="17" y="9" width="4" height="11" rx="1"/></svg> 平均分配權重</button>
+        <button class="pf-sec-btn" onclick="clearPortfolio()"><svg class="i i-sm" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> 清空組合</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span class="pf-weight-sum" id="pf-weight-sum"></span>
+        <button class="pf-cta-btn" id="pf-build-btn" disabled onclick="buildPortfolio()"><svg class="i" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> 建立組合分析</button>
+      </div>
+    </div>
+    <div id="pf-analysis-status"></div>
+  </div>
+  <!-- 組合分析結果 -->
+  <div class="pf-card pf-analysis-wrap" id="pf-analysis-wrap">
+    <div class="pf-card-title"><svg class="i" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> 組合分析結果</div>
+    <div id="pf-analysis-body"></div>
+  </div>
+  <!-- Notices：免責聲明 + 重要事項 -->
+  <div class="vbct-notices">
+    <div class="vbct-notices-title"><svg class="i i-sm" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> 免責聲明</div>
+    <div class="vbct-notices-disclaimer">
+      <strong>配息率僅供參考，過去績效不代表未來，配息來源可能為本金。</strong>本工具之組合分析為使用者自訂權重之模擬計算，並非任何實際保單或投資組合之官方績效，請以各基金公司官方公告為準。
+    </div>
+    <hr class="vbct-notices-divider">
+    <div class="vbct-notices-legal-title">重要事項說明</div>
+    <ol>
+      <li>
+        <span class="note-num">註1</span>
+        <span>組合分析將各基金逐日淨值依使用者設定之權重，正規化後加權合成為單一指數化序列（基準日 = 100），用以模擬「依設定權重持有一籃子基金」之本金（淨值）走勢；各基金之配息亦依相同權重與正規化基準換算後加總，分開呈現於「期間配息合計」與「還原(含息)」計算中，並未假設配息之間有再投資至其他基金之效果。</span>
+      </li>
+      <li>
+        <span class="note-num">註2</span>
+        <span>各基金交易日曆可能不同（例如不同市場之休市日），組合計算採「前一交易日數值延展」方式對齊至統一日期軸，僅選取所有基金皆有資料之重疊期間進行分析；若某基金逐日淨值資料筆數不足（少於 10 筆），將自動排除於本次組合分析之外。</span>
+      </li>
+      <li>
+        <span class="note-num">註3</span>
+        <span>「還原(含息)」序列假設配息發生於當月最後一個交易日、按當時淨值滾入計算，含再投資複利效果；下方「賺錢機率」則改以單一長條呈現紅（淨值漲跌）與藍（加上配息後）雙色比較，採「期末淨值－期初淨值＋期間內配息金額」簡單加總計算，不含配息再投資之複利效果。配息資料僅精確至月份，故與真實除息日可能有些微誤差，僅供參考。賺錢機率採滾動視窗計算，樣本不足（少於10個視窗）之持有期間將自動隱藏；夏普比率計算假設無風險利率為 0%，僅供參考，不構成投資建議。</span>
+      </li>
+      <li>
+        <span class="note-num">註4</span>
+        <span>下方「各基金投入金額試算明細」表格之「期間報酬（淨值）」欄僅反映個別基金之淨值（本金）漲跌，不含配息；其計算期間與表格其餘欄位一致，皆為上方所選期間（隨「全部／1年／3年／4年／5年／自訂」按鈕切換重新計算起始日），用於比較各成分基金於該期間內之相對表現。</span>
+      </li>
+    </ol>
+  </div>
+  <!-- Footer -->
+  <div class="vbct-footer">
+    <div class="vbct-footer-left">
+      本工具為非官方工具，與富邦人壽保險股份有限公司無任何關聯
+    </div>
+    <div class="vbct-footer-right">
+      資料來源：invest.fubonlife.com.tw
+    </div>
+  </div>
+</div><!-- /.vbct-main -->
+<script>
+const PROXY_BASE = '/api/proxy';
+const FUBON_BASE = 'https://invest.fubonlife.com.tw';
+const $  = id => document.getElementById(id);
+const eh = s  => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const ea = s  => String(s).replace(/"/g,'&quot;');
+// ─────────────────────────────────────────────────────────
+// Icon 圖示集（取代 Emoji，統一線性 SVG，stroke-width 一致）
+// ─────────────────────────────────────────────────────────
+const ICON = {
+  chart:   '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="6" width="4" height="14" rx="1"/><rect x="17" y="9" width="4" height="11" rx="1"/></svg>',
+  link:    '<svg class="i" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>',
+  refresh: '<svg class="i" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>',
+  trendUp: '<svg class="i" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+  warn:    '<svg class="i" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  warnSm:  '<svg class="i i-sm" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  error:   '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+  zap:     '<svg class="i" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+  list:    '<svg class="i" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>',
+  coin:    '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y2="18"/><path d="M15 9.5a2.5 2.5 0 0 0-2.5-2.5h-1A2.5 2.5 0 0 0 9 9.5c0 1.38 1.12 2.1 2.5 2.5l1 .29c1.38.39 2.5 1.1 2.5 2.4A2.5 2.5 0 0 1 12.5 17h-1A2.5 2.5 0 0 1 9 14.5"/></svg>',
+  loader:  '<svg class="i i-spin" viewBox="0 0 24 24"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>',
+  download:'<svg class="i" viewBox="0 0 24 24"><path d="M12 3v12"/><polyline points="7 11 12 16 17 11"/><path d="M5 21h14"/></svg>'
+};
+// ─────────────────────────────────────────────────────────
+// fetchBig5 via CORS Proxy
+// ─────────────────────────────────────────────────────────
+function decodeB64Big5(b64) {
+  var bin = atob(b64);
+  var arr = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new TextDecoder('big5').decode(arr);
+}
+async function fetchBig5(path) {
+  const proxyUrl = PROXY_BASE + '?url=' + encodeURIComponent(path);
+  const r = await fetch(proxyUrl);
+  if (!r.ok) throw new Error('Proxy 回傳 ' + r.status + ' (' + path.split('?')[0] + ')');
+  const buf = await r.arrayBuffer();
+  return new TextDecoder('big5').decode(buf);
+}
+// ─────────────────────────────────────────────────────────
+// 業務邏輯（從 bookmarklet 移植）
+// ─────────────────────────────────────────────────────────
+// iShares：除息日 12/16 以後 → 歸入次年 1 月
+function normalizeDivMonth(dateStr) {
+  var m = dateStr.match(/(\d{4})\/(\d{2})\/(\d{2})/);
+  if (!m) return dateStr.substring(0, 7);
+  var yr = parseInt(m[1]), mo = parseInt(m[2]), day = parseInt(m[3]);
+  if (mo === 12 && day >= 16) return (yr + 1) + '/01';
+  return m[1] + '/' + m[2];
+}
+// 解析一般基金配息 HTML
+// ─────────────────────────────────────────────────────────
+// 配息表解析
+// 原本以 DOMParser 解析整頁 HTML，單檔約需 150ms，數百檔連續解析會
+// 長時間佔住主執行緒（實測每批阻塞約 900ms，頁面等同凍結）。
+// 改為 regex 逐列抽取，只取需要的儲存格，成本降低一到兩個數量級。
+// ─────────────────────────────────────────────────────────
+var _HTML_ENTITIES = {
+  '&nbsp;': ' ', '&amp;': '&', '&lt;': '<', '&gt;': '>',
+  '&quot;': '"', '&#39;': "'", '&apos;': "'"
+};
+function decodeEntities(s) {
+  return s.replace(/&(?:nbsp|amp|lt|gt|quot|apos|#39);/g, function(m) {
+    return _HTML_ENTITIES[m] || m;
+  }).replace(/&#(\d+);/g, function(_, d) {
+    return String.fromCharCode(parseInt(d, 10));
+  });
+}
+function stripCell(s) {
+  // 先移除 script/style 內容，再去標籤，最後解碼實體並正規化空白
+  return decodeEntities(
+    s.replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, '')
+     .replace(/<[^>]*>/g, '')
+  ).replace(/\s+/g, ' ').trim();
+}
+var _TR_RE = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+var _TD_RE = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi;
+function parseDivHtml(html, isIShares) {
+  var result = [];
+  var rowM;
+  _TR_RE.lastIndex = 0;
+  while ((rowM = _TR_RE.exec(html)) !== null) {
+    var cells = [], cellM;
+    _TD_RE.lastIndex = 0;
+    while ((cellM = _TD_RE.exec(rowM[1])) !== null) cells.push(stripCell(cellM[1]));
+    if (cells.length >= 5) {
+      var st = cells[3];
+      var am = parseFloat(cells[4]);
+      if ((st === '配息' || st === '撥回') && !isNaN(am) && am > 0) {
+        var useDate = isIShares ? normalizeDivMonth(cells[0]) : cells[1].substring(0, 7);
+        result.push({ date: useDate, amount: am });
+      }
+    }
+  }
+  return result;
+}
+// 解析 ETF 配息 JSON（V41=C）
+function parseEtfDivJson(jsonText, isIShares) {
+  try {
+    var data = JSON.parse(jsonText);
+    var rows = data.ResultSet.Result || [];
+    return rows.reduce(function(acc, r) {
+      var am = parseFloat(r.V4);
+      var dateStr = r.V1 || '';
+      if (!isNaN(am) && am > 0 && dateStr) {
+        var useDate = isIShares ? normalizeDivMonth(dateStr) : dateStr.substring(0, 7);
+        acc.push({ date: useDate, amount: am });
+      }
+      return acc;
+    }, []);
+  } catch(e) { return []; }
+}
+function isDiscretionary(f) { return f.V41 === 'D' || (f.V5 && f.V5.includes('全權委託')); }
+function isFubonETF(f)       { return f.V41 === 'C'; }
+function isISharesName(name) { return name && name.toLowerCase().includes('ishares'); }
+// 取得基金頁面 URL（絕對路徑）
+// ───── 富邦新版 API 輔助（2026/10 改版）─────
+const PROXY_POST = '/api/post';
+async function fbPost(path, body) {
+  const r = await fetch(PROXY_POST + '?path=' + encodeURIComponent(path), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}),
+    signal: AbortSignal.timeout(30000)
+  });
+  if (!r.ok) throw new Error('API ' + path + ' -> ' + r.status);
+  const j = await r.json();
+  return j && j.data;
+}
+// '13.80%' -> 13.8；'N/A' -> null
+function pctNum(s) {
+  if (s === null || s === undefined) return null;
+  const n = parseFloat(String(s).replace(/[^0-9.\-]/g, ''));
+  return isNaN(n) ? null : n;
+}
+function daysSince(dstr) {
+  if (!dstr) return 99999;
+  const t = Date.parse(String(dstr).replace(/\//g, '-'));
+  return isNaN(t) ? 99999 : (Date.now() - t) / 86400000;
+}
+function ymdAgo(days) {
+  const d0 = new Date(Date.now() - days * 86400000);
+  const p = function(n) { return (n < 10 ? '0' : '') + n; };
+  return d0.getFullYear() + '/' + p(d0.getMonth() + 1) + '/' + p(d0.getDate());
+}
+// 新版清單沒有配息頻率欄位，先由名稱猜，拿到配息明細後再用間隔修正
+function freqFromName(name) {
+  const s = String(name || '');
+  if (/月配|月中配息|月撥|月收益/.test(s)) return '月配';
+  if (/季配/.test(s)) return '季配';
+  if (/半年配/.test(s)) return '半年配';
+  if (/年配/.test(s)) return '年配';
+  return '無';
+}
+function guessFreq(rows) {
+  if (!rows || rows.length < 3) return null;
+  const ds = rows.slice(0, 5).map(function(r) {
+    return Date.parse(String(r.recordDate || r.dividendDate || r.date || '').replace(/\//g, '-'));
+  }).filter(function(t) { return !isNaN(t); });
+  if (ds.length < 3) return null;
+  let gap = 0;
+  for (let i = 1; i < ds.length; i++) gap += Math.abs(ds[i - 1] - ds[i]) / 86400000;
+  gap = gap / (ds.length - 1);
+  if (gap < 45) return '月配';
+  if (gap < 135) return '季配';
+  if (gap < 225) return '半年配';
+  return '年配';
+}
+// getAssets 的一筆 -> 舊版 V 欄位結構
+function toLegacy(a) {
+  const t = a.optionType === 'ETF' ? 'C'
+          : a.optionType === 'DIA' ? 'D'
+          : a.optionType === 'WFUND' ? 'B' : 'A';
+  return {
+    V40: a.assetFbCode || '',
+    V41: t,
+    V47: a.assetFbCode || '',
+    V3:  a.assetChName || '',
+    V5:  a.assetType || '',
+    V18: (a.netAssetValue === null || a.netAssetValue === undefined) ? '' : String(a.netAssetValue),
+    V26: a.currencyName || '',
+    V28: a.riskLevel || '',
+    V42: freqFromName(a.assetChName),
+    _company: a.optionCompany || '',
+    _otype: a.optionType || '',
+    _raw: a
+  };
+}
+function getFundUrl(f) {
+  // 新版標的頁：/funds/overview/{optionType}/{optionCompany}/{assetFbCode}
+  if (f._otype && f._company) {
+    return FUBON_BASE + '/funds/overview/' + f._otype + '/' + f._company + '/' + f.V40;
+  }
+  return FUBON_BASE + '/funds/overview';
+}
+function isoDate(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+// 解析 djbcd 純文字回應：第一段=逗號分隔日期(YYYYMMDD)，第二段=逗號分隔淨值（ETF 可能多第三段市價，忽略）
+function parseNavSeries(text) {
+  if (!text) return { dates: [], navs: [] };
+  var parts = text.trim().split(/\s+/);
+  if (parts.length < 2) return { dates: [], navs: [] };
+  var rawDates = parts[0].split(',');
+  var rawNavs  = parts[1].split(',');
+  var dates = [], navs = [];
+  for (var i = 0; i < rawDates.length && i < rawNavs.length; i++) {
+    var ds = rawDates[i].trim();
+    var ns = parseFloat(rawNavs[i]);
+    if (ds.length === 8 && !isNaN(ns) && ns > 0) {
+      dates.push(ds.substring(0, 4) + '-' + ds.substring(4, 6) + '-' + ds.substring(6, 8));
+      navs.push(ns);
+    }
+  }
+  return { dates: dates, navs: navs };
+}
+// 依基金類型抓取最長可得的逐日淨值序列
+// 三種類型皆改用「自訂日期區間」參數（b=0&c=起&d=訖），請求極早起始日以取得自基金成立日起算之全部歷史
+// （b=7&c=1&d=1 為官網預設五年區間參數，會被伺服器硬性裁切為 5 年，故改用自訂區間參數繞過此限制）
+// 依基金類型抓取最長可得的逐日淨值序列
+// 富邦 2026/10 改版：舊的 .djbcd 端點改回錯誤頁，改用 getFundNavs／getEtfNavs，
+// 起始日給 1990 即可取得自成立日起算的全部歷史（實測 ABB3 回傳 2208 筆）
+async function fetchDailyNav(f) {
+  if (!f.v40) return { dates: [], navs: [] };
+  try {
+    var isETF = f.v41 === 'C';
+    var rows = await fbPost(isETF ? '/api/etf/getEtfNavs' : '/api/fund/getFundNavs',
+      { assetFbCode: f.v40, startDate: '1990/01/01', endDate: ymdAgo(0) });
+    var list = (rows || []).map(function(x) {
+      var dt = String(x.date || '').replace(/\//g, '-');
+      var nv = parseFloat(x.nav);
+      return (dt && !isNaN(nv) && nv > 0) ? { d: dt, n: nv } : null;
+    }).filter(Boolean).sort(function(a, b) { return a.d < b.d ? -1 : (a.d > b.d ? 1 : 0); });
+    return {
+      dates: list.map(function(x) { return x.d; }),
+      navs:  list.map(function(x) { return x.n; })
+    };
+  } catch (e) { /* 淨值抓取失敗，回測該標的略過 */ }
+  return { dates: [], navs: [] };
+}
+// 期間統計：期間報酬／年化報酬／年化波動度／夏普比率／最大回撤／期間最高／期間最低／目前淨值
+function computeStats(dates, navs) {
+  var n = navs.length;
+  if (n < 2) return null;
+  var first = navs[0], last = navs[n - 1];
+  var totalRet = (last / first - 1) * 100;
+  var d0 = new Date(dates[0]), d1 = new Date(dates[n - 1]);
+  var years = Math.max((d1 - d0) / (365.25 * 24 * 3600 * 1000), 1 / 365);
+  var cagr = (Math.pow(last / first, 1 / years) - 1) * 100;
+  var rets = [];
+  for (var i = 1; i < n; i++) {
+    if (navs[i - 1] > 0) rets.push(navs[i] / navs[i - 1] - 1);
+  }
+  var meanR = rets.length ? rets.reduce(function(s, v) { return s + v; }, 0) / rets.length : 0;
+  var variance = rets.length ? rets.reduce(function(s, v) { return s + Math.pow(v - meanR, 2); }, 0) / rets.length : 0;
+  // 年化基準：依「實際資料筆數 ÷ 實際年數」換算每年取樣頻率，而非固定假設 252 個交易日／年。
+  // 組合之統一日期軸為跨基金交易日聯集，實際年取樣點數未必等於單一市場之 252，採此方式可正確反映其真實頻率。
+  var periodsPerYear = (years > 0 && rets.length > 0) ? (rets.length / years) : 252;
+  var annVol = Math.sqrt(variance) * Math.sqrt(periodsPerYear) * 100;
+  var sharpe = annVol > 0 ? (cagr / annVol) : null;
+  var peak = navs[0], maxDd = 0, peakIdx = 0, mddPeakIdx = 0, mddTroughIdx = 0;
+  for (var j = 0; j < n; j++) {
+    if (navs[j] > peak) { peak = navs[j]; peakIdx = j; }
+    var dd = (navs[j] - peak) / peak;
+    if (dd < maxDd) { maxDd = dd; mddPeakIdx = peakIdx; mddTroughIdx = j; }
+  }
+  return {
+    totalRet: totalRet, cagr: cagr, annVol: annVol, sharpe: sharpe,
+    mdd: maxDd * 100, high: Math.max.apply(null, navs), low: Math.min.apply(null, navs),
+    cur: last, years: years, n: n, startDate: dates[0], endDate: dates[n - 1],
+    mddStartDate: dates[mddPeakIdx], mddEndDate: dates[mddTroughIdx]
+  };
+}
+// 賺錢機率（滾動視窗勝率）：依持有期間（實際年數，依日期回溯而非固定交易日數）分桶，樣本不足(<10)自動跳過
+var WIN_BUCKETS = [
+  { label: '1年',   years: 1 },
+  { label: '2年',   years: 2 },
+  { label: '3年',   years: 3 },
+  { label: '4年',   years: 4 },
+  { label: '5年',   years: 5 },
+  { label: '7年',   years: 7 },
+  { label: '10年',  years: 10 }
+];
+// 找出「dates[i] 往後加 yrs 年」之目標日期，於 dates（已遞增排序）中第一個 ">=" 該日期之索引；找不到回傳 -1。
+// 組合之統一日期軸為跨基金交易日聯集，每年實際資料點數未必等於 252，故改以真實日期回溯定義「N 年」持有期間，
+// 取代先前以固定交易日數位移（如 252、504…）模擬年數的作法。
+function yearOffsetIdx(dates, i, yrs) {
+  var d = new Date(dates[i]);
+  d.setFullYear(d.getFullYear() + yrs);
+  var target = isoDate(d);
+  var lo = i, hi = dates.length - 1, res = -1;
+  while (lo <= hi) {
+    var mid = (lo + hi) >> 1;
+    if (dates[mid] >= target) { res = mid; hi = mid - 1; }
+    else lo = mid + 1;
+  }
+  return res;
+}
+function computeWinRates(dates, navs) {
+  var n = navs.length, out = [];
+  WIN_BUCKETS.forEach(function(b) {
+    var wins = 0, windows = 0;
+    for (var i = 0; i < n; i++) {
+      var j = yearOffsetIdx(dates, i, b.years);
+      if (j < 0) break; // i 之後目標日期只會更晚，必然同樣找不到對應索引，可提前結束
+      windows++;
+      if (navs[j] > navs[i]) wins++;
+    }
+    if (windows < 10) return;
+    out.push({ label: b.label, winRate: wins / windows * 100, samples: windows });
+  });
+  return out;
+}
+// 賺錢機率（單色 vs 雙色）：紅＝淨值（未還原）價格漲跌，藍＝「期末淨值－期初淨值＋期間內配息金額」(不含配息再投資複利效果)
+// divCum[i] = 截至第 i 個交易日（含）為止之累計配息金額；divCum[end]-divCum[start] = 該持有期間內實際收到之配息總額
+function computeWinRatesDual(dates, navs, divCum) {
+  var n = navs.length, out = [];
+  WIN_BUCKETS.forEach(function(b) {
+    var rawWins = 0, addWins = 0, windows = 0;
+    for (var i = 0; i < n; i++) {
+      var j = yearOffsetIdx(dates, i, b.years);
+      if (j < 0) break;
+      windows++;
+      var navStart = navs[i], navEnd = navs[j];
+      if (navEnd > navStart) rawWins++;
+      var divInWindow = divCum[j] - divCum[i];
+      if (navEnd - navStart + divInWindow > 0) addWins++;
+    }
+    if (windows < 10) return;
+    out.push({ label: b.label, rawRate: rawWins / windows * 100, addRate: addWins / windows * 100, samples: windows });
+  });
+  return out;
+}
+// 手繪 SVG 淨值走勢圖（可選擇疊加第二條序列同框比較，並含期間最高／最低標記）
+function buildNavChartSvg(dates, navsPrimary, navsSecondary, labelPrimary, labelSecondary) {
+  var hasSecondary = !!(navsSecondary && navsSecondary.length === navsPrimary.length);
+  var w = 640, h = hasSecondary ? 234 : 220, padL = 46, padR = 10, padT = hasSecondary ? 28 : 14, padB = 24;
+  var n = navsPrimary.length;
+  if (n < 2) return '<div class="bt-loading">資料不足，無法繪製走勢圖</div>';
+  var allVals = hasSecondary ? navsPrimary.concat(navsSecondary) : navsPrimary;
+  var minV = Math.min.apply(null, allVals), maxV = Math.max.apply(null, allVals);
+  var range = (maxV - minV) || 1;
+  var xf = function(i) { return padL + i / (n - 1) * (w - padL - padR); };
+  var yf = function(v) { return padT + (1 - (v - minV) / range) * (h - padT - padB); };
+  function ptsFor(arr) { return arr.map(function(v, i) { return xf(i).toFixed(1) + ',' + yf(v).toFixed(1); }).join(' '); }
+  var ptsP = ptsFor(navsPrimary);
+  var maxVP = Math.max.apply(null, navsPrimary), minVP = Math.min.apply(null, navsPrimary);
+  var maxIp = navsPrimary.indexOf(maxVP), minIp = navsPrimary.indexOf(minVP);
+  var gridLines = '', gridLabels = '';
+  for (var g = 0; g <= 4; g++) {
+    var gv = minV + range * g / 4;
+    var gy = yf(gv);
+    gridLines += '<line x1="' + padL + '" y1="' + gy.toFixed(1) + '" x2="' + (w - padR) + '" y2="' + gy.toFixed(1) + '" stroke="#eef2f8" stroke-width="1"/>';
+    gridLabels += '<text x="' + (padL - 6) + '" y="' + (gy + 3).toFixed(1) + '" font-size="9" fill="#94a3b8" text-anchor="end">' + gv.toFixed(2) + '</text>';
+  }
+  var areaPts = 'M' + xf(0).toFixed(1) + ',' + (h - padB) + ' L' + ptsP.split(' ').join(' L') + ' L' + xf(n - 1).toFixed(1) + ',' + (h - padB) + ' Z';
+  var secondarySvg = '', legendSvg = '';
+  if (hasSecondary) {
+    var ptsS = ptsFor(navsSecondary);
+    secondarySvg = '<polyline points="' + ptsS + '" fill="none" stroke="#c47f17" stroke-width="1.6"/>';
+    legendSvg = '<g font-size="9.5">'
+      + '<line x1="' + (w - 232) + '" y1="9" x2="' + (w - 220) + '" y2="9" stroke="#2657a0" stroke-width="2.4"/>'
+      + '<text x="' + (w - 215) + '" y="12" fill="#475569">' + eh(labelPrimary || '淨值（未還原）') + '</text>'
+      + '<line x1="' + (w - 118) + '" y1="9" x2="' + (w - 106) + '" y2="9" stroke="#c47f17" stroke-width="2.4"/>'
+      + '<text x="' + (w - 101) + '" y="12" fill="#475569">' + eh(labelSecondary || '還原(含息)') + '</text>'
+      + '</g>';
+  }
+  return '<svg id="pf-chart-svg" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;height:auto;display:block;background:#fff">'
+    + legendSvg
+    + gridLines + gridLabels
+    + secondarySvg
+    + '<path d="' + areaPts + '" fill="rgba(38,87,160,0.08)" stroke="none"/>'
+    + '<polyline points="' + ptsP + '" fill="none" stroke="#2657a0" stroke-width="1.6"/>'
+    + '<circle cx="' + xf(maxIp).toFixed(1) + '" cy="' + yf(maxVP).toFixed(1) + '" r="3.5" fill="#dc2626"/>'
+    + '<circle cx="' + xf(minIp).toFixed(1) + '" cy="' + yf(minVP).toFixed(1) + '" r="3.5" fill="#16a34a"/>'
+    + '<text x="' + xf(0).toFixed(1) + '" y="' + (h - 6) + '" font-size="9" fill="#94a3b8">' + dates[0] + '</text>'
+    + '<text x="' + (w - padR - 58) + '" y="' + (h - 6) + '" font-size="9" fill="#94a3b8">' + dates[n - 1] + '</text>'
+    + '</svg>';
+}
+// 將目前走勢圖（SVG）＋統計數據匯出為 PNG 圖片並觸發下載
+function exportPfChartImage() {
+  var svgEl = document.getElementById('pf-chart-svg');
+  if (!svgEl) { alert('請先建立組合分析後再匯出'); return; }
+  var asofEl = $('pf-asof-note');
+  var asofText = (asofEl && asofEl.textContent) || '';
+  // 收集統計數據格
+  var statsData = [];
+  document.querySelectorAll('#pf-main .bt-stats-grid .bt-stat').forEach(function(el) {
+    var lblEl = el.querySelector('.bt-stat-label');
+    var valEl = el.querySelector('.bt-stat-val');
+    var noteEl = el.querySelector('.bt-stat-inline-note');
+    // 取 val 的純文字節點（排除行內 note span）
+    var valText = '';
+    if (valEl) {
+      for (var c = 0; c < valEl.childNodes.length; c++) {
+        if (valEl.childNodes[c].nodeType === 3) valText += valEl.childNodes[c].nodeValue;
+      }
+      valText = valText.trim();
+    }
+    statsData.push({
+      label: lblEl ? lblEl.textContent : '',
+      val:   valText,
+      note:  noteEl ? noteEl.textContent.trim() : '',
+      isNeg: valEl ? valEl.classList.contains('ret-neg') : false
+    });
+  });
+  var svgData = new XMLSerializer().serializeToString(svgEl);
+  var svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+  var url = URL.createObjectURL(svgBlob);
+  var img = new Image();
+  img.onload = function() {
+    var scale = 2, titleH = 36;
+    var w = svgEl.width.baseVal.value, h = svgEl.height.baseVal.value;
+    var cols = 5, cellW = Math.floor(w / cols), cellH = 52;
+    var rows = Math.ceil(statsData.length / cols);
+    var statsH = rows > 0 ? (rows * cellH + 12) : 0;
+    var canvas = document.createElement('canvas');
+    canvas.width = w * scale;
+    canvas.height = (titleH + h + statsH) * scale;
+    var ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, titleH + h + statsH);
+    // 標題列
+    ctx.fillStyle = '#1f2d3d';
+    ctx.font = '600 13px "Noto Sans TC", -apple-system, sans-serif';
+    ctx.fillText('組合分析工具（非官方）－淨值走勢', 10, 18);
+    ctx.fillStyle = '#7c8696';
+    ctx.font = '11px "Noto Sans TC", -apple-system, sans-serif';
+    ctx.fillText(asofText, 10, 31);
+    // 走勢圖
+    ctx.drawImage(img, 0, titleH, w, h);
+    URL.revokeObjectURL(url);
+    // 統計數據格
+    if (statsData.length) {
+      var sy = titleH + h + 8;
+      statsData.forEach(function(s, i) {
+        var col = i % cols, row = Math.floor(i / cols);
+        var cx = col * cellW + 3, cy = sy + row * cellH;
+        ctx.fillStyle = '#f7fafd';
+        ctx.fillRect(cx, cy, cellW - 5, cellH - 5);
+        ctx.strokeStyle = '#dde3ec';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(cx, cy, cellW - 5, cellH - 5);
+        ctx.fillStyle = '#64748b';
+        ctx.font = '700 9px "Noto Sans TC", -apple-system, sans-serif';
+        ctx.fillText(s.label, cx + 5, cy + 13);
+        ctx.fillStyle = s.isNeg ? '#dc2626' : '#1f2d3d';
+        ctx.font = '800 13px "Courier New", monospace';
+        ctx.fillText(s.val, cx + 5, cy + 29);
+        if (s.note) {
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = '9px "Noto Sans TC", -apple-system, sans-serif';
+          ctx.fillText(s.note, cx + 5, cy + 43);
+        }
+      });
+    }
+    canvas.toBlob(function(blob) {
+      if (!blob) { alert('圖片匯出失敗，請重試'); return; }
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = '組合淨值走勢_' + new Date().toISOString().slice(0, 10) + '.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function() { URL.revokeObjectURL(a.href); }, 1000);
+    }, 'image/png');
+  };
+  img.onerror = function() {
+    URL.revokeObjectURL(url);
+    alert('圖片匯出失敗，請重試');
+  };
+  img.src = url;
+}
+function pctStr(v, digits) {
+  if (v === null || v === undefined || isNaN(v)) return '—';
+  digits = digits === undefined ? 2 : digits;
+  return (v >= 0 ? '+' : '') + v.toFixed(digits) + '%';
+}
+function btStat(label, val, neg, inlineNote) {
+  var cls = neg === undefined ? '' : (neg ? 'ret-neg' : 'ret-pos');
+  var noteHtml = inlineNote ? '<span class="bt-stat-inline-note">' + eh(inlineNote) + '</span>' : '';
+  return '<div class="bt-stat"><div class="bt-stat-label">' + eh(label) + '</div><div class="bt-stat-val ' + cls + '">' + val + noteHtml + '</div></div>';
+}
+// 抓取單一標的「全部」配息記錄（不限近6月），供回測還原使用
+async function fetchDividendHistory(r) {
+  if (!r.v40) return [];
+  try {
+    var isETF = r.v41 === 'C';
+    var rows = await fbPost(isETF ? '/api/etf/getEtfDividends' : '/api/fund/getFundDividends',
+      { assetFbCode: r.v40, startDate: ymdAgo(2000), endDate: ymdAgo(0) });
+    var out = (rows || []).map(function(x) {
+      var ds = x.recordDate || x.dividendDate || x.date || '';
+      var am = parseFloat(x.dividendPerUnit);
+      if (!ds || isNaN(am) || am <= 0) return null;
+      return { date: String(ds).replace(/\//g, '-').substring(0, 7), amount: am };
+    }).filter(Boolean);
+    // 新版清單沒有配息頻率，拿到明細後用間隔回寫
+    var fq = guessFreq(rows);
+    if (fq) r.freq = fq;
+    return out;
+  } catch (e) { /* 配息資料抓取失敗，不中斷回測流程，僅略過還原 */ }
+  return [];
+}
+// 將配息（月份粒度）對應至該月最後一個交易日，回傳 {索引: 配息金額}，供「還原(含息)」與「賺錢機率」共用
+function mapDivToIndex(dates, divs) {
+  if (!divs || !divs.length) return null;
+  var divByMonth = {};
+  divs.forEach(function(d) {
+    if (!d || !d.date || !(d.amount > 0)) return;
+    var key = String(d.date).substring(0, 7).replace('/', '-');
+    if (key.length !== 7) return;
+    divByMonth[key] = (divByMonth[key] || 0) + d.amount;
+  });
+  if (!Object.keys(divByMonth).length) return null;
+  var monthLastIdx = {};
+  dates.forEach(function(ds, i) { monthLastIdx[ds.substring(0, 7)] = i; });
+  var divOnIdx = {};
+  var matched = 0;
+  Object.keys(divByMonth).forEach(function(mk) {
+    if (monthLastIdx.hasOwnProperty(mk)) {
+      divOnIdx[monthLastIdx[mk]] = (divOnIdx[monthLastIdx[mk]] || 0) + divByMonth[mk];
+      matched++;
+    }
+  });
+  if (!matched) return null;
+  return divOnIdx;
+}
+// 反向（由最新日往回）以乘法還原連續的「含息總報酬」序列
+// 還原邏輯：adj[最後一日] = 淨值[最後一日]；往回逐日以「(次日淨值+次日配息)/當日淨值」反推，
+// 使任意兩日之間的還原值變化率 = 該期間實際含息報酬率（視為配息發生當日按淨值滾入、含再投資複利效果）
+function buildAdjustedNav(dates, navs, divOnIdx) {
+  if (!divOnIdx) return null;
+  var n = navs.length, adj = new Array(n);
+  adj[n - 1] = navs[n - 1];
+  for (var i = n - 2; i >= 0; i--) {
+    var divNext = divOnIdx[i + 1] || 0;
+    var ratio = navs[i] > 0 ? (navs[i + 1] + divNext) / navs[i] : 1;
+    adj[i] = ratio > 0 ? adj[i + 1] / ratio : adj[i + 1];
+  }
+  return adj;
+}
+// 將「索引→配息金額」對照表，依切片起點重新編號為相對索引（供切換回測區間時使用）
+function sliceDivOnIdx(divOnIdx, startIdx) {
+  var out = {};
+  if (!divOnIdx) return out;
+  Object.keys(divOnIdx).forEach(function(k) {
+    var idx = parseInt(k, 10);
+    if (idx >= startIdx) out[idx - startIdx] = divOnIdx[idx];
+  });
+  return out;
+}
+// 建立累計配息序列：divCum[i] = 截至第 i 個交易日（含）為止之累計配息金額
+function buildDivCum(divOnIdx, n) {
+  var divCum = new Array(n), running = 0;
+  for (var i = 0; i < n; i++) {
+    running += (divOnIdx[i] || 0);
+    divCum[i] = running;
+  }
+  return divCum;
+}
+// 將配息記錄彙整為「月份→金額」對照表（同月份多筆記錄加總），供「期間配息合計」與「配息調整頻率」計算使用
+function buildDivByMonth(divs) {
+  var map = {};
+  (divs || []).forEach(function(d) {
+    if (!d || !d.date || !(d.amount > 0)) return;
+    var key = String(d.date).substring(0, 7).replace('/', '-');
+    if (key.length !== 7) return;
+    map[key] = (map[key] || 0) + d.amount;
+  });
+  return map;
+}
+// 期間配息合計／配息調整次數：依目前回測區間（月份粒度）計算累計配息金額，並統計「金額較前月變動」之次數
+// 顯示格式：配息調整次數 / 期間總配息次數（例如 3 / 36）
+function computeDivStats(divByMonth, startMonth, endMonth) {
+  if (!divByMonth) return { total: 0, adjCount: null, totalCount: 0 };
+  var months = Object.keys(divByMonth).sort().filter(function(m) {
+    return (!startMonth || m >= startMonth) && (!endMonth || m <= endMonth);
+  });
+  if (!months.length) return { total: 0, adjCount: null, totalCount: 0 };
+  var total = months.reduce(function(s, m) { return s + divByMonth[m]; }, 0);
+  var adjCount = 0;
+  for (var i = 1; i < months.length; i++) {
+    if (Math.abs(divByMonth[months[i]] - divByMonth[months[i - 1]]) >= 1e-9) adjCount++;
+  }
+  return { total: total, adjCount: adjCount, totalCount: months.length };
+}
+// 依「全部／3年／4年／5年」回測區間設定，找出對應的起始索引
+function rangeStartIdx(dates, years) {
+  if (!years) return 0;
+  var lastD = new Date(dates[dates.length - 1]);
+  var cutoff = new Date(lastD);
+  cutoff.setFullYear(cutoff.getFullYear() - years);
+  for (var i = 0; i < dates.length; i++) {
+    if (new Date(dates[i]) >= cutoff) return i;
+  }
+  return 0;
+}
+// 統一解析「全部／3年／4年／5年／自訂」區間設定，回傳 {startIdx, endIdx}（皆為含端點之索引）
+function resolveRangeIndices(dates, range, customStart, customEnd) {
+  if (range === 'custom') {
+    var startIdx = 0, endIdx = dates.length - 1;
+    if (customStart) {
+      for (var i = 0; i < dates.length; i++) { if (dates[i] >= customStart) { startIdx = i; break; } }
+    }
+    if (customEnd) {
+      for (var j = dates.length - 1; j >= 0; j--) { if (dates[j] <= customEnd) { endIdx = j; break; } }
+    }
+    if (endIdx < startIdx) endIdx = startIdx;
+    return { startIdx: startIdx, endIdx: endIdx };
+  }
+  return { startIdx: rangeStartIdx(dates, range), endIdx: dates.length - 1 };
+}
+// ─────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
+// freqBadge（與 vbct/vcct 工具共用之配息頻率徽章渲染）
+// ─────────────────────────────────────────────────────────
+function freqBadge(freq) {
+  if (!freq || freq === '無') return '<span class="freq-none">無</span>';
+  return '<span class="freq-badge fb-' + freq + '">' + eh(freq) + '</span>';
+}
+// ─────────────────────────────────────────────────────────
+// rrCls（與 vbct/vcct 工具共用之風險等級顏色對應）
+// ─────────────────────────────────────────────────────────
+function rrCls(rr) {
+  return { RR1: 'rr-1', RR2: 'rr-2', RR3: 'rr-3', RR4: 'rr-4', RR5: 'rr-5' }[rr] || '';
+}
+function rrBadge(rr) {
+  if (!rr) return '<span class="freq-none">－</span>';
+  return '<span class="' + rrCls(rr) + '">' + eh(rr) + '</span>';
+}
+// ─────────────────────────────────────────────────────────
+// 年化配息率（與 VBCT／VCCT／UND 單一標的分析工具採同一算法）
+// 年化配息率 = 近 6 個月月配平均 × 12 ÷ 當日淨值
+// ─────────────────────────────────────────────────────────
+function get6MonthDivs(divs, isETF) {
+  if (!divs || divs.length === 0) return [];
+  if (isETF) return divs.slice(0, 6);
+  var seen = {}, r = [];
+  for (var i = 0; i < divs.length; i++) {
+    var key = divs[i].date.substring(0, 7);
+    if (!seen[key]) { seen[key] = true; r.push(divs[i]); }
+    if (r.length >= 6) break;
+  }
+  return r;
+}
+function calcRate(nav, r6) {
+  if (!r6 || r6.length === 0 || !(nav > 0)) return null;
+  var avg = r6.reduce(function(s, d) { return s + d.amount; }, 0) / r6.length;
+  return avg * 12 / nav * 100;
+}
+// 由 { 'YYYY-MM': amount } 月配息對照表計算年化配息率（供組合分析結果各表共用）
+function calcRateFromMonthMap(nav, divByMonth) {
+  if (!(nav > 0) || !divByMonth) return null;
+  var keys = Object.keys(divByMonth).sort();
+  if (!keys.length) return null;
+  var last6 = keys.slice(-6);
+  var avg = last6.reduce(function(s, k) { return s + (divByMonth[k] || 0); }, 0) / last6.length;
+  return avg * 12 / nav * 100;
+}
+function rateCell(rate) {
+  if (rate === null || rate === undefined || !isFinite(rate)) return '<span class="freq-none">—</span>';
+  return '<b class="pf-rate">' + rate.toFixed(2) + '%</b>';
+}
+// 含息報酬率呈現：正藍負紅，與工具其餘部分一致
+function retCell(v) {
+  if (v === null || v === undefined || !isFinite(v)) return '<span class="freq-none">—</span>';
+  return '<b class="' + (v < 0 ? 'ret-neg' : 'ret-pos') + '">' + (v > 0 ? '+' : '') + v.toFixed(2) + '</b>';
+}
+// ─────────────────────────────────────────────────────────
+// localStorage 快取（基金清單，每日台灣中午 12 點更新）
+// ─────────────────────────────────────────────────────────
+var FUND_CACHE_KEY = 'portfolio-fundlist-v5';
+function nextNoonTW() {
+  var now = new Date();
+  var candidate = new Date(now);
+  candidate.setUTCHours(4, 0, 0, 0);
+  if (candidate <= now) candidate.setUTCDate(candidate.getUTCDate() + 1);
+  return candidate.getTime();
+}
+function loadFundCache() {
+  try {
+    var raw = localStorage.getItem(FUND_CACHE_KEY);
+    if (!raw) return null;
+    var obj = JSON.parse(raw);
+    if (!obj || !obj.expiry || Date.now() > obj.expiry) return null;
+    return obj;
+  } catch(e) { return null; }
+}
+function saveFundCache(list) {
+  try {
+    localStorage.setItem(FUND_CACHE_KEY, JSON.stringify({ list: list, expiry: nextNoonTW() }));
+  } catch(e) { /* 容量不足時靜默失敗 */ }
+}
+// ─────────────────────────────────────────────────────────
+// 基金清單抓取（同時支援 VBCT／VCCT／UND 三種商品代碼）
+// ─────────────────────────────────────────────────────────
+var _assetsCache = null;
+async function fetchFundList(product) {
+  // 富邦 2026/10 改版：一次 getAssets 拿全部標的，三個險種共用同一份
+  if (!_assetsCache) _assetsCache = await fbPost('/api/asset/getAssets', {});
+  var mine = (_assetsCache || []).filter(function(a) {
+    return (a.insurances || []).some(function(x) { return x.code === product; });
+  });
+  return mine.map(toLegacy)
+    .filter(function(f) { return !isDiscretionary(f); }) // 排除 D 型全權委託（不支援逐日淨值）
+    .map(function(f) {
+      var a = f._raw || {};
+      return {
+        key: product + '-' + f.V40,
+        source: product,
+        v40: f.V40 || '',
+        v41: f.V41 || '',
+        name: (f.V3 || '').replace(/<[^>]+>/g, '').trim(),
+        code: f.V47 || '',
+        cur: f.V26 || '',
+        type: (f.V5 || '').replace(/<[^>]+>/g, '').trim(),
+        freq: f.V42 || '無',
+        rr: f.V28 || '',
+        nav: parseFloat(f.V18) || 0,
+        divDate: a.dividendDate || '',
+        ret6m: pctNum(a.sixMonthReturn),
+        ret1y: pctNum(a.oneYearReturn),
+        ret3y: pctNum(a.threeYearReturn),
+        url: getFundUrl(f)
+      };
+    });
+}
+// ─────────────────────────────────────────────────────────
+// 年化配息率：按需計算（每檔需向來源抓一次配息頁，實測約 560ms／檔，
+// 網路為絕對瓶頸）。因此只計算「目前畫面上看得到」的標的；使用者要依
+// 配息率排序全表時才補齊其餘標的。每批完成即寫入快取，中途離開頁面
+// 不會丟失已算好的進度。
+// ─────────────────────────────────────────────────────────
+var RATE_NOTE = '年化配息率＝近 6 個月月配平均 × 12 ÷ 當日淨值（僅月配標的）';
+var _rateQueue = [];
+var _rateRunning = false;
+function needsRate(f) {
+  var likely = f.freq === '月配' || daysSince(f.divDate) <= 45;
+  return likely && f.nav > 0 && f.rate === undefined && !f._q;
+}
+// 將指定標的排入計算佇列（重複排入無效果）
+function queueRates(list) {
+  var added = 0;
+  list.forEach(function(f) { if (needsRate(f)) { f._q = true; _rateQueue.push(f); added++; } });
+  if (added) runRateQueue();
+  return added;
+}
+// 依配息率排序時需要完整資料，補齊全表
+function ensureAllRates() { return queueRates(window._fundUniverse || []); }
+function updateRateNote() {
+  var el = $('pf-rate-status');
+  if (!el) return;
+  if (_rateQueue.length) {
+    el.innerHTML = ICON.loader + ' 年化配息率計算中…尚餘 ' + _rateQueue.length + ' 檔';
+  } else {
+    el.textContent = RATE_NOTE;
+  }
+}
+async function runRateQueue() {
+  if (_rateRunning) return;
+  _rateRunning = true;
+  while (_rateQueue.length) {
+    var batch = _rateQueue.splice(0, 6);
+    await Promise.all(batch.map(async function(f) {
+      try {
+        var divs = await fetchDividendHistory({ v40: f.v40, v41: f.v41, name: f.name });
+        var r6 = get6MonthDivs(divs, f.v41 === 'C');
+        var rate = calcRate(f.nav, r6);
+        f.rate = (rate !== null && isFinite(rate)) ? rate : null;
+      } catch(e) { f.rate = null; }
+    }));
+    saveFundCache(window._fundUniverse || []); // 逐批落地，避免中途離開白做工
+    updateRateNote();
+    renderSearchResults();
+    await new Promise(function(r) { setTimeout(r, 120); });
+  }
+  _rateRunning = false;
+  updateRateNote();
+}
+async function loadFundUniverse(force) {
+  var statusEl = $('pf-search-status');
+  if (statusEl) statusEl.innerHTML = ICON.loader + ' 載入基金清單中...';
+  if (!force) {
+    var cached = loadFundCache();
+    if (cached && cached.list && cached.list.length) {
+      // 清除排隊註記：上次可能在計算途中離開，這些標的需要重新排入
+      cached.list.forEach(function(f) { delete f._q; });
+      window._fundUniverse = cached.list;
+      pfUpdateTabCounts();
+      renderSearchResults();
+      if (statusEl) statusEl.innerHTML = ICON.zap + ' 已載入快取：VBCT + VCCT + UND 共 ' + cached.list.length + ' 筆標的';
+      updateRateNote();
+      return;
+    }
+  }
+  try {
+    var lists = await Promise.all([fetchFundList('VBCT'), fetchFundList('VCCT'), fetchFundList('UND')]);
+    var combined = lists[0].concat(lists[1]).concat(lists[2]);
+    window._fundUniverse = combined;
+    saveFundCache(combined);
+    pfUpdateTabCounts();
+    renderSearchResults();
+    if (statusEl) statusEl.innerHTML = ICON.zap + ' VBCT ' + lists[0].length + ' 筆／VCCT ' + lists[1].length + ' 筆／UND ' + lists[2].length + ' 筆，共 ' + combined.length + ' 筆標的';
+    updateRateNote();
+  } catch(e) {
+    if (statusEl) statusEl.innerHTML = ICON.error + ' 載入基金清單失敗：' + eh(e.message) + '<br><small style="color:#b91c1c">請確認網路連線後按「重新載入清單」再試一次。</small>';
+  }
+}
+// ─────────────────────────────────────────────────────────
+// 搜尋結果渲染
+// ─────────────────────────────────────────────────────────
+var _pfSearchDebounceTimer = null;
+function pfSearchDebounced() {
+  clearTimeout(_pfSearchDebounceTimer);
+  _pfSearchDebounceTimer = setTimeout(renderSearchResults, 200);
+}
+// 目前選取之險種分頁
+var _pfSrc = 'VBCT';
+function pfSetSrc(src) {
+  _pfSrc = src;
+  Array.prototype.forEach.call(document.querySelectorAll('.pf-tab'), function(t) {
+    t.setAttribute('aria-selected', t.getAttribute('data-src') === src ? 'true' : 'false');
+  });
+  var sc = document.querySelector('.pf-search-scroll');
+  if (sc) sc.scrollTop = 0;
+  renderSearchResults();
+}
+// 更新各分頁標籤上的筆數
+function pfUpdateTabCounts() {
+  var universe = window._fundUniverse || [];
+  ['VBCT', 'VCCT', 'UND'].forEach(function(s) {
+    var el = $('pf-tabcount-' + s);
+    if (el) el.textContent = universe.filter(function(f) { return f.source === s; }).length || '—';
+  });
+}
+// ── 快速篩選器 ──────────────────────────────────────────
+var RR_ORDER = { RR1: 1, RR2: 2, RR3: 3, RR4: 4, RR5: 5 };
+var PF_FILTER_IDS = ['pf-f-rate', 'pf-f-ret1y', 'pf-f-ret3y', 'pf-f-rr', 'pf-f-cur', 'pf-f-freq'];
+function pfGetFilters() {
+  function v(id) { var el = $(id); return el ? el.value : ''; }
+  return {
+    rate: parseFloat(v('pf-f-rate')),
+    ret1y: parseFloat(v('pf-f-ret1y')),
+    ret3y: parseFloat(v('pf-f-ret3y')),
+    rr: v('pf-f-rr'), cur: v('pf-f-cur'), freq: v('pf-f-freq')
+  };
+}
+function pfPassFilters(f, ft) {
+  if (isFinite(ft.rate)  && !(typeof f.rate  === 'number' && f.rate  >= ft.rate))  return false;
+  if (isFinite(ft.ret1y) && !(typeof f.ret1y === 'number' && f.ret1y >= ft.ret1y)) return false;
+  if (isFinite(ft.ret3y) && !(typeof f.ret3y === 'number' && f.ret3y >= ft.ret3y)) return false;
+  if (ft.rr  && !(RR_ORDER[f.rr] && RR_ORDER[f.rr] <= RR_ORDER[ft.rr])) return false;
+  if (ft.cur && f.cur !== ft.cur) return false;
+  if (ft.freq && f.freq !== ft.freq) return false;
+  return true;
+}
+function pfApplyFilters() {
+  // 以配息率設門檻時，需要全表都算過才能正確篩選
+  if (isFinite(parseFloat(($('pf-f-rate') || {}).value))) ensureAllRates();
+  renderSearchResults();
+}
+function pfResetFilters() {
+  PF_FILTER_IDS.forEach(function(id) { var el = $(id); if (el) el.value = ''; });
+  renderSearchResults();
+}
+function renderSearchResults() {
+  var universe = window._fundUniverse || [];
+  var q = (($('pf-search-q') || {}).value || '').trim().toLowerCase();
+  var src = _pfSrc;
+  var ft = pfGetFilters();
+  var filtered = universe.filter(function(f) {
+    return (!src || f.source === src)
+      && (!q || f.name.toLowerCase().includes(q) || f.code.toLowerCase().includes(q))
+      && pfPassFilters(f, ft);
+  });
+  var total = filtered.length;
+  if (_pfSortCol >= 0) {
+    filtered = filtered.slice().sort(pfSortComparator);
+  } else {
+    filtered = filtered.slice().sort(function(a, b) { return a.name.localeCompare(b.name, 'zh-TW'); });
+  }
+  filtered = filtered.slice(0, 60);
+  // 只為畫面上看得到的標的排入配息率計算，避免一次打 291 次請求
+  queueRates(filtered);
+  var inPortfolio = {};
+  _portfolio.forEach(function(p) { inPortfolio[p.key] = true; });
+  var rowsHtml = filtered.map(function(f) {
+    var added = !!inPortfolio[f.key];
+    var nameCell = f.url
+      ? '<a href="' + f.url + '" target="_blank" rel="noopener noreferrer" class="fund-link">' + eh(f.name) + '</a>'
+      : eh(f.name);
+    return '<tr class="vr">'
+      + '<td data-label="基金名稱" style="max-width:220px;word-break:break-word;line-height:1.4">' + nameCell + '</td>'
+      + '<td data-label="來源"><span class="src-badge src-' + f.source + '">' + f.source + '</span></td>'
+      + '<td data-label="代碼" style="font-family:monospace;font-size:12px;color:#6b7a8d;white-space:nowrap">' + eh(f.code) + '</td>'
+      + '<td data-label="幣別" style="font-size:12px;white-space:nowrap">' + eh(f.cur) + '</td>'
+      + '<td data-label="配息頻率" class="c">' + freqBadge(f.freq) + '</td>'
+      + '<td data-label="風險" class="c">' + rrBadge(f.rr) + '</td>'
+      + '<td data-label="當日淨值" class="r" style="font-family:monospace;font-size:12px">' + (f.nav || '—') + '</td>'
+      + '<td data-label="年化配息率" class="r">' + (f.freq !== '月配' ? '<span class="freq-none">—</span>'
+          : f.rate === undefined ? '<span class="pf-rate-loading">計算中…</span>'
+          : rateCell(f.rate)) + '</td>'
+      + '<td data-label="六個月報酬" class="r">' + retCell(f.ret6m) + '</td>'
+      + '<td data-label="一年報酬" class="r">' + retCell(f.ret1y) + '</td>'
+      + '<td data-label="三年報酬" class="r">' + retCell(f.ret3y) + '</td>'
+      + '<td data-label="操作" class="c">' + (added
+          ? '<span style="color:#16a34a;font-size:11.5px;font-weight:700">已加入</span>'
+          : '<button class="pf-add-btn" onclick="addFundToPortfolio(\'' + ea(f.key) + '\')">' + ICON.zap + ' 加入</button>')
+      + '</td>'
+      + '</tr>';
+  }).join('');
+  var noteEl = $('pf-results-note');
+  if (noteEl) noteEl.textContent = total > 60 ? ('符合 ' + total + ' 筆，顯示前 60 筆（請輸入關鍵字縮小範圍）') : ('符合 ' + total + ' 筆');
+  var tbody = $('pf-results-tbody');
+  // 保留捲動位置，避免背景補齊配息率時畫面跳動
+  var scrollBox = document.querySelector('.pf-search-scroll');
+  var keepTop = scrollBox ? scrollBox.scrollTop : 0;
+  if (tbody) tbody.innerHTML = rowsHtml || '<tr><td colspan="12" class="pf-empty">查無符合條件的基金</td></tr>';
+  if (scrollBox) scrollBox.scrollTop = keepTop;
+  // 標記排序中欄位之箭頭樣式（限搜尋結果表格）
+  var headRow = tbody && tbody.parentElement && tbody.parentElement.querySelector('thead tr');
+  if (headRow) {
+    Array.prototype.forEach.call(headRow.children, function(th, i) {
+      th.classList.remove('sort-asc', 'sort-desc');
+      if (i === _pfSortCol) th.classList.add(_pfSortDir > 0 ? 'sort-asc' : 'sort-desc');
+    });
+  }
+}
+// ─────────────────────────────────────────────────────────
+// 搜尋結果表格排序（點欄位標題排序，0~6；7=操作欄不支援排序）
+// ─────────────────────────────────────────────────────────
+var _pfSortCol = -1, _pfSortDir = 1;
+var PF_SORT_FIELDS = ['name', 'source', 'code', 'cur', 'freq', 'rr', 'nav', 'rate', 'ret6m', 'ret1y', 'ret3y'];
+function pfSortComparator(a, b) {
+  var field = PF_SORT_FIELDS[_pfSortCol];
+  var av = a[field], bv = b[field];
+  // 數值欄位：無資料一律排在後面，避免空值佔據排序前段
+  if (field === 'rate' || field === 'ret6m' || field === 'ret1y' || field === 'ret3y') {
+    var an = (typeof av === 'number' && isFinite(av)) ? av : null;
+    var bn = (typeof bv === 'number' && isFinite(bv)) ? bv : null;
+    if (an === null && bn === null) return 0;
+    if (an === null) return 1;
+    if (bn === null) return -1;
+    return (an - bn) * _pfSortDir;
+  }
+  if (typeof av === 'number' || typeof bv === 'number') {
+    return ((av || 0) - (bv || 0)) * _pfSortDir;
+  }
+  av = String(av || ''); bv = String(bv || '');
+  return av.localeCompare(bv, 'zh-TW') * _pfSortDir;
+}
+function pfSortBy(col) {
+  _pfSortDir = (_pfSortCol === col) ? -_pfSortDir : 1;
+  _pfSortCol = col;
+  // 依配息率排序需要全表資料才有意義，此時才補齊其餘標的
+  if (col === 7) ensureAllRates();
+  renderSearchResults();
+}
+// ─────────────────────────────────────────────────────────
+// 組合建立器：加入／移除／權重管理
+// ─────────────────────────────────────────────────────────
+var _portfolio = [];
+var _weightsDirty = false;
+function addFundToPortfolio(key) {
+  if (_portfolio.some(function(p) { return p.key === key; })) return;
+  var f = (window._fundUniverse || []).find(function(x) { return x.key === key; });
+  if (!f) return;
+  _portfolio.push({ key: f.key, source: f.source, v40: f.v40, v41: f.v41, name: f.name, code: f.code, cur: f.cur, nav: f.nav, freq: f.freq, rr: f.rr || '', weight: 0 });
+  if (!_weightsDirty) equalizeWeights(); else renderPortfolioList();
+  renderSearchResults();
+}
+function removeFundFromPortfolio(key) {
+  _portfolio = _portfolio.filter(function(p) { return p.key !== key; });
+  if (!_weightsDirty) equalizeWeights(); else renderPortfolioList();
+  renderSearchResults();
+  if (!_portfolio.length) hidePfAnalysis();
+}
+function updateWeight(key, val) {
+  var n = parseFloat(val);
+  var p = _portfolio.find(function(x) { return x.key === key; });
+  if (!p) return;
+  p.weight = isNaN(n) ? 0 : n;
+  _weightsDirty = true;
+  renderWeightSum();
+}
+function stepWeight(key, delta) {
+  var p = _portfolio.find(function(x) { return x.key === key; });
+  if (!p) return;
+  p.weight = Math.max(0, Math.min(100, +((p.weight || 0) + delta).toFixed(2)));
+  _weightsDirty = true;
+  renderPortfolioList();
+}
+function equalizeWeights() {
+  _weightsDirty = false;
+  var n = _portfolio.length;
+  if (n > 0) {
+    var share = +(100 / n).toFixed(2);
+    _portfolio.forEach(function(p) { p.weight = share; });
+  }
+  renderPortfolioList();
+}
+function clearPortfolio() {
+  _portfolio = [];
+  _weightsDirty = false;
+  renderPortfolioList();
+  renderSearchResults();
+  hidePfAnalysis();
+}
+function renderPortfolioList() {
+  var wrap = $('pf-fund-list');
+  if (!wrap) return;
+  if (!_portfolio.length) {
+    wrap.innerHTML = '<div class="pf-empty">尚未加入任何基金，請從上方搜尋並加入（可同時混合 VBCT／VCCT／UND 標的）</div>';
+  } else {
+    wrap.innerHTML = _portfolio.map(function(p) {
+      var rrHtml = p.rr ? ' <b class="' + rrCls(p.rr) + '">' + eh(p.rr) + '</b>' : '';
+      return '<div class="pf-fund-row">'
+        + '<div class="pf-fund-row-main">'
+        + '<div class="pf-fund-row-name"><span class="src-badge src-' + p.source + '">' + p.source + '</span> ' + eh(p.name) + ' ' + freqBadge(p.freq) + rrHtml + '</div>'
+        + '<div class="pf-fund-row-meta">' + eh(p.code) + ' · ' + eh(p.cur) + '</div>'
+        + '</div>'
+        + '<div class="pf-weight-wrap">'
+        + '<button class="pf-step-btn" onclick="stepWeight(\'' + ea(p.key) + '\',-5)" title="-5%">−</button>'
+        + '<input type="number" class="pf-weight-input" min="0" max="100" step="5" value="' + p.weight + '" oninput="updateWeight(\'' + ea(p.key) + '\', this.value)">'
+        + '<span style="font-size:13px;color:var(--muted)">%</span>'
+        + '<button class="pf-step-btn" onclick="stepWeight(\'' + ea(p.key) + '\',5)" title="+5%">+</button>'
+        + '</div>'
+        + '<button class="pf-remove-btn" onclick="removeFundFromPortfolio(\'' + ea(p.key) + '\')">移除</button>'
+        + '</div>';
+    }).join('');
+  }
+  renderWeightSum();
+}
+function renderWeightSum() {
+  var el = $('pf-weight-sum');
+  var btn = $('pf-build-btn');
+  if (!el) return;
+  if (!_portfolio.length) {
+    el.innerHTML = '';
+    if (btn) btn.disabled = true;
+    return;
+  }
+  if (btn) btn.disabled = false;
+  var sum = _portfolio.reduce(function(s, p) { return s + (p.weight || 0); }, 0);
+  var ok = Math.abs(sum - 100) < 0.5;
+  el.className = 'pf-weight-sum ' + (ok ? 'ok' : 'warn');
+  el.innerHTML = (ok ? ICON.zap : ICON.warnSm) + ' 權重合計 ' + sum.toFixed(1) + '%' + (ok ? '' : '（分析時將自動依比例正規化為 100%）');
+}
+function hidePfAnalysis() {
+  _pfState = null;
+  var w = $('pf-analysis-wrap');
+  if (w) w.style.display = 'none';
+}
+// ─────────────────────────────────────────────────────────
+// 核心：組合計算（本金指數化加權合成 ＋ 配息加權合成）
+// ─────────────────────────────────────────────────────────
+var _pfState = null;
+async function buildPortfolio() {
+  if (!_portfolio.length) return;
+  var btn = $('pf-build-btn');
+  var statusEl = $('pf-analysis-status');
+  if (btn) { btn.disabled = true; btn.innerHTML = ICON.loader + ' 計算中...'; }
+  if (statusEl) statusEl.innerHTML = '';
+  try {
+    var fundResults = await Promise.all(_portfolio.map(async function(p) {
+      var hasDiv = p.freq && p.freq !== '無';
+      var navRes = await fetchDailyNav(p);
+      var divs = hasDiv ? await fetchDividendHistory(p) : [];
+      return { p: p, dates: navRes.dates, navs: navRes.navs, divs: divs };
+    }));
+    var included = fundResults.filter(function(r) { return r.navs && r.navs.length >= 10; });
+    if (!included.length) throw new Error('所選基金皆無足夠的逐日淨值資料，無法組合分析');
+    // 重疊區間：commonStart = 各基金起始日中最晚者；commonEnd = 各基金結束日中最早者
+    var commonStart = included.reduce(function(m, r) { return r.dates[0] > m ? r.dates[0] : m; }, included[0].dates[0]);
+    var commonEnd = included.reduce(function(m, r) { return r.dates[r.dates.length - 1] < m ? r.dates[r.dates.length - 1] : m; }, included[0].dates[included[0].dates.length - 1]);
+    if (commonStart > commonEnd) throw new Error('所選基金沒有重疊的資料區間，無法組合分析');
+    // 統一日期軸：重疊區間內，所有基金交易日之聯集（不同交易日曆以前值延展對齊）
+    var dateSet = {};
+    included.forEach(function(r) {
+      r.dates.forEach(function(d) { if (d >= commonStart && d <= commonEnd) dateSet[d] = true; });
+    });
+    var axis = Object.keys(dateSet).sort();
+    if (axis.length < 2) throw new Error('重疊資料區間過短，無法組合分析');
+    var dateToAxisIdx = {};
+    axis.forEach(function(d, i) { dateToAxisIdx[d] = i; });
+    var totalWeight = included.reduce(function(s, r) { return s + (r.p.weight || 0); }, 0) || included.length;
+    var hasAnyDiv = false;
+    var hasAnyDivMonth = false;
+    var fundsForRebase = [];
+    var meta = [];
+    included.forEach(function(r) {
+      var wNorm = (r.p.weight || 0) / totalWeight;
+      // 前值延展（forward-fill）原始淨值至統一日期軸
+      var filledRaw = new Array(axis.length);
+      var fi = 0, lastVal = r.navs[0];
+      for (var i = 0; i < axis.length; i++) {
+        var ad = axis[i];
+        while (fi < r.dates.length && r.dates[fi] <= ad) { lastVal = r.navs[fi]; fi++; }
+        filledRaw[i] = lastVal;
+      }
+      // rawAtStart／indexSeries 僅供下方「各基金個別表現」固定以完整重疊區間起始日為基準使用；
+      // 組合本身（本金走勢／配息點數）改採「上方所選期間起始日」動態重新基準化，詳見 pfRecomputePeriod()
+      var rawAtStart = filledRaw[0] || r.navs[0];
+      var indexSeries = filledRaw.map(function(v) { return rawAtStart > 0 ? v / rawAtStart * 100 : 0; });
+      // 該基金自身配息還原（含息）序列
+      var divOnIdxOwn = mapDivToIndex(r.dates, r.divs);
+      var adjNavsOwn = buildAdjustedNav(r.dates, r.navs, divOnIdxOwn);
+      var divByMonthOwn = buildDivByMonth(r.divs);
+      var hasOwnDiv = !!(divOnIdxOwn && adjNavsOwn);
+      var filledAdj = null;
+      if (hasOwnDiv) {
+        hasAnyDiv = true;
+        filledAdj = new Array(axis.length);
+        var fi2 = 0, lastAdj = adjNavsOwn[0];
+        for (var i2 = 0; i2 < axis.length; i2++) {
+          var ad2 = axis[i2];
+          while (fi2 < r.dates.length && r.dates[fi2] <= ad2) { lastAdj = adjNavsOwn[fi2]; fi2++; }
+          filledAdj[i2] = lastAdj;
+        }
+      }
+      // 將該基金自身配息（依其原生交易日曆判定之月末索引）對應到統一日期軸索引，金額維持原幣、未套用權重，
+      // 留待 pfRecomputePeriod() 依「當前所選期間之起始日淨值」動態換算
+      var divOnIdxAxis = null;
+      if (divOnIdxOwn) {
+        divOnIdxAxis = {};
+        Object.keys(divOnIdxOwn).forEach(function(ownIdxStr) {
+          var ownIdx = parseInt(ownIdxStr, 10);
+          var d = r.dates[ownIdx];
+          if (d === undefined) return;
+          var axisIdx = dateToAxisIdx[d];
+          if (axisIdx === undefined) return;
+          divOnIdxAxis[axisIdx] = (divOnIdxAxis[axisIdx] || 0) + divOnIdxOwn[ownIdx];
+        });
+      }
+      var divMonthKeys = Object.keys(divByMonthOwn);
+      if (divMonthKeys.length) hasAnyDivMonth = true;
+      fundsForRebase.push({ wNorm: wNorm, filledRaw: filledRaw, filledAdj: filledAdj, divByMonthOwn: divByMonthOwn, divOnIdxAxis: divOnIdxAxis });
+      // 個別基金績效（依完整重疊區間計算，僅本金/淨值，不含配息，不隨上方期間分頁切換）
+      var ownStats = computeStats(axis, indexSeries);
+      var sMonth = axis[0].substring(0, 7), eMonth = axis[axis.length - 1].substring(0, 7);
+      var ownDivTotal = 0;
+      divMonthKeys.forEach(function(mk) { if (mk >= sMonth && mk <= eMonth) ownDivTotal += divByMonthOwn[mk]; });
+      meta.push({ name: r.p.name, source: r.p.source, code: r.p.code, weight: r.p.weight || 0, wNorm: wNorm * 100, stats: ownStats, hasDiv: divMonthKeys.length > 0, divTotal: ownDivTotal, nav: r.p.nav, cur: r.p.cur, freq: r.p.freq });
+    });
+    _pfState = {
+      dates: axis,
+      funds: fundsForRebase,
+      hasAnyDiv: hasAnyDiv,
+      hasAnyDivMonth: hasAnyDivMonth,
+      mode: 'raw', range: 3, customStart: null, customEnd: null,
+      meta: meta,
+      excludedCount: _portfolio.length - included.length
+    };
+    renderPfAnalysis();
+  } catch(e) {
+    if (statusEl) statusEl.innerHTML = '<div class="vbct-error" style="display:block">' + ICON.error + ' <strong>計算失敗：</strong>' + eh(e.message) + '</div>';
+  } finally {
+    if (btn) { btn.disabled = !_portfolio.length; btn.innerHTML = ICON.trendUp + ' 建立組合分析'; }
+  }
+}
+// ─────────────────────────────────────────────────────────
+// 組合分析結果渲染（與單一標的分析共用同一套統計／圖表引擎）
+// ─────────────────────────────────────────────────────────
+function renderPfAnalysis() {
+  var s = _pfState;
+  if (!s) return;
+  var divNote = s.hasAnyDiv
+    ? '<div class="bt-div-note">' + ICON.coin + ' 已將各基金歷史配息依權重併入「還原(含息)」組合序列（假設配息發生於當月最後一個交易日，並按當時淨值滾入計算，含再投資複利效果）。下方走勢圖已同時疊加顯示「淨值（未還原）」與「還原(含息)」兩條線，按下方按鈕可切換粗實線（主線）並同步更新下方統計數據。下方「賺錢機率」則改用較單純之「淨值變化＋配息金額」方式計算。</div>'
+    : '';
+  var modeToggle = s.hasAnyDiv
+    ? '<div class="bt-mode-toggle" id="pf-mode-toggle">'
+      + '<button class="bt-mode-btn active" data-mode="raw" onclick="setPfMode(\'raw\')">' + ICON.chart + ' 淨值（未還原）</button>'
+      + '<button class="bt-mode-btn" data-mode="adj" onclick="setPfMode(\'adj\')">' + ICON.coin + ' 還原(含息)</button>'
+      + '<span class="bt-asof-note" id="pf-asof-note"></span>'
+      + '</div>'
+    : '';
+  var exportRow = '<div class="bt-export-row"><button class="bt-export-btn" id="pf-export-btn" onclick="exportPfChartImage()">' + ICON.download + ' 匯出走勢圖（PNG）</button></div>';
+  var rangeToggle = '<div class="bt-range-toggle" id="pf-range-toggle">'
+    + '<button class="bt-range-btn" data-range="" onclick="setPfRange(null)">全部</button>'
+    + '<button class="bt-range-btn" data-range="1" onclick="setPfRange(1)">1年</button>'
+    + '<button class="bt-range-btn active" data-range="3" onclick="setPfRange(3)">3年</button>'
+    + '<button class="bt-range-btn" data-range="4" onclick="setPfRange(4)">4年</button>'
+    + '<button class="bt-range-btn" data-range="5" onclick="setPfRange(5)">5年</button>'
+    + '<button class="bt-range-btn" data-range="custom" onclick="setPfRange(\'custom\')">自訂</button>'
+    + '</div>';
+  var dMin = s.dates[0], dMax = s.dates[s.dates.length - 1];
+  var customRangeHtml = '<div class="bt-custom-range" id="pf-custom-range" style="display:none">'
+    + '<input type="date" id="pf-custom-start" min="' + dMin + '" max="' + dMax + '" value="' + dMin + '" onchange="applyPfCustomRange()">'
+    + '<span>～</span>'
+    + '<input type="date" id="pf-custom-end" min="' + dMin + '" max="' + dMax + '" value="' + dMax + '" onchange="applyPfCustomRange()">'
+    + '</div>';
+  var excludedNote = s.excludedCount > 0
+    ? '<div class="pf-breakdown-note">' + ICON.warnSm + ' 有 ' + s.excludedCount + ' 個基金因逐日淨值資料不足已自動排除於本次組合分析</div>'
+    : '';
+  var investHtml = s.hasAnyDivMonth
+    ? '<div class="bt-section-title">' + ICON.coin + ' 投入金額試算（已領金額，與上方期間分頁同步）</div>'
+      + '<div class="pf-invest-row"><label for="pf-invest-amt">投入金額</label>'
+      + '<input type="number" id="pf-invest-amt" class="pf-weight-input" min="1" step="1" value="100" oninput="pfRenderInvestEstimate();pfRenderTodayDiv()">'
+      + '<span>萬元（新台幣，假設於上方所選期間之起始日整筆投入）</span></div>'
+      + '<div id="pf-invest-result"></div>'
+    : '';
+  $('pf-analysis-body').innerHTML = excludedNote + divNote + modeToggle + rangeToggle + customRangeHtml + exportRow
+    + '<div id="pf-main"></div><div id="pf-winrate"></div>' + investHtml + '<div id="pf-today-div"></div>';
+  $('pf-analysis-wrap').style.display = 'block';
+  pfRenderMain();
+  pfRenderWinRate();
+  pfRenderInvestEstimate();
+  pfRenderTodayDiv();
+  $('pf-analysis-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+// ─────────────────────────────────────────────────────────
+// 核心：依「上方所選期間」之起始日，將各基金重新基準化（該日淨值＝100）後
+// 依目前權重加權合成組合本金指數與配息點數（含「還原(含息)」序列）。
+// 與固定以「整個重疊區間起始日」為基準的舊版做法不同：切換 1年／3年／自訂…
+// 等期間分頁時，等同模擬「在該期間起始日當下，依目前設定權重重新一次性建立此組合」，
+// 避免長期累積的個股漲跌幅差異扭曲短期區間的本金走勢與配息點數換算。
+// ─────────────────────────────────────────────────────────
+function pfRecomputePeriod(s, startIdx, endIdx) {
+  var n = endIdx - startIdx + 1;
+  var raw = new Array(n).fill(0);
+  var adj = new Array(n).fill(0);
+  var hasAdj = false;
+  var divByMonth = {};
+  var divOnIdx = {};
+  (s.funds || []).forEach(function(f) {
+    var base = f.filledRaw[startIdx];
+    if (!(base > 0)) return;
+    for (var k = 0; k < n; k++) raw[k] += f.wNorm * (f.filledRaw[startIdx + k] / base * 100);
+    var adjBase = f.filledAdj ? f.filledAdj[startIdx] : base;
+    var useAdj = f.filledAdj && adjBase > 0;
+    if (useAdj) hasAdj = true;
+    for (var k2 = 0; k2 < n; k2++) {
+      var av = useAdj ? (f.filledAdj[startIdx + k2] / adjBase * 100) : (f.filledRaw[startIdx + k2] / base * 100);
+      adj[k2] += f.wNorm * av;
+    }
+    Object.keys(f.divByMonthOwn).forEach(function(mk) {
+      divByMonth[mk] = (divByMonth[mk] || 0) + f.wNorm * (f.divByMonthOwn[mk] / base * 100);
+    });
+    if (f.divOnIdxAxis) {
+      Object.keys(f.divOnIdxAxis).forEach(function(idxStr) {
+        var ai = parseInt(idxStr, 10);
+        if (ai < startIdx || ai > endIdx) return;
+        divOnIdx[ai] = (divOnIdx[ai] || 0) + f.wNorm * (f.divOnIdxAxis[idxStr] / base * 100);
+      });
+    }
+  });
+  return {
+    raw: raw,
+    adj: hasAdj ? adj : null,
+    divByMonth: Object.keys(divByMonth).length ? divByMonth : null,
+    divOnIdx: Object.keys(divOnIdx).length ? divOnIdx : null
+  };
+}
+function pfRenderMain() {
+  var s = _pfState;
+  if (!s) return;
+  var idxR = resolveRangeIndices(s.dates, s.range, s.customStart, s.customEnd);
+  var period = pfRecomputePeriod(s, idxR.startIdx, idxR.endIdx);
+  var dates = s.dates.slice(idxR.startIdx, idxR.endIdx + 1);
+  var hasBoth = !!period.adj;
+  var navs = s.mode === 'adj' && hasBoth ? period.adj : period.raw;
+  var stats = computeStats(dates, navs);
+  var el = $('pf-main');
+  if (!el) return;
+  if (!stats) { el.innerHTML = '<div class="bt-loading">' + ICON.warn + ' 資料不足無法計算</div>'; return; }
+  var secondaryNavs = hasBoth ? (s.mode === 'adj' ? period.raw : period.adj) : null;
+  var primaryLabel = (hasBoth && s.mode === 'adj') ? '還原(含息)' : '淨值（未還原）';
+  var secondaryLabel = (hasBoth && s.mode === 'adj') ? '淨值（未還原）' : '還原(含息)';
+  var chartHtml = buildNavChartSvg(dates, navs, secondaryNavs, primaryLabel, secondaryLabel);
+  var hasDivData = !!period.divByMonth;
+  var divStats = hasDivData ? computeDivStats(period.divByMonth, dates[0].substring(0, 7), dates[dates.length - 1].substring(0, 7)) : { total: 0, adjCount: null, totalCount: 0 };
+  var divTotalStr = hasDivData ? divStats.total.toFixed(4) : '無';
+  var divFreqStr = hasDivData ? (divStats.totalCount > 0 ? (divStats.adjCount + ' / ' + divStats.totalCount) : '—') : '無';
+  var statsHtml = '<div class="bt-stats-grid">'
+    + btStat('期間報酬', pctStr(stats.totalRet), stats.totalRet < 0)
+    + btStat('年化報酬', pctStr(stats.cagr), stats.cagr < 0)
+    + btStat('年化波動度', stats.annVol.toFixed(2) + '%')
+    + btStat('夏普比率', stats.sharpe === null ? '—' : stats.sharpe.toFixed(2))
+    + btStat('最大回撤', pctStr(stats.mdd), true, stats.mddStartDate + ' ～ ' + stats.mddEndDate)
+    + btStat('期間最高', stats.high.toFixed(4))
+    + btStat('期間最低', stats.low.toFixed(4))
+    + btStat('目前指數', stats.cur.toFixed(4))
+    + btStat('期間配息合計（指數點）', divTotalStr)
+    + btStat('配息調整次數', divFreqStr)
+    + '</div>';
+  el.innerHTML = '<div class="bt-meta">資料區間：' + stats.startDate + ' ～ ' + stats.endDate + '　（' + stats.n + ' 個交易日；組合以上方所選期間起始日 = 100 重新依目前權重基準化呈現，本金與配息分開計算）</div>' + chartHtml + statsHtml;
+  var asofEl = $('pf-asof-note');
+  if (asofEl) asofEl.textContent = '（資料至 ' + stats.endDate + '）';
+}
+function renderPfWinRateHtml(s, idxR, period) {
+  var startIdx = idxR.startIdx;
+  var rawNavs = period.raw;
+  var winDates = s.dates.slice(idxR.startIdx, idxR.endIdx + 1);
+  if (period.divOnIdx) {
+    var slicedDiv = sliceDivOnIdx(period.divOnIdx, startIdx);
+    var divCum = buildDivCum(slicedDiv, rawNavs.length);
+    var winList = computeWinRatesDual(winDates, rawNavs, divCum);
+    if (winList.length) {
+      return '<div class="bt-section-title">' + ICON.coin + ' 賺錢機率（持有期間滾動勝率：紅＝淨值，藍＝加上配息後）</div>'
+        + '<div class="wr-legend"><span><i style="background:#dc2626"></i>淨值（未還原）</span><span><i style="background:#2657a0"></i>加上配息後</span></div>'
+        + winList.map(function(w) {
+            var addSeg = Math.max(0, w.addRate - w.rawRate);
+            var rawZero = w.rawRate <= 0.05;
+            var rawFullCls = addSeg <= 0.05 ? ' wr-seg-full' : '';
+            var addFullCls = (rawZero && addSeg > 0.05) ? ' wr-seg-full' : '';
+            return '<div class="wr-row-dual">'
+              + '<div class="wr-label">' + w.label + '</div>'
+              + '<div class="wr-track-dual"><div class="wr-seg-raw' + rawFullCls + '" style="width:' + w.rawRate.toFixed(1) + '%"></div><div class="wr-seg-add' + addFullCls + '" style="left:' + w.rawRate.toFixed(1) + '%;width:' + addSeg.toFixed(1) + '%"></div></div>'
+              + '<div class="wr-pct-dual">' + w.rawRate.toFixed(1) + '% → ' + w.addRate.toFixed(1) + '%</div>'
+              + '</div>';
+          }).join('')
+        + '<div class="bt-wr-note">統計樣本不足（少於 10 個滾動視窗）之持有期間已自動隱藏。「加上配息後」採「期末淨值－期初淨值＋期間內配息金額」計算，不含配息再投資之複利效果，與上方還原(含息)圖表之計算方式不同，僅供參考。</div>';
+    }
+    return '<div class="bt-section-title">' + ICON.coin + ' 賺錢機率</div><div class="bt-loading" style="padding:14px 0">資料區間過短，尚無法計算任何持有期間之勝率</div>';
+  }
+  var rawWin = computeWinRates(winDates, rawNavs);
+  if (rawWin.length) {
+    return '<div class="bt-section-title">' + ICON.coin + ' 賺錢機率（持有期間滾動勝率）</div><div class="wr-bars">'
+      + rawWin.map(function(w) {
+          var barColor = w.winRate >= 70 ? '#16a34a' : w.winRate >= 50 ? '#3b82c4' : '#dc2626';
+          return '<div class="wr-row">'
+            + '<div class="wr-label">' + w.label + '</div>'
+            + '<div class="wr-track"><div class="wr-fill" style="width:' + w.winRate.toFixed(1) + '%;background:' + barColor + '"></div></div>'
+            + '<div class="wr-pct">' + w.winRate.toFixed(1) + '%</div>'
+            + '</div>';
+        }).join('')
+      + '</div><div class="bt-wr-note">統計樣本不足（少於 10 個滾動視窗）之持有期間已自動隱藏</div>';
+  }
+  return '<div class="bt-section-title">' + ICON.coin + ' 賺錢機率</div><div class="bt-loading" style="padding:14px 0">資料區間過短，尚無法計算任何持有期間之勝率</div>';
+}
+function pfRenderWinRate() {
+  var s = _pfState;
+  var el = $('pf-winrate');
+  if (!s || !el) return;
+  var idxR = resolveRangeIndices(s.dates, s.range, s.customStart, s.customEnd);
+  var period = pfRecomputePeriod(s, idxR.startIdx, idxR.endIdx);
+  el.innerHTML = renderPfWinRateHtml(s, idxR, period);
+}
+function setPfMode(mode) {
+  if (!_pfState || _pfState.mode === mode) return;
+  _pfState.mode = mode;
+  var toggle = $('pf-mode-toggle');
+  if (toggle) {
+    Array.prototype.forEach.call(toggle.querySelectorAll('.bt-mode-btn'), function(btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-mode') === mode);
+    });
+  }
+  pfRenderMain();
+}
+function setPfRange(val) {
+  if (!_pfState) return;
+  val = val || null;
+  if (_pfState.range === val) return;
+  _pfState.range = val;
+  var toggle = $('pf-range-toggle');
+  if (toggle) {
+    Array.prototype.forEach.call(toggle.querySelectorAll('.bt-range-btn'), function(btn) {
+      var v = btn.getAttribute('data-range');
+      var match = v === '' ? !val : v === String(val);
+      btn.classList.toggle('active', match);
+    });
+  }
+  var customEl = $('pf-custom-range');
+  if (customEl) customEl.style.display = (val === 'custom') ? 'flex' : 'none';
+  pfRenderMain();
+  pfRenderWinRate();
+  pfRenderInvestEstimate();
+}
+function applyPfCustomRange() {
+  if (!_pfState) return;
+  var startEl = $('pf-custom-start'), endEl = $('pf-custom-end');
+  var startV = startEl && startEl.value ? startEl.value : null;
+  var endV = endEl && endEl.value ? endEl.value : null;
+  if (startV && endV && startV > endV) { var tmp = startV; startV = endV; endV = tmp; }
+  _pfState.customStart = startV;
+  _pfState.customEnd = endV;
+  pfRenderMain();
+  pfRenderWinRate();
+  pfRenderInvestEstimate();
+}
+// ─────────────────────────────────────────────────────────
+// 各基金投入金額試算明細：將上方投入金額依目前權重分配至各基金，換算各基金
+// 「買入時／期末」原幣淨值與對應金額、期間報酬、期間總領金額、最新月領金額，
+// 並於表格最後一列加總組合整體金額。沿用上方相同之不考慮匯率波動假設（換算匯率＝1）。
+// ─────────────────────────────────────────────────────────
+function buildPfInvestRows(s, idxR, amt, startMonth, endMonth) {
+  var rows = [];
+  (s.funds || []).forEach(function(f, i) {
+    var m = s.meta && s.meta[i];
+    if (!m) return;
+    var startNav = f.filledRaw[idxR.startIdx];
+    var endNav = f.filledRaw[idxR.endIdx];
+    if (!(startNav > 0)) return;
+    var allocAmt = amt * f.wNorm; // 依目前權重分配之投入金額（萬元）
+    var endAmt = allocAmt * (endNav / startNav); // 期末市值（萬元，未考慮匯率，配息未再投資）
+    var periodRetPct = (endNav / startNav - 1) * 100; // 期間報酬（淨值），與買入時/期末淨值同一期間
+    var divByMonth = f.divByMonthOwn || {};
+    var allMonthKeys = Object.keys(divByMonth).sort();
+    var periodKeys = allMonthKeys.filter(function(mk) { return mk >= startMonth && mk <= endMonth; });
+    var divSum = periodKeys.reduce(function(acc, mk) { return acc + divByMonth[mk]; }, 0);
+    var divAmt = allocAmt * (divSum / startNav);
+    // 最新月領金額：採各基金資料中「最新一個有配息紀錄之月份」，不受上方期間分頁篩選
+    var lastMonthKey = allMonthKeys.length ? allMonthKeys[allMonthKeys.length - 1] : null;
+    var lastMonthDivAmt = lastMonthKey ? allocAmt * (divByMonth[lastMonthKey] / startNav) : 0;
+    // 年化配息率：近 6 個月月配平均 × 12 ÷ 期末淨值（與單一標的分析工具同算法）
+    var annualRate = calcRateFromMonthMap(endNav, divByMonth);
+    rows.push({
+      name: m.name, source: m.source, wNormPct: m.wNorm, wNorm: (m.wNorm || 0) / 100,
+      startNav: startNav, endNav: endNav, allocAmt: allocAmt, endAmt: endAmt, periodRetPct: periodRetPct,
+      divAmt: divAmt, hasDivInPeriod: periodKeys.length > 0, annualRate: annualRate,
+      lastMonthKey: lastMonthKey, lastMonthDivAmt: lastMonthDivAmt
+    });
+  });
+  return rows;
+}
+function renderPfInvestRows(rows) {
+  if (!rows.length) return '';
+  var trs = rows.map(function(r) {
+    var retCls = r.periodRetPct < 0 ? 'ret-neg' : 'ret-pos';
+    return '<tr class="vr">'
+      + '<td data-label="基金名稱" style="max-width:200px;word-break:break-word;line-height:1.4"><span class="src-badge src-' + r.source + '">' + r.source + '</span> ' + eh(r.name) + '</td>'
+      + '<td data-label="權重" class="r">' + r.wNormPct.toFixed(1) + '%</td>'
+      + '<td data-label="分配投入金額" class="r">' + r.allocAmt.toFixed(2) + ' 萬元</td>'
+      + '<td data-label="買入時淨值" class="r">' + r.startNav.toFixed(4) + '</td>'
+      + '<td data-label="期末淨值" class="r">' + r.endNav.toFixed(4) + '</td>'
+      + '<td data-label="期間報酬（淨值）" class="r"><b class="' + retCls + '">' + pctStr(r.periodRetPct) + '</b></td>'
+      + '<td data-label="期末市值" class="r">' + r.endAmt.toFixed(2) + ' 萬元</td>'
+      + '<td data-label="期間總領金額" class="r">' + (r.hasDivInPeriod ? r.divAmt.toFixed(2) + ' 萬元' : '無') + '</td>'
+      + '<td data-label="最新月領金額" class="r">' + (r.lastMonthKey ? eh(r.lastMonthKey) + '：' + r.lastMonthDivAmt.toFixed(2) + ' 萬元' : '無') + '</td>'
+      + '<td data-label="年化配息率" class="r">' + rateCell(r.annualRate) + '</td>'
+      + '</tr>';
+  }).join('');
+  var sumAlloc = rows.reduce(function(a, r) { return a + r.allocAmt; }, 0);
+  var sumEndAmt = rows.reduce(function(a, r) { return a + r.endAmt; }, 0);
+  var sumDivAmt = rows.reduce(function(a, r) { return a + (r.hasDivInPeriod ? r.divAmt : 0); }, 0);
+  var sumLastMonthDivAmt = rows.reduce(function(a, r) { return a + (r.lastMonthKey ? r.lastMonthDivAmt : 0); }, 0);
+  var sumWeightedRate = rows.reduce(function(a, r) {
+    return a + ((r.annualRate !== null && isFinite(r.annualRate)) ? r.annualRate * (r.wNorm || 0) : 0);
+  }, 0);
+  var totalRetPct = sumAlloc > 0 ? (sumEndAmt / sumAlloc - 1) * 100 : 0;
+  var totalRetCls = totalRetPct < 0 ? 'ret-neg' : 'ret-pos';
+  var totalRow = '<tr>'
+    + '<td><b>組合加總</b></td>'
+    + '<td class="r"><b>100.0%</b></td>'
+    + '<td class="r"><b>' + sumAlloc.toFixed(2) + ' 萬元</b></td>'
+    + '<td class="r">－</td>'
+    + '<td class="r">－</td>'
+    + '<td class="r"><b class="' + totalRetCls + '">' + pctStr(totalRetPct) + '</b></td>'
+    + '<td class="r"><b>' + sumEndAmt.toFixed(2) + ' 萬元</b></td>'
+    + '<td class="r"><b>' + sumDivAmt.toFixed(2) + ' 萬元</b></td>'
+    + '<td class="r"><b>' + sumLastMonthDivAmt.toFixed(2) + ' 萬元</b></td>'
+    + '<td class="r">' + rateCell(sumWeightedRate) + '</td>'
+    + '</tr>';
+  return '<div class="bt-section-title">' + ICON.list + ' 各基金投入金額試算明細（依目前權重分配上方投入金額）</div>'
+    + '<div class="vbct-table-scroll"><table class="vbct-tbl"><thead><tr><th>基金</th><th class="r">權重</th><th class="r">分配投入金額</th><th class="r">買入時淨值（原幣）</th><th class="r">期末淨值（原幣）</th><th class="r">期間報酬（淨值）</th><th class="r">期末市值</th><th class="r">期間總領金額</th><th class="r">最新月領金額</th><th class="r">年化配息率<span class="th-sub">近6月均×12÷期末淨值</span></th></tr></thead><tbody>' + trs + totalRow + '</tbody></table></div>'
+    + '<div class="pf-breakdown-note">' + ICON.warnSm + ' 「買入時淨值」「期末淨值」為各基金原始幣別之淨值數字，僅供對照走勢，非新台幣金額；其餘金額欄位依上方投入金額按目前權重分配後，以各基金自身原幣淨值漲跌幅與配息率換算，配息未再投資。「期間總領金額」與上方期間分頁同步；「最新月領金額」採各基金資料中最新一個有配息紀錄之月份，各基金月份可能不同，不受期間分頁篩選。<b>換算匯率：1</b>（外幣原幣金額直接視為等額新台幣金額，未實際換算匯率，與實際入帳金額可能有落差，請審酌參考）。表格最後一列「組合加總」為各基金金額欄位加總；期間報酬則為加總後期末市值與加總投入金額之比較。</div>';
+}
+// ─────────────────────────────────────────────────────────
+// 投入金額試算：將組合指數點數換算為實際新台幣金額
+// （組合本身已改為依「上方所選期間」起始日重新基準化＝100 點，等同假設於
+//  該起始日依目前權重重新投入金額；採計的配息期間與上方「全部／1年／
+//  3年…」期間分頁同步，回答「若從這段期間起點投入，這段期間大約已領多少」）
+// ─────────────────────────────────────────────────────────
+function pfRenderInvestEstimate() {
+  var s = _pfState;
+  var el = $('pf-invest-result');
+  if (!s || !el) return;
+  if (!s.hasAnyDivMonth) { el.innerHTML = '<div class="bt-loading" style="padding:10px 0">本組合所選基金皆無配息，無法試算配息金額</div>'; return; }
+  var amtEl = $('pf-invest-amt');
+  var amt = amtEl ? parseFloat(amtEl.value) : NaN;
+  if (!amt || amt <= 0) { el.innerHTML = '<div class="bt-loading" style="padding:10px 0">' + ICON.warnSm + ' 請輸入大於 0 的投入金額</div>'; return; }
+  var idxR = resolveRangeIndices(s.dates, s.range, s.customStart, s.customEnd);
+  var period = pfRecomputePeriod(s, idxR.startIdx, idxR.endIdx);
+  var startDate = s.dates[idxR.startIdx], endDate = s.dates[idxR.endIdx];
+  if (!period.divByMonth) { el.innerHTML = '<div class="bt-loading" style="padding:10px 0">所選期間內無配息月份資料可供試算</div>'; return; }
+  var startMonth = startDate.substring(0, 7), endMonth = endDate.substring(0, 7);
+  var divStats = computeDivStats(period.divByMonth, startMonth, endMonth);
+  if (!divStats.totalCount) { el.innerHTML = '<div class="bt-loading" style="padding:10px 0">所選期間內無配息月份資料可供試算</div>'; return; }
+  // 組合本金序列已於 pfRecomputePeriod() 依「上方所選期間」起始日重新基準化（恆為 100 點），
+  // 等同假設於選定期間起始日，依目前各基金權重重新一次性投入金額；此處仍以 period.raw[0] 取值
+  // （理論上恆為 100）而非寫死常數，以防禦未來計算邏輯調整時產生不一致。
+  var startIdxLevel = period.raw[0] || 100;
+  var pointValue = amt / startIdxLevel; // 每一指數點對應之萬元金額（以所選期間起始日當時指數水準為基準）
+  var totalAmt = divStats.total * pointValue;
+  var avgAmt = totalAmt / divStats.totalCount;
+  el.innerHTML = '<div class="bt-stats-grid">'
+    + btStat('試算期間', startDate + ' ～ ' + endDate)
+    + btStat('期間配息月數', divStats.totalCount + ' 個月')
+    + btStat('已領金額（期間合計）', totalAmt.toFixed(2) + ' 萬元')
+    + btStat('期間平均月配息', avgAmt.toFixed(2) + ' 萬元')
+    + '</div>'
+    + '<div class="pf-breakdown-note">' + ICON.warnSm + ' 假設於「' + startDate + '」（即上方所選期間之起始日）依目前各基金權重重新一次性投入上方設定金額，上方「已領金額」為此筆投入於「' + startDate + ' ～ ' + endDate + '」期間內，配息未再投資之假設下，累計約可領取之新台幣金額，僅為歷史回顧估算，不代表未來實際配息水準，配息來源亦可能部分或全部為本金。<b>換算匯率：1</b>（外幣原幣金額直接視為等額新台幣金額，未實際換算匯率，與實際入帳金額可能有落差，請審酌參考）。</div>'
+    + renderPfInvestRows(buildPfInvestRows(s, idxR, amt, startMonth, endMonth));
+}
+// ─────────────────────────────────────────────────────────
+// 今日進場預估年化配息：以各基金當前淨值（加入時掛牌）與近12個月配息紀錄
+// 估算如果今天依目前權重進場的年化配息率與預估年配息金額
+// ─────────────────────────────────────────────────────────
+function pfRenderTodayDiv() {
+  var s = _pfState;
+  var el = $('pf-today-div');
+  if (!s || !el) return;
+  if (!s.hasAnyDivMonth) { el.innerHTML = ''; return; }
+
+  var amtEl = $('pf-invest-amt');
+  var amt = amtEl ? parseFloat(amtEl.value) : NaN;
+  var hasAmt = amt > 0;
+
+  // 使用已抓取的每日淨值序列最後一筆（共同日期軸最後一日）
+  var lastNavDate = s.dates[s.dates.length - 1];
+
+  var rows = [];
+  s.funds.forEach(function(f, i) {
+    var m = s.meta && s.meta[i];
+    if (!m) return;
+    // 用 filledRaw 最後一筆（比 fund list 預載的 nav 更精確）
+    var nav = f.filledRaw ? f.filledRaw[f.filledRaw.length - 1] : parseFloat(m.nav);
+    var divByMonth = f.divByMonthOwn || {};
+    var monthKeys = Object.keys(divByMonth).sort();
+    if (!monthKeys.length || !(nav > 0)) {
+      rows.push({ name: m.name, source: m.source, wNormPct: m.wNorm, wNorm: f.wNorm, nav: nav, latestDiv: 0, latestMonth: null, monthYield: 0, monthIncome: 0, annualRate: null, hasDiv: false });
+      return;
+    }
+    // 取最新一個月的配息數字
+    var latestMonth = monthKeys[monthKeys.length - 1];
+    var latestDiv = divByMonth[latestMonth] || 0;
+    var monthYield = latestDiv / nav * 100;
+    var allocAmt = hasAmt ? amt * f.wNorm : 0;
+    var monthIncome = allocAmt * (latestDiv / nav);
+    // 年化配息率：近 6 個月月配平均 × 12 ÷ 當前淨值（與單一標的分析工具同算法）
+    var annualRate = calcRateFromMonthMap(nav, divByMonth);
+    rows.push({
+      name: m.name, source: m.source, wNormPct: m.wNorm, wNorm: f.wNorm,
+      nav: nav, latestDiv: latestDiv, latestMonth: latestMonth,
+      monthYield: monthYield, monthIncome: monthIncome, annualRate: annualRate, hasDiv: true
+    });
+  });
+
+  if (!rows.length) { el.innerHTML = ''; return; }
+
+  // 加權月配息率／年化配息率（依各基金正規化權重加權）
+  var sumWeightedMonthYield = rows.reduce(function(a, r) { return a + (r.hasDiv ? r.monthYield * r.wNorm : 0); }, 0);
+  var sumWeightedAnnualRate = rows.reduce(function(a, r) {
+    return a + ((r.annualRate !== null && isFinite(r.annualRate)) ? r.annualRate * r.wNorm : 0);
+  }, 0);
+  var sumMonthIncome = hasAmt ? rows.reduce(function(a, r) { return a + (r.hasDiv ? r.monthIncome : 0); }, 0) : 0;
+
+  var incomeHeader = hasAmt ? '<th class="r">預估月配息金額</th>' : '';
+  var trs = rows.map(function(r) {
+    var incomeCell = hasAmt ? '<td data-label="預估月配息金額" class="r">' + (r.hasDiv ? r.monthIncome.toFixed(2) + ' 萬元' : '無') + '</td>' : '';
+    var monthNote = r.latestMonth ? '<span style="font-size:10px;color:var(--muted)">（' + r.latestMonth + '）</span>' : '';
+    return '<tr class="vr">'
+      + '<td data-label="基金名稱" style="max-width:200px;word-break:break-word;line-height:1.4"><span class="src-badge src-' + r.source + '">' + r.source + '</span> ' + eh(r.name) + '</td>'
+      + '<td data-label="權重" class="r">' + r.wNormPct.toFixed(1) + '%</td>'
+      + '<td data-label="淨值" class="r">' + (r.nav > 0 ? r.nav.toFixed(4) : '—') + '</td>'
+      + '<td data-label="最新月配息／單位" class="r">' + (r.hasDiv ? r.latestDiv.toFixed(4) + monthNote : '無配息') + '</td>'
+      + '<td data-label="預估月配息率" class="r">' + (r.hasDiv ? '<b class="ret-pos">' + r.monthYield.toFixed(2) + '%</b>' : '—') + '</td>'
+      + '<td data-label="年化配息率" class="r">' + rateCell(r.annualRate) + '</td>'
+      + incomeCell
+      + '</tr>';
+  }).join('');
+
+  var totalIncomeCell = hasAmt ? '<td class="r"><b>' + sumMonthIncome.toFixed(2) + ' 萬元</b></td>' : '';
+  var totalRow = '<tr>'
+    + '<td><b>組合加權</b></td>'
+    + '<td class="r"><b>100.0%</b></td>'
+    + '<td class="r">—</td>'
+    + '<td class="r">—</td>'
+    + '<td class="r"><b class="ret-pos">' + sumWeightedMonthYield.toFixed(2) + '%</b></td>'
+    + '<td class="r">' + rateCell(sumWeightedAnnualRate) + '</td>'
+    + totalIncomeCell
+    + '</tr>';
+
+  el.innerHTML = '<div class="bt-section-title">' + ICON.coin + ' 今日進場預估月配息（淨值日期：' + lastNavDate + '）</div>'
+    + '<div class="vbct-table-scroll"><table class="vbct-tbl"><thead><tr>'
+    + '<th>基金</th><th class="r">權重</th><th class="r">淨值（' + lastNavDate + '）</th>'
+    + '<th class="r">最新月配息／單位</th><th class="r">預估月配息率</th>'
+    + '<th class="r">年化配息率<span class="th-sub">近6月均×12÷淨值</span></th>'
+    + incomeHeader
+    + '</tr></thead><tbody>' + trs + totalRow + '</tbody></table></div>'
+    + '<div class="pf-breakdown-note">' + ICON.warnSm + ' 「最新月配息／單位」為該基金配息紀錄中最新一個月份之配息金額（括號內為該月份）；「預估月配息率」＝最新月配息 ÷ 當前淨值；「年化配息率」＝近 6 個月月配平均 × 12 ÷ 當前淨值，與 VBCT／VCCT／UND 單一標的分析工具採同一算法；「組合加權」為各基金依正規化權重加權之平均值。若有輸入投入金額，「預估月配息金額」為依該金額投入後之估算單月配息收入（未考慮匯率，外幣原幣直接視為等額新台幣）。預估值僅供參考，各基金最新配息月份可能不同，過去配息不代表未來將持續，配息來源可能部分或全部為本金。</div>';
+}
+// Esc 鍵：目前無 Modal 需要關閉，保留供未來擴充
+// ─────────────────────────────────────────────────────────
+// 頁面載入後自動開始
+// ─────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', function() {
+  renderPortfolioList();
+  loadFundUniverse();
+});
+
+// ═══════════════════════════════════════════════════════════
+// 手機密集清單（< 768px）
+// 關鍵一行：代號｜年化配息率｜一年｜三年｜風險，其餘欄位點列展開。
+// COLS 以索引對應各工具的 td 順序，同一套程式共用於四支工具。
+// ═══════════════════════════════════════════════════════════
+(function(){
+  var COLS = {min:12,name:0,src:1,code:2,cur:3,freq:4,risk:5,nav:6,rate:7,r6m:8,r1y:9,r3y:10,act:11,div6:null,type:null};
+  var TBL  = 'vbct-tbl';
+  var SORTCOL = {'代號':2,'配息率':7,'一年':9,'三年':10,'風險':5};
+  var SORTFN  = 'pfSortBy';
+  var SCOL    = '_pfSortCol';
+  var SDIR    = '_pfSortDir';
+  function curCol(){ return window[SCOL]; }
+  function curDir(){ return window[SDIR]; }
+  // 統一排序入口：pfSortBy 不收方向參數，改以預設狀態反推
+  function doSort(col, dir){
+    var fn = window[SORTFN];
+    if(typeof fn !== 'function') return;
+    if(fn.length >= 2){ fn(col, dir); }
+    else { window[SCOL] = col; window[SDIR] = -dir; fn(col); }
+  }
+  function isMobile(){ return window.innerWidth < 768; }
+  function txt(td){ return td ? (td.textContent||'').trim() : ''; }
+  function htm(td){ return td ? td.innerHTML : ''; }
+  function retCell(td){
+    var s = txt(td);
+    if(!s || s==='—' || s==='-') return '<span class="mc-v mc-na">—</span>';
+    var neg = /^[-−]/.test(s);
+    var n = s.replace(/[%＋+]/g,'').trim();
+    return '<span class="mc-v '+(neg?'mc-neg':'mc-pos')+'">'+(neg?'':'+')+n+'</span>';
+  }
+  function rateCell(td){
+    var s = txt(td);
+    if(!s || s==='—' || s==='-') return '<span class="mc-v mc-na">—</span>';
+    var num = parseFloat(s.replace(/[^0-9.\-]/g,''));
+    var hi = isFinite(num) && num >= 8;
+    return '<span class="mc-v mc-rate'+(hi?' mc-hi':'')+'">'+s.replace(/\s*⚠.*$/,'')+'</span>';
+  }
+  function riskCell(td){
+    var s = txt(td);
+    if(!s || s==='—') return '<span class="mc-rr"></span>';
+    var lvl = (s.match(/RR([1-5])/)||[])[1] || '';
+    return '<span class="mc-rr mc-rr'+lvl+'">'+s+'</span>';
+  }
+  function g(label, val){
+    if(!val || val==='—') return '';
+    return '<span class="mc-g"><i>'+label+'</i><b>'+val+'</b></span>';
+  }
+  function buildCards(tbody){
+    if(!isMobile()) return;
+    var vrs = tbody.querySelectorAll('tr.vr');
+    for(var i=0;i<vrs.length;i++){
+      var row = vrs[i];
+      if(row.classList.contains('mc-built')) continue;
+      var tds = [];
+      for(var c=0;c<row.children.length;c++){
+        if(row.children[c].tagName==='TD') tds.push(row.children[c]);
+      }
+      if(tds.length < COLS.min) continue;
+      // sortBy() 讀 data-c{n} 取值，td 隱藏後仍需保留
+      for(var z=0;z<tds.length;z++){ row.setAttribute('data-c'+z, (tds[z].textContent||'').trim()); }
+      row.classList.add('mc-built');
+      var T = function(k){ return COLS[k]==null ? null : tds[COLS[k]]; };
+      var nameA = T('name') ? T('name').querySelector('a') : null;
+      var nameTxt = txt(T('name'));
+      var div6H = htm(T('div6'));
+      var hasDiv6 = div6H.indexOf('div-tbl') !== -1;
+      var mc = document.createElement('div');
+      mc.className = 'mobile-card';
+      mc.innerHTML =
+        '<div class="mc-key">'+
+          '<span class="mc-code">'+txt(T('code'))+'</span>'+
+          rateCell(T('rate'))+ retCell(T('r1y'))+ retCell(T('r3y'))+ riskCell(T('risk'))+
+        '</div>'+
+        '<div class="mc-nm">'+nameTxt+'</div>'+
+        '<div class="mc-extra">'+
+          '<div class="mc-grid">'+
+            g('幣別', txt(T('cur')))+ g('頻率', txt(T('freq')))+
+            g('半年', txt(T('r6m')))+ g('淨值', txt(T('nav')))+
+            (COLS.type!=null ? g('類型', txt(T('type'))) : '')+
+            (COLS.src!=null  ? g('來源', txt(T('src')))  : '')+
+          '</div>'+
+          (hasDiv6 ? '<div class="mc-div6m"><div class="mc-div6m-title">近6月配息</div>'+div6H+'</div>' : '')+
+          (nameA ? '<div class="mc-ext-wrap"><a class="mc-ext" href="'+nameA.href+'" target="_blank" rel="noopener">富邦官網標的頁面 ↗</a></div>' : '')+
+          '<div class="mc-analyze"></div>'+
+        '</div>';
+      row.insertBefore(mc, row.firstChild);
+      var origBtn = T('act') ? T('act').querySelector('button,a') : null;
+      var slot = mc.querySelector('.mc-analyze');
+      if(origBtn){
+        var clone = origBtn.cloneNode(true);
+        (function(b){ clone.addEventListener('click', function(){ b.click(); }); })(origBtn);
+        slot.appendChild(clone);
+      } else if(T('act')){
+        slot.innerHTML = '<div style="text-align:center;color:#c3cdd9;font-size:12px">'+txt(T('act'))+'</div>';
+      }
+      mc.addEventListener('click', function(ev){
+        if(ev.target.closest('a,button')) return;
+        this.classList.toggle('mc-open');
+      });
+    }
+  }
+  // sticky 需祖先無 overflow:hidden 與 max-height，否則只在該範圍內作用
+  var _freed = [];
+  function freeStickyAncestors(table){
+    var e = table.parentElement, n = 0;
+    while(e && e !== document.body && n < 4){
+      var cs = getComputedStyle(e);
+      if(cs.overflow !== 'visible' || cs.maxHeight !== 'none'){
+        e.style.setProperty('overflow','visible','important');
+        e.style.setProperty('max-height','none','important');
+        e.style.setProperty('height','auto','important');
+        if(_freed.indexOf(e)<0) _freed.push(e);
+      }
+      e = e.parentElement; n++;
+    }
+  }
+  function stickyOffset(head){
+    var off = 0, all = document.querySelectorAll('body *');
+    for(var i=0;i<all.length;i++){
+      var e = all[i];
+      if(e === head || e.contains(head)) continue;
+      var cs = getComputedStyle(e);
+      if(cs.position !== 'sticky' && cs.position !== 'fixed') continue;
+      var r = e.getBoundingClientRect();
+      if(r.height > 0 && r.height < 200 && r.top <= off + 2) off = Math.max(off, r.bottom);
+    }
+    return Math.round(off);
+  }
+  function paintHead(head){
+    var is = head.querySelectorAll('i');
+    for(var i=0;i<is.length;i++){
+      var el = is[i], col = +el.getAttribute('data-col');
+      var on = (curCol() === col);
+      el.classList.toggle('ms-on', on);
+      el.textContent = el.getAttribute('data-base');
+    }
+  }
+  function ensureHead(table){
+    var box = table.parentElement;
+    if(!box) return;
+    var ex = box.querySelector('.mc-lhead');
+    if(ex){ ex.style.top = stickyOffset(ex)+'px'; paintHead(ex); return; }
+    var head = document.createElement('div');
+    head.className = 'mc-lhead';
+    var keys = Object.keys(SORTCOL), h='';
+    for(var i=0;i<keys.length;i++){
+      h += '<i data-col="'+SORTCOL[keys[i]]+'" data-base="'+keys[i]+'">'+keys[i]+'</i>';
+    }
+    head.innerHTML = h;
+    box.insertBefore(head, box.firstChild);
+    head.style.top = stickyOffset(head)+'px';
+    paintHead(head);
+  }
+  function init(){
+    if(!isMobile()) return;
+    var table = document.querySelector('table.'+TBL);
+    var tbody = table && table.querySelector('tbody');
+    if(!tbody) return;
+    freeStickyAncestors(table);
+    ensureHead(table);
+    buildCards(tbody);
+    if(tbody.__mcObs) return;
+    tbody.__mcObs = new MutationObserver(function(){
+      var built = tbody.querySelectorAll('tr.vr.mc-built');
+      for(var i=0;i<built.length;i++){
+        if(!built[i].querySelector('.mobile-card')) built[i].classList.remove('mc-built');
+      }
+      buildCards(tbody);
+      var head = document.querySelector('.mc-lhead');
+      if(head) paintHead(head);
+    });
+    tbody.__mcObs.observe(tbody,{childList:true});
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init);
+  else init();
+  // 離開手機寬度時必須拆除卡片，否則卡片與表格儲存格會同時渲染（列高暴增）
+  function teardown(){
+    var cs=document.querySelectorAll('.mobile-card');
+    for(var i=0;i<cs.length;i++) cs[i].remove();
+    var bs=document.querySelectorAll('tr.vr.mc-built');
+    for(var j=0;j<bs.length;j++) bs[j].classList.remove('mc-built');
+    var hs=document.querySelectorAll('.mc-lhead');
+    for(var k=0;k<hs.length;k++) hs[k].remove();
+    for(var m=0;m<_freed.length;m++){
+      _freed[m].style.removeProperty('overflow');
+      _freed[m].style.removeProperty('max-height');
+      _freed[m].style.removeProperty('height');
+    }
+    _freed = [];
+  }
+  window.addEventListener('resize', function(){ if(isMobile()) init(); else teardown(); });
+})();
+</script>
+<script>
+/* 手機排序膠囊列：組合分析原本只能點表頭排序 */
+(function(){
+  var COLS = { '配息率': 7, '一年': 9, '三年': 10 };
+  function isMobile(){ return window.innerWidth < 768; }
+  function init(){
+    if(!isMobile()) return;
+    if(document.querySelector('.mob-ctrl-bar')) return;
+    var row = document.querySelector('.pf-search-row');
+    var tbl = document.querySelector('table.vbct-tbl');
+    if(!row || !tbl){ setTimeout(init, 400); return; }
+    var bar = document.createElement('div');
+    bar.className = 'mob-ctrl-bar';
+    var pills = [];
+    Object.keys(COLS).forEach(function(k){
+      var b = document.createElement('button');
+      b.className = 'mob-sort-pill';
+      b.textContent = k + ' \u2193';
+      b.dataset.v = COLS[k];
+      pills.push(b); bar.appendChild(b);
+      b.addEventListener('click', function(){
+        var col = +this.dataset.v;
+        // pfSortBy 會自己反轉方向，故先寫入 -d 再呼叫
+        var d2 = (this.classList.contains('ms-active') && this.dataset.d === '-1') ? 1 : -1;
+        this.dataset.d = d2;
+        window._pfSortCol = col; window._pfSortDir = -d2;
+        if(typeof pfSortBy === 'function') pfSortBy(col);
+        var self = this;
+        pills.forEach(function(p){
+          p.classList.remove('ms-active');
+          p.textContent = p.textContent.replace(/\s*[\u2191\u2193]\s*$/,'') + ' \u2193';
+        });
+        self.classList.add('ms-active');
+        self.textContent = self.textContent.replace(/\s*[\u2191\u2193]\s*$/,'') + (d2 === 1 ? ' \u2191' : ' \u2193');
+      });
+    });
+    row.parentElement.insertBefore(bar, row.nextSibling);
+    fixTop();
+  }
+  function fixTop(){
+    if(!isMobile()) return;
+    var hdr = document.querySelector('.vbct-header');
+    var bar = document.querySelector('.mob-ctrl-bar');
+    var lh  = document.querySelector('.mc-lhead');
+    if(!bar) return;
+    if(hdr) bar.style.top = hdr.offsetHeight + 'px';
+    // 標籤列要堆在膠囊列之下，否則兩層吸頂會重疊
+    if(lh) lh.style.top = ((hdr ? hdr.offsetHeight : 0) + bar.offsetHeight) + 'px';
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+  [400,1200,2500,5000].forEach(function(t){ setTimeout(fixTop, t); });
+  window.addEventListener('load', fixTop);
+  window.addEventListener('resize', function(){
+    if(isMobile()){ init(); fixTop(); }
+    else { var b = document.querySelector('.mob-ctrl-bar'); if(b) b.remove(); }
+  });
+})();
+</script>
+<script>window.HUB_CODE = "PF";</script>
+<script src="/hub.js"></script>
+</html>
