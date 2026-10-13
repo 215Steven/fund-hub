@@ -2698,55 +2698,70 @@ function renderBtMain() {
 }
 // 賺錢機率區塊：有配息資料者，以單一長條呈現紅（淨值）＋藍（加上配息後）雙色；無配息者維持原本單色長條
 function renderWinRate() {
-  var s = _btState;
-  var el = $('bt-winrate');
-  if (!s || !el) return;
-  var idxR = resolveRangeIndices(s.dates, s.range, s.customStart, s.customEnd);
-  var startIdx = idxR.startIdx;
-  var dates = s.dates.slice(idxR.startIdx, idxR.endIdx + 1);
-  var rawNavs = s.rawNavs.slice(idxR.startIdx, idxR.endIdx + 1);
-  var html;
-  if (s.divOnIdx) {
-    var slicedDiv = sliceDivOnIdx(s.divOnIdx, startIdx);
-    var divCum = buildDivCum(slicedDiv, rawNavs.length);
-    var winList = computeWinRatesDual(rawNavs, divCum);
-    if (winList.length) {
-      html = '<div class="bt-section-title">' + ICON.coin + ' 賺錢機率（持有期間滾動勝率：紅＝淨值，藍＝加上配息後）</div>'
-        + '<div class="wr-legend"><span><i style="background:#dc2626"></i>淨值（未還原）</span><span><i style="background:#2657a0"></i>加上配息後</span></div>'
-        + winList.map(function(w) {
-            var addSeg = Math.max(0, w.addRate - w.rawRate);
-            var rawZero = w.rawRate <= 0.05;
-            var rawFullCls = addSeg <= 0.05 ? ' wr-seg-full' : '';
-            var addFullCls = (rawZero && addSeg > 0.05) ? ' wr-seg-full' : '';
-            return '<div class="wr-row-dual">'
-              + '<div class="wr-label">' + w.label + '</div>'
-              + '<div class="wr-track-dual"><div class="wr-seg-raw' + rawFullCls + '" style="width:' + w.rawRate.toFixed(1) + '%"></div><div class="wr-seg-add' + addFullCls + '" style="left:' + w.rawRate.toFixed(1) + '%;width:' + addSeg.toFixed(1) + '%"></div></div>'
-              + '<div class="wr-pct-dual">' + w.rawRate.toFixed(1) + '% → ' + w.addRate.toFixed(1) + '%</div>'
-              + '</div>';
-          }).join('')
-        + '<div class="bt-wr-note">統計樣本不足（少於 10 個滾動視窗）之持有期間已自動隱藏。「加上配息後」採「期末淨值－期初淨值＋期間內配息金額」計算，不含配息再投資之複利效果，與上方還原(含息)圖表之計算方式不同，僅供參考。</div>';
-    } else {
-      html = '<div class="bt-section-title">' + ICON.coin + ' 賺錢機率</div><div class="bt-loading" style="padding:14px 0">資料區間過短，尚無法計算任何持有期間之勝率</div>';
+      var s = _btState;
+      var el = $('bt-winrate');
+      if (!s || !el) return;
+      var idxR = resolveRangeIndices(s.dates, s.range, s.customStart, s.customEnd);
+      var startIdx = idxR.startIdx;
+      var dates = s.dates.slice(idxR.startIdx, idxR.endIdx + 1);
+      var rawNavs = s.rawNavs.slice(idxR.startIdx, idxR.endIdx + 1);
+      var html;
+
+      // 這裡是對已發生資料的回顧，不是機率預測，用字與呈現都避免暗示未來
+      var TITLE = ICON.coin + ' 歷史區間回顧';
+      var SUB = '<div style="font-size:12px;color:#64748b;line-height:1.6;margin:2px 0 10px">'
+        + '在這段資料裡，以不同交易日為起點、各持有相同長度後，結果為正的區間數。回顧已發生的資料，不預測未來。'
+        + '</div>';
+      var NOTE = '區間以每個交易日為起點逐日取樣，彼此大量重疊，「共 N 個區間」是取樣數不是獨立樣本數——'
+        + '一段三年的資料最多只含三個互不重疊的一年期間，因此比例接近滿分時並不代表穩定度高，不宜單獨解讀。'
+        + '區間數少於 10 的持有期間已自動隱藏。';
+      var EMPTY = '<div class="bt-loading" style="padding:14px 0">資料區間過短，尚無法回顧任何持有期間</div>';
+
+      if (s.divOnIdx) {
+        var slicedDiv = sliceDivOnIdx(s.divOnIdx, startIdx);
+        var divCum = buildDivCum(slicedDiv, rawNavs.length);
+        var winList = computeWinRatesDual(rawNavs, divCum);
+        if (winList.length) {
+          html = '<div class="bt-section-title">' + TITLE + '</div>' + SUB
+            + '<div class="wr-legend"><span><i style="background:#dc2626"></i>淨值（未還原）</span><span><i style="background:#2657a0"></i>加上配息後</span></div>'
+            + winList.map(function (w) {
+                var addSeg = Math.max(0, w.addRate - w.rawRate);
+                var rawZero = w.rawRate <= 0.05;
+                var rawFullCls = addSeg <= 0.05 ? ' wr-seg-full' : '';
+                var addFullCls = (rawZero && addSeg > 0.05) ? ' wr-seg-full' : '';
+                var rawN = Math.round(w.rawRate * w.samples / 100);
+                var addN = Math.round(w.addRate * w.samples / 100);
+                return '<div class="wr-row-dual">'
+                  + '<div class="wr-label">' + w.label + '</div>'
+                  + '<div class="wr-track-dual"><div class="wr-seg-raw' + rawFullCls + '" style="width:' + w.rawRate.toFixed(1) + '%"></div><div class="wr-seg-add' + addFullCls + '" style="left:' + w.rawRate.toFixed(1) + '%;width:' + addSeg.toFixed(1) + '%"></div></div>'
+                  + '<div class="wr-pct-dual" style="white-space:nowrap;font-variant-numeric:tabular-nums">' + rawN + ' → ' + addN + ' <span style="color:#94a3b8">／共 ' + w.samples + '</span></div>'
+                  + '</div>';
+              }).join('')
+            + '<div class="bt-wr-note">' + NOTE
+            + '「加上配息後」採「期末淨值－期初淨值＋期間內配息金額」計算，不含配息再投資之複利效果，與上方還原(含息)圖表之計算方式不同。'
+            + '</div>';
+        } else {
+          html = '<div class="bt-section-title">' + TITLE + '</div>' + EMPTY;
+        }
+      } else {
+        var rawWin = computeWinRates(rawNavs);
+        if (rawWin.length) {
+          html = '<div class="bt-section-title">' + TITLE + '</div>' + SUB + '<div class="wr-bars">'
+            + rawWin.map(function (w) {
+                var n = Math.round(w.winRate * w.samples / 100);
+                return '<div class="wr-row">'
+                  + '<div class="wr-label">' + w.label + '</div>'
+                  + '<div class="wr-track"><div class="wr-fill" style="width:' + w.winRate.toFixed(1) + '%;background:#2657a0"></div></div>'
+                  + '<div class="wr-pct" style="white-space:nowrap;font-variant-numeric:tabular-nums">' + n + ' <span style="color:#94a3b8">／' + w.samples + '</span></div>'
+                  + '</div>';
+              }).join('')
+            + '</div><div class="bt-wr-note">' + NOTE + '</div>';
+        } else {
+          html = '<div class="bt-section-title">' + TITLE + '</div>' + EMPTY;
+        }
+      }
+      el.innerHTML = html;
     }
-  } else {
-    var rawWin = computeWinRates(rawNavs);
-    if (rawWin.length) {
-      html = '<div class="bt-section-title">' + ICON.coin + ' 賺錢機率（持有期間滾動勝率）</div><div class="wr-bars">'
-        + rawWin.map(function(w) {
-            var barColor = w.winRate >= 70 ? '#16a34a' : w.winRate >= 50 ? '#3b82c4' : '#dc2626';
-            return '<div class="wr-row">'
-              + '<div class="wr-label">' + w.label + '</div>'
-              + '<div class="wr-track"><div class="wr-fill" style="width:' + w.winRate.toFixed(1) + '%;background:' + barColor + '"></div></div>'
-              + '<div class="wr-pct">' + w.winRate.toFixed(1) + '%</div>'
-              + '</div>';
-          }).join('')
-        + '</div><div class="bt-wr-note">統計樣本不足（少於 10 個滾動視窗）之持有期間已自動隱藏</div>';
-    } else {
-      html = '<div class="bt-section-title">' + ICON.coin + ' 賺錢機率</div><div class="bt-loading" style="padding:14px 0">資料區間過短，尚無法計算任何持有期間之勝率</div>';
-    }
-  }
-  el.innerHTML = html;
-}
 function renderBacktest(series, r, divs) {
   var rawStats = computeStats(series.dates, series.navs);
   if (!rawStats) { $('bt-body').innerHTML = '<div class="bt-loading">' + ICON.warn + ' 資料不足無法計算</div>'; return; }
