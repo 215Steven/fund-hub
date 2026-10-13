@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>基金配息率工具集 — 富邦投資型保單（非官方）</title>
+<meta name="description" content="VBCT、VCCT、UND 三張保單的標的配息率與報酬率整理，加上組合試算。非官方工具。">
+<style>
+  :root{
+    --navy:#0f2744; --blue:#1d4ed8; --blue-soft:#eef4ff;
+    --bg:#f3f6fb; --surface:#fff; --border:#e2e8f0;
+    --text:#1f2a37; --muted:#64748b;
+    --radius:16px; --shadow:0 1px 3px rgba(15,39,68,.06),0 8px 24px rgba(15,39,68,.06);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+    line-height:1.65;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:960px;margin:0 auto;padding:0 20px}
+
+  header{background:linear-gradient(135deg,#0f2744,#1e3a5f);color:#fff;padding:54px 0 64px}
+  header .tag{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.8px;
+    background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);
+    padding:4px 10px;border-radius:999px;margin-bottom:16px}
+  header h1{margin:0 0 12px;font-size:clamp(26px,5vw,40px);line-height:1.25;letter-spacing:-.5px}
+  header p{margin:0;font-size:15.5px;color:#c7d6ea;max-width:620px}
+
+  main{margin-top:-34px;padding-bottom:60px}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+
+  /* ── 閉鍵區（未開通時顯示） ── */
+  .gate{padding:28px 24px 24px}
+  .gate h2{margin:0 0 6px;font-size:19px;letter-spacing:-.3px}
+  .gate .sub{margin:0 0 20px;font-size:14px;color:var(--muted)}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:6px}
+  .field label .opt{font-weight:500;color:#9aa7b5}
+  .field input[type=text],.field input[type=email]{width:100%;padding:11px 13px;font-size:15px;
+    font-family:inherit;color:var(--text);background:#f8fafc;
+    border:1.5px solid var(--border);border-radius:10px;outline:none;transition:.15s}
+  .field input:focus{border-color:var(--blue);background:#fff;box-shadow:0 0 0 3px rgba(29,78,216,.1)}
+  .consent{display:flex;gap:9px;align-items:flex-start;margin:16px 0 6px;font-size:13px;color:var(--text)}
+  .consent input{margin-top:3px;width:16px;height:16px;flex:0 0 auto;accent-color:var(--blue)}
+  .btn{display:block;width:100%;min-height:48px;margin-top:16px;border:0;border-radius:11px;
+    background:var(--blue);color:#fff;font-size:15.5px;font-weight:700;font-family:inherit;cursor:pointer;transition:.15s}
+  .btn:hover{background:#1a44bd}
+  .btn:disabled{background:#9db4e8;cursor:default}
+  .err{margin-top:12px;font-size:13px;color:#dc2626;display:none}
+  .notice{margin-top:18px;padding-top:16px;border-top:1px dashed var(--border);
+    font-size:11.5px;line-height:1.75;color:#8a98a8}
+  .notice b{color:var(--muted)}
+
+  /* ── 四格 ── */
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:18px}
+  @media(max-width:620px){.grid{grid-template-columns:1fr}}
+  .tile{display:block;padding:20px 20px 18px;text-decoration:none;color:inherit;transition:.15s}
+  .tile:hover{transform:translateY(-2px);box-shadow:0 2px 6px rgba(15,39,68,.08),0 14px 32px rgba(15,39,68,.10)}
+  .tile .code{font-size:17px;font-weight:800;color:var(--navy);letter-spacing:-.2px}
+  .tile .pill{float:right;font-size:10.5px;font-weight:700;color:var(--blue);
+    background:var(--blue-soft);border-radius:999px;padding:3px 9px}
+  .tile .nm{margin:6px 0 10px;font-size:13px;color:var(--muted);line-height:1.6}
+  .tile .go{font-size:12.5px;font-weight:700;color:var(--blue)}
+
+  .hello{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    flex-wrap:wrap;padding:16px 20px;font-size:13.5px}
+  .hello b{color:var(--navy)}
+  .hello button{border:1px solid var(--border);background:#fff;color:var(--muted);
+    font-size:12px;font-family:inherit;padding:6px 12px;border-radius:8px;cursor:pointer}
+
+  .disc{margin-top:26px;padding:18px 20px;font-size:12px;line-height:1.85;color:#8a7a52;
+    background:#fffbeb;border:1px solid #fde68a;border-radius:12px}
+  .disc b{color:#92400e}
+  footer{padding:28px 0 40px;text-align:center;font-size:12px;color:#9aa7b5}
+  .hide{display:none !important}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <span class="tag">非官方工具</span>
+    <h1>基金配息率工具集</h1>
+    <p>VBCT、VCCT、UND 三張保單的標的清單，年化配息率、一年與三年報酬率、風險等級一次看完，另有跨險種的組合試算。</p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- 未開通 -->
+  <section id="gate" class="card gate">
+    <h2>開通自選清單</h2>
+    <p class="sub">留一個 Email 就能把關注的標的加入自選，四支工具共用一份清單，下次打開還在。</p>
+
+    <div class="field">
+      <label for="g-email">Email</label>
+      <input id="g-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com">
+    </div>
+    <div class="field">
+      <label for="g-name">稱呼 <span class="opt">（選填）</span></label>
+      <input id="g-name" type="text" autocomplete="name" placeholder="怎麼稱呼你">
+    </div>
+
+    <label class="consent">
+      <input id="g-consent" type="checkbox">
+      <span>我願意收到每月的配息變化整理與新功能通知（選填，隨時可退訂）</span>
+    </label>
+
+    <button id="g-btn" class="btn">開通自選清單</button>
+    <div id="g-err" class="err"></div>
+
+    <div class="notice">
+      <b>個資蒐集告知</b><br>
+      蒐集者：OO SAY HI。蒐集目的：提供自選清單功能；勾選同意者另用於寄送更新通知。
+      資料類別：Email，以及你選填的稱呼。利用期間：至你要求刪除或本服務終止為止。
+      利用地區與對象：僅限本服務，不提供給第三方。
+      你可隨時來信查詢、補充、更正或要求刪除，也可拒絕行銷；每封信都有退訂連結。
+      不提供 Email 不影響你使用工具，只是自選清單無法跨裝置保存。
+    </div>
+  </section>
+
+  <!-- 已開通 -->
+  <section id="hello" class="card hello hide">
+    <div><b id="h-name">你好</b>，自選清單已開通。</div>
+    <button id="h-out">登出</button>
+  </section>
+
+  <div class="grid">
+    <a class="card tile" href="/vcct"><span class="pill">年金</span><div class="code">VCCT</div>
+      <div class="nm">真豐利變額年金保險</div><div class="go">打開 →</div></a>
+    <a class="card tile" href="/vbct"><span class="pill">年金</span><div class="code">VBCT</div>
+      <div class="nm">真有利變額年金保險</div><div class="go">打開 →</div></a>
+    <a class="card tile" href="/und"><span class="pill">壽險</span><div class="code">UND</div>
+      <div class="nm">年年吉祥變額萬能壽險</div><div class="go">打開 →</div></a>
+    <a class="card tile" href="/portfolio"><span class="pill">跨險種</span><div class="code">組合分析</div>
+      <div class="nm">自訂權重、回測與配息試算</div><div class="go">打開 →</div></a>
+  </div>
+
+  <div class="disc">
+    <b>免責聲明</b>　本站為個人製作的非官方工具，與富邦人壽無關。
+    配息率僅供參考，過去配息不代表未來，配息來源可能為本金。
+    所有數字請以各基金公司與保險公司官方公告為準。本站不提供任何投資建議或標的推薦。
+  </div>
+
+</main>
+
+<footer>OO SAY HI　·　資料整理自富邦投資型保險專區</footer>
+
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var KEY = "fh-session";
+
+  function session(){
+    try { return JSON.parse(localStorage.getItem(KEY) || "null"); } catch(e){ return null; }
+  }
+  function paint(){
+    var s = session();
+    if (s && s.token) {
+      $("gate").classList.add("hide");
+      $("hello").classList.remove("hide");
+      $("h-name").textContent = (s.name ? s.name : "你好");
+    } else {
+      $("gate").classList.remove("hide");
+      $("hello").classList.add("hide");
+    }
+  }
+
+  $("h-out").addEventListener("click", function(){
+    localStorage.removeItem(KEY); paint();
+  });
+
+  $("g-btn").addEventListener("click", async function(){
+    var email = ($("g-email").value || "").trim();
+    var name  = ($("g-name").value || "").trim();
+    var ok    = $("g-consent").checked;
+    var err   = $("g-err");
+    err.style.display = "none";
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      err.textContent = "請輸入正確的 Email"; err.style.display = "block"; return;
+    }
+    this.disabled = true; this.textContent = "開通中…";
+    try {
+      var r = await fetch("/api/lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email, name: name, consent: ok })
+      });
+      var j = await r.json();
+      if (!r.ok || !j.token) throw new Error(j.error || "開通失敗");
+      localStorage.setItem(KEY, JSON.stringify({ token: j.token, email: email, name: name }));
+      paint();
+    } catch (e) {
+      err.textContent = String(e.message || e); err.style.display = "block";
+    }
+    this.disabled = false; this.textContent = "開通自選清單";
+  });
+
+  paint();
+})();
+</script>
+</body>
+</html>
