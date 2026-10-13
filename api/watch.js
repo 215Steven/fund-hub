@@ -8,6 +8,7 @@
  * 功能不會壞，只是不能跨裝置。
  */
 const { requireUser, emailKey } = require('./_auth');
+const { planOf } = require('./_plan');
 
 const MAX_ITEMS = 200;
 
@@ -49,11 +50,24 @@ module.exports = async function handler(req, res) {
   if (!user) return;
 
   try {
+    // 讀永遠放行：體驗期過了還是看得到自己存過什麼，
+    // 之後買課開通，清單原封不動還在。
     if (req.method === 'GET') {
       const list = await readList(user.e);
-      return res.status(200).json({ list: list || [], stored: list !== null });
+      const p = await planOf(user.e, user.t);
+      return res.status(200).json({
+        list: list || [], stored: list !== null,
+        plan: p.plan, active: p.active, daysLeft: p.daysLeft, endsAt: p.endsAt
+      });
     }
     if (req.method === 'POST') {
+      // 寫入要在期限內
+      const p = await planOf(user.e, user.t);
+      if (!p.active) {
+        return res.status(403).json({
+          error: 'trial_ended', plan: p.plan, endsAt: p.endsAt
+        });
+      }
       let body = req.body;
       if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { body = {}; } }
       const raw = (body && Array.isArray(body.list)) ? body.list : [];
@@ -65,7 +79,7 @@ module.exports = async function handler(req, res) {
         seen[v] = true; list.push(v);
       }
       const stored = await writeList(user.e, list);
-      return res.status(200).json({ list: list, stored: stored });
+      return res.status(200).json({ list: list, stored: stored, plan: p.plan, active: true, daysLeft: p.daysLeft });
     }
     return res.status(405).json({ error: 'method' });
   } catch (e) {
