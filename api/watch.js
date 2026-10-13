@@ -19,7 +19,10 @@ async function readList(email) {
   let info;
   try { info = await head(pathOf(email)); } catch (e) { return []; }
   if (!info || !info.url) return [];
-  const r = await fetch(info.url, { cache: 'no-store' });
+  const r = await fetch(info.downloadUrl || info.url, {
+    cache: 'no-store',
+    headers: { Authorization: 'Bearer ' + process.env.BLOB_READ_WRITE_TOKEN }
+  });
   if (!r.ok) return [];
   const j = await r.json().catch(function () { return null; });
   return (j && Array.isArray(j.list)) ? j.list : [];
@@ -29,7 +32,7 @@ async function writeList(email, list) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return false;
   const { put } = require('@vercel/blob');
   await put(pathOf(email), JSON.stringify({ list: list, at: Date.now() }), {
-    access: 'public',
+    access: 'private',
     contentType: 'application/json',
     addRandomSuffix: false,
     allowOverwrite: true,
@@ -67,6 +70,6 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'method' });
   } catch (e) {
     console.error('watch failed:', e && e.message);
-    return res.status(200).json({ list: [], stored: false, warn: 'storage' });
+    return res.status(200).json({ list: [], stored: false, warn: String((e && e.message) || e).slice(0, 120) });
   }
 };
