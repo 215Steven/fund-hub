@@ -7,6 +7,7 @@
 const crypto = require('crypto');
 const { normEmail } = require('./_auth');
 const { whitelist, setWhitelist, planOf, readJson, writeJson, TRIAL_DAYS } = require('./_plan');
+const { sigOf, isOptedOut, setOptOut } = require('./unsub');
 
 function ok(req) {
   const want = process.env.ADMIN_KEY;
@@ -66,6 +67,19 @@ module.exports = async function handler(req, res) {
   const action = String((req.query && req.query.action) || 'list');
 
   try {
+    // 幫人產生退訂連結，或直接代為退訂。
+    // 有人寫信說「不要再寄給我」時，你得有辦法立刻處理。
+    if (action === 'unsub') {
+      const email = normEmail((req.query && req.query.email) || '');
+      if (!email) return res.status(400).json({ error: 'email required' });
+      const url = '/api/unsub?e=' + encodeURIComponent(email) + '&s=' + sigOf(email);
+      if (String((req.query && req.query.now) || '') === '1') {
+        await setOptOut(email, true);
+        return res.status(200).json({ ok: true, email: email, out: true, url: url });
+      }
+      return res.status(200).json({ email: email, url: url, out: await isOptedOut(email) });
+    }
+
     // 待確認的贊助回報
     if (action === 'orders') {
       const { list } = require('@vercel/blob');
@@ -199,6 +213,7 @@ module.exports = async function handler(req, res) {
       const first = (prof && prof.firstAt) || u.at;
       u.firstAt = first;
       const p = await planOf(u.email, first);
+      u.optout = await isOptedOut(u.email);
       u.plan = p.plan; u.active = p.active;
       u.daysLeft = p.daysLeft; u.endsAt = p.endsAt;
     }));
