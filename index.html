@@ -85,7 +85,20 @@
   footer{padding:28px 0 40px;text-align:center;font-size:12px;color:#9aa7b5;line-height:2}
   footer a{color:#64748b;margin:0 8px}
   .hide{display:none !important}
-</style>
+    /* 價值階梯：講清楚免費到哪、開通多什麼 */
+    .tiers { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin: 18px 0 22px; }
+    .tier { display: flex; gap: 11px; padding: 14px 15px; background: #fff; border: 1px solid #e6ecf5;
+      border-radius: 11px; }
+    .tier-tag { flex: 0 0 auto; align-self: flex-start; font-size: 11px; font-weight: 700; letter-spacing: .02em;
+      padding: 4px 9px; border-radius: 999px; white-space: nowrap; }
+    .tier-free { background: #e8f3ec; color: #1a7f43; }
+    .tier-mail { background: #e9eff8; color: #2657a0; }
+    .tier-paid { background: #fdf0e3; color: #a35b12; }
+    .tier-body { min-width: 0; }
+    .tier-body strong { display: block; font-size: 14px; color: #0f172a; margin-bottom: 3px; }
+    .tier-body span { display: block; font-size: 12.5px; line-height: 1.65; color: #64748b; }
+    @media (max-width: 560px) { .tiers { grid-template-columns: 1fr; } }
+  </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -94,16 +107,51 @@
   <div class="wrap">
     <span class="tag">非官方工具</span>
     <h1>基金配息率工具集</h1>
-    <p>VBCT、VCCT、UND 三張保單的標的清單，年化配息率、一年與三年報酬率、風險等級一次看完，另有跨險種的組合試算。</p>
+    <p>配息率高不代表賺得多。把 VBCT、VCCT、UND 三張保單的標的攤開來看：年化配息率、含息與未還原的報酬差多少、風險等級，一次比完。完全免費，不用註冊。</p>
   </div>
 </header>
 
 <main class="wrap">
 
   <!-- 未開通 -->
-  <section id="gate" class="card gate">
-    <h2>開通自選清單</h2>
-    <p class="sub">把關注的標的加入自選，四支工具共用一份清單，換裝置也讀得到。</p>
+  <div class="grid">
+    <a class="card tile" href="/vcct"><span class="pill">年金</span><div class="code">VCCT</div>
+      <div class="nm">真豐利變額年金保險</div><div class="go">打開 →</div></a>
+    <a class="card tile" href="/vbct"><span class="pill">年金</span><div class="code">VBCT</div>
+      <div class="nm">真有利變額年金保險</div><div class="go">打開 →</div></a>
+    <a class="card tile" href="/und"><span class="pill">壽險</span><div class="code">UND</div>
+      <div class="nm">年年吉祥變額萬能壽險</div><div class="go">打開 →</div></a>
+    <a class="card tile" href="/portfolio"><span class="pill">跨險種</span><div class="code">組合分析</div>
+      <div class="nm">自訂權重、回測與配息試算</div><div class="go">打開 →</div></a>
+  </div>
+
+        <div class="tiers">
+        <div class="tier">
+          <div class="tier-tag tier-free">免費</div>
+          <div class="tier-body">
+            <strong>看資料與分析</strong>
+            <span>三支工具的完整清單、篩選排序，以及個別標的的配息與報酬分析。不用註冊。</span>
+          </div>
+        </div>
+        <div class="tier">
+          <div class="tier-tag tier-mail">留 Email</div>
+          <div class="tier-body">
+            <strong>自選清單</strong>
+            <span>把關注的標的加入自選，四支工具共用一份，換裝置也讀得到。</span>
+          </div>
+        </div>
+        <div class="tier">
+          <div class="tier-tag tier-paid">贊助一次</div>
+          <div class="tier-body">
+            <strong>組合試算與持續更新</strong>
+            <span>跨險種自訂權重、回測與配息試算。贊助一次即可持續使用，之後的更新都包含在內。</span>
+          </div>
+        </div>
+      </div>
+
+      <section id="gate" class="card gate">
+    <h2>想把關注的標的存起來？</h2>
+    <p class="sub">上面的工具不用開通就能用。留個 Email 可以多一份自選清單，四支工具共用、換裝置也讀得到，並解鎖跨險種的組合試算。</p>
 
     <div id="g-btn-box"></div>
     <div class="or"><span>或用 Email 開通</span></div>
@@ -145,17 +193,6 @@
       <button id="h-out">登出</button>
     </div>
   </section>
-
-  <div class="grid">
-    <a class="card tile" href="/vcct"><span class="pill">年金</span><div class="code">VCCT</div>
-      <div class="nm">真豐利變額年金保險</div><div class="go">打開 →</div></a>
-    <a class="card tile" href="/vbct"><span class="pill">年金</span><div class="code">VBCT</div>
-      <div class="nm">真有利變額年金保險</div><div class="go">打開 →</div></a>
-    <a class="card tile" href="/und"><span class="pill">壽險</span><div class="code">UND</div>
-      <div class="nm">年年吉祥變額萬能壽險</div><div class="go">打開 →</div></a>
-    <a class="card tile" href="/portfolio"><span class="pill">跨險種</span><div class="code">組合分析</div>
-      <div class="nm">自訂權重、回測與配息試算</div><div class="go">打開 →</div></a>
-  </div>
 
   <div class="disc">
     <b>免責聲明</b>　本站為個人製作的非官方工具，與富邦人壽無關。
