@@ -6,7 +6,7 @@
  */
 const crypto = require('crypto');
 const { normEmail } = require('./_auth');
-const { whitelist, setWhitelist, planOf, readJson, TRIAL_DAYS } = require('./_plan');
+const { whitelist, setWhitelist, planOf, readJson, writeJson, TRIAL_DAYS } = require('./_plan');
 
 function ok(req) {
   const want = process.env.ADMIN_KEY;
@@ -66,6 +66,59 @@ module.exports = async function handler(req, res) {
   const action = String((req.query && req.query.action) || 'list');
 
   try {
+    // 待確認的贊助回報
+    if (action === 'orders') {
+      const { list } = require('@vercel/blob');
+      const blobs = [];
+      let cur;
+      do {
+        const page = await list({ prefix: 'orders/', cursor: cur, limit: 1000 });
+        page.blobs.forEach((b) => blobs.push(b));
+        cur = page.hasMore ? page.cursor : null;
+      } while (cur);
+      const orders = [];
+      for (let i = 0; i < blobs.length; i += 20) {
+        const part = await Promise.all(blobs.slice(i, i + 20).map(async (b) => {
+          try {
+            const r = await fetch(b.downloadUrl || b.url, {
+              cache: 'no-store',
+              headers: { Authorization: 'Bearer ' + process.env.BLOB_READ_WRITE_TOKEN }
+            });
+            if (!r.ok) return null;
+            const j = await r.json();
+            j._path = b.pathname;
+            return j;
+          } catch (e) { return null; }
+        }));
+        part.forEach((x) => { if (x) orders.push(x); });
+      }
+      orders.sort((a, b) => String(a.at || '').localeCompare(String(b.at || '')));
+      return res.status(200).json({ orders: orders });
+    }
+
+    // 確認或駁回一筆贊助。confirm 會順手加進白名單。
+    if (action === 'order-set') {
+      const email = normEmail((req.query && req.query.email) || '');
+      const to = String((req.query && req.query.status) || '');
+      if (!email) return res.status(400).json({ error: 'email required' });
+      if (['confirmed', 'rejected', 'pending'].indexOf(to) < 0) {
+        return res.status(400).json({ error: 'bad status' });
+      }
+      const key = crypto.createHash('sha256').update(email).digest('hex').slice(0, 32);
+      const path = 'orders/' + key + '.json';
+      const rec = await readJson(path);
+      if (!rec) return res.status(404).json({ error: 'order not found' });
+      rec.status = to;
+      rec.handledAt = new Date().toISOString();
+      await writeJson(path, rec);
+
+      const wl = await whitelist(true);
+      if (to === 'confirmed' && wl.indexOf(email) < 0) {
+        await setWhitelist(wl.concat([email]));
+      }
+      return res.status(200).json({ ok: true, order: rec });
+    }
+
     // 讀目前學員白名單
     if (action === 'students') {
       return res.status(200).json({ emails: await whitelist(true), trialDays: TRIAL_DAYS });
