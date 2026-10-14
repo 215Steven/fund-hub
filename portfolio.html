@@ -2585,7 +2585,8 @@ window.pfSetOnlyFav = function (on) { _pfOnlyFav = !!on; renderSearchResults(); 
       ['VBCT + VCCT + UND', _pfLocked],
       ['可同時混合', '限']
     ];
-    var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
+    window.pfApplySwap = function () {
+      var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
     var tn;
     while ((tn = walker.nextNode())) {
       for (var si = 0; si < swap.length; si++) {
@@ -2594,6 +2595,8 @@ window.pfSetOnlyFav = function (on) { _pfOnlyFav = !!on; renderSearchResults(); 
         }
       }
     }
+    };
+    window.pfApplySwap();
     var h = document.querySelector('h1');
     if (h && h.textContent.indexOf(_pfLocked) < 0) {
       h.textContent = _pfLocked + ' 組合試算';
@@ -2668,6 +2671,7 @@ function renderSearchResults() {
       if (i === _pfSortCol) th.classList.add(_pfSortDir > 0 ? 'sort-asc' : 'sort-desc');
     });
   }
+  if (_pfLocked && window.pfApplySwap) window.pfApplySwap();
 }
 // ─────────────────────────────────────────────────────────
 // 搜尋結果表格排序（點欄位標題排序，0~6；7=操作欄不支援排序）
