@@ -130,6 +130,10 @@
     return false;
   }
 
+  // 組合試算的清單有 587 檔但只渲染前 60 筆，所以它必須在資料層自己篩，
+  // 不能靠隱藏已渲染的列——那樣自選不在前 60 名時會整個空白。
+  window.hubIsFav = function (code) { return isFav(code); };
+
   function setFav(code, on) {
     for (var k in set) { if (codeOf(k) === code) delete set[k]; }
     if (on) set[keyOf(code)] = 1;
@@ -322,7 +326,9 @@
       var box = tbl.parentElement;
       box.parentElement.insertBefore(bar, box);
       document.getElementById('hub-fav').addEventListener('click', function () {
-        onlyFav = !onlyFav; decorate();
+        onlyFav = !onlyFav;
+        if (typeof window.pfSetOnlyFav === 'function') window.pfSetOnlyFav(onlyFav);
+        decorate();
       });
     }
     decorate();
