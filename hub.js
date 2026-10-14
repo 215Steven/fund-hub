@@ -119,6 +119,28 @@
   var set = {}, onlyFav = false, dirty = false;
   var plan = 'trial', active = true, daysLeft = null;
   function keyOf(code) { return CODE + '-' + code; }
+
+  // 同一檔基金在三張保單裡用同一組代碼（實測 173 個共用代碼，名稱 100% 一致），
+  // 所以自選以「代碼」為準：在任何一張保單加入，其他兩張也會一起標記。
+  // 資料仍以 險種-代碼 的形式存著，不需要搬舊資料。
+  function codeOf(k) { var i = k.indexOf('-'); return i < 0 ? k : k.slice(i + 1); }
+
+  function isFav(code) {
+    for (var k in set) { if (codeOf(k) === code) return true; }
+    return false;
+  }
+
+  function setFav(code, on) {
+    for (var k in set) { if (codeOf(k) === code) delete set[k]; }
+    if (on) set[keyOf(code)] = 1;
+  }
+
+  // 自選筆數以不重複的代碼計算，才不會同一檔因為跨三張保單被算三次
+  function favCount() {
+    var seen = {}, n = 0;
+    for (var k in set) { var c = codeOf(k); if (!seen[c]) { seen[c] = 1; n++; } }
+    return n;
+  }
   function load() {
     return fetch('/api/watch').then(function (r) { return r.json(); }).then(function (j) {
       set = {};
@@ -148,7 +170,7 @@
   function paintBar() {
     var b = document.getElementById('hub-fav');
     if (!b) return;
-    var n = Object.keys(set).filter(function (k) { return k.indexOf(CODE + '-') === 0; }).length;
+    var n = favCount();
     b.textContent = '只看自選' + (n ? '（' + n + '）' : '');
     b.classList.toggle('on', onlyFav);
     b.disabled = false;
@@ -209,16 +231,16 @@
     el.addEventListener('click', function (ev) {
       ev.stopPropagation(); ev.preventDefault();
       if (!active) { alert('體驗期已結束，自選清單暫停使用。\n既有的清單仍保留著，開通後原封不動還在。'); return; }
-      if (set[k]) { delete set[k]; } else { set[k] = 1; }
+      setFav(codeOf(k), !isFav(codeOf(k)));
       dirty = true;
       paintStar(row, k);
-      if (onlyFav) row.classList.toggle('hub-off', !set[k]);
+      if (onlyFav) row.classList.toggle('hub-off', !isFav(codeOf(k)));
       paintBar();
     });
     return el;
   }
   function paintStar(tr, k) {
-    var on = !!set[k];
+    var on = isFav(codeOf(k));
     var list = tr.querySelectorAll('.hub-star');
     for (var i = 0; i < list.length; i++) {
       list[i].textContent = on ? '\u2605' : '\u2606';
