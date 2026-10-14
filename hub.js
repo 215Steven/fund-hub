@@ -93,7 +93,7 @@
     'th.hub-th,td.hub-td{width:34px;min-width:34px;max-width:34px;padding-left:4px !important;' +
       'padding-right:4px !important;text-align:center !important}' +
     'tr.vr.hub-off{display:none !important}' +
-    '.hub-chip{font-size:12px;font-weight:700;padding:7px 11px;border-radius:999px}' +
+    '.hub-chip.warn{background:#fdf0e3;color:#a35b12;border-color:#f0d8bb}' + '.hub-chip{font-size:12px;font-weight:700;padding:7px 11px;border-radius:999px}' +
     '.hub-chip.trial{background:#f1f5f9;color:#475569}' +
     '.hub-chip.stu{background:#ede9fe;color:#6d28d9}' +
     '.hub-chip.end{background:#fee2e2;color:#dc2626}' +
@@ -163,6 +163,8 @@
     } else if (!active) {
       chip.className = 'hub-chip end';
       chip.textContent = '體驗期已結束';
+      chip.className = 'hub-chip warn';
+      chip.title = '自選清單與組合試算已暫停，存過的清單我們留著。配息率資料在部落格上一直免費。';
       // 不留死巷：到期了也要有地方可以去
       if (cta) {
         var h = '';
@@ -173,6 +175,11 @@
     } else {
       chip.className = 'hub-chip trial';
       chip.textContent = '體驗期' + (daysLeft == null ? '' : '剩 ' + daysLeft + ' 天');
+      // 剩沒幾天就變色並說明到期會少什麼
+      if (daysLeft != null && daysLeft <= 3) {
+        chip.className = 'hub-chip warn';
+        chip.title = '到期後：無廣告版、自選清單同步與組合試算會暫停。配息率資料在部落格上一直免費。';
+      }
       if (cta) cta.innerHTML = (daysLeft != null && daysLeft <= 3 && COURSE_URL)
         ? '<a class="cta" href="' + COURSE_URL + '">贊助開通</a>' : '';
     }
