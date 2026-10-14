@@ -136,9 +136,15 @@
   }
 
   // 自選筆數以不重複的代碼計算，才不會同一檔因為跨三張保單被算三次
+  // 只算「這張保單的表格裡真的有」的自選檔數。
+  // 自選是跨險種共用的，但 VBCT 頁面顯示 8 檔、實際只有 3 檔在這張保單裡，會讓人誤判。
   function favCount() {
+    var rows = document.querySelectorAll('table tbody tr.vr');
     var seen = {}, n = 0;
-    for (var k in set) { var c = codeOf(k); if (!seen[c]) { seen[c] = 1; n++; } }
+    for (var i = 0; i < rows.length; i++) {
+      var c = rowCode(rows[i]);
+      if (c && !seen[c] && isFav(c)) { seen[c] = 1; n++; }
+    }
     return n;
   }
   function load() {
