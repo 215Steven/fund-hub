@@ -2437,7 +2437,11 @@ var _lastPfPaint = 0;
         var divs = await fetchDividendHistory({ v40: f.v40, v41: f.v41, name: f.name });
         var r6 = get6MonthDivs(divs, f.v41 === 'C');
         var rate = calcRate(f.nav, r6);
-        f.rate = (rate !== null && isFinite(rate)) ? rate : null;
+        // 年化配息率是「近 6 月月配平均 × 12 ÷ 淨值」，只對月配標的成立。
+        // 非月配卻留著算出來的數字，排序時會把不配息的標的推到最前面，
+        // 畫面卻顯示「—」，看起來就像排序壞掉。這裡讓資料和畫面一致。
+        var _monthly = (f.freq === '月配');
+        f.rate = (_monthly && rate !== null && isFinite(rate)) ? rate : null;
       } catch(e) { f.rate = null; }
     }));
     saveFundCache(window._fundUniverse || []); // 逐批落地，避免中途離開白做工
