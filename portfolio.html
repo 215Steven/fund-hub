@@ -2482,7 +2482,10 @@ async function loadFundUniverse(force) {
       window._fundUniverse = cached.list;
       pfUpdateTabCounts();
       renderSearchResults();
-      if (statusEl) statusEl.innerHTML = ICON.zap + ' 已載入快取：VBCT + VCCT + UND 共 ' + cached.list.length + ' 筆標的';
+      if (statusEl) {
+        var _ln = _pfLocked ? cached.list.filter(function (x) { return x.source === _pfLocked; }).length : cached.list.length;
+        statusEl.innerHTML = ICON.zap + ' 已載入快取：' + (_pfLocked || 'VBCT + VCCT + UND') + ' 共 ' + _ln + ' 筆標的';
+      }
       updateRateNote();
       return;
     }
@@ -2581,6 +2584,7 @@ window.pfSetOnlyFav = function (on) { _pfOnlyFav = !!on; renderSearchResults(); 
     // 否則會出現「只能選 UND」但文案說「可混合三張保單」的矛盾。
     var swap = [
       ['組合分析工具', _pfLocked + ' 組合試算'],
+      ['VBCT／VCCT／UND', _pfLocked],
       ['VBCT / VCCT / UND', _pfLocked],
       ['VBCT + VCCT + UND', _pfLocked],
       ['可同時混合', '限']
