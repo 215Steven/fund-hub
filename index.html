@@ -104,6 +104,25 @@
     main.wrap:has(#hello:not(.hide)) .tiers { display: none; }
     /* 體驗期快到了的警示狀態 */
     .chip.warn { background: #fdf0e3; color: #a35b12; border-color: #f0d8bb; }
+    /* 首頁的自選摘要 */
+    .fav { margin-bottom: 18px; }
+    .fav-head { display: flex; align-items: baseline; gap: 9px; margin-bottom: 12px; }
+    .fav-head h2 { margin: 0; font-size: 17px; }
+    .fav-count { font-size: 12.5px; color: #94a3b8; }
+    .fav-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center;
+      padding: 9px 0; border-top: 1px solid #f1f5f9; }
+    .fav-row:first-child { border-top: 0; }
+    .fav-nm { min-width: 0; font-size: 13.5px; color: #0f172a; line-height: 1.5; }
+    .fav-nm a { color: inherit; text-decoration: none; }
+    .fav-nm a:hover { text-decoration: underline; }
+    .fav-meta { display: block; margin-top: 2px; font-size: 11.5px; color: #94a3b8; }
+    .fav-ins { display: inline-block; margin-right: 5px; padding: 1px 6px; border-radius: 4px;
+      background: #eef2f8; color: #2657a0; font-size: 10.5px; font-weight: 700; text-decoration: none; }
+    .fav-ins:hover { background: #dbe4f0; }
+    .fav-rate { font-family: "Courier New", monospace; font-size: 13px; font-weight: 700;
+      color: #a35b12; white-space: nowrap; }
+    .fav-rate.none { color: #cbd5e1; font-weight: 400; }
+    .fav-empty { font-size: 13px; color: #64748b; line-height: 1.7; }
   </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -154,6 +173,14 @@
           </div>
         </div>
       </div>
+
+            <section id="fav" class="card fav hide">
+        <div class="fav-head">
+          <h2>我的自選</h2>
+          <span id="fav-count" class="fav-count"></span>
+        </div>
+        <div id="fav-body" class="fav-body">讀取中…</div>
+      </section>
 
       <section id="gate" class="card gate">
     <h2>開通無廣告版</h2>
@@ -226,6 +253,7 @@
       $("hello").classList.remove("hide");
       $("h-name").textContent = (s.name ? s.name : "你好");
       loadPlan(s.token);
+      loadFav(s.token);
     } else {
       $("gate").classList.remove("hide");
       $("hello").classList.add("hide");
@@ -234,6 +262,81 @@
 
   // 方案狀態每次載入都重問一次。token 不用換，
   // 所以剛贊助開通的人重新整理就會看到變成「永久開通」。
+  // 首頁的自選摘要：把三張保單的快照併起來，用代碼比對自選清單。
+  // 同一檔基金在三張保單代碼相同，所以同一檔只列一次，險種標在旁邊。
+  var FAV_INS = [
+    { code: 'VBCT', path: '/vbct' },
+    { code: 'VCCT', path: '/vcct' },
+    { code: 'UND',  path: '/und'  }
+  ];
+  
+  function favCodeOf(k) { var i = k.indexOf('-'); return i < 0 ? k : k.slice(i + 1); }
+  
+  function favEsc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  
+  async function loadFav(token) {
+    var box = $('fav'), body = $('fav-body'), cnt = $('fav-count');
+    if (!box || !body) return;
+    try {
+      var r = await fetch('/api/watch', { headers: { Authorization: 'Bearer ' + token } });
+      if (!r.ok) return;
+      var j = await r.json();
+      var codes = {};
+      (j.list || []).forEach(function (k) { codes[favCodeOf(k)] = 1; });
+      var want = Object.keys(codes);
+      box.classList.remove('hide');
+  
+      if (!want.length) {
+        if (cnt) cnt.textContent = '';
+        body.innerHTML = '<div class="fav-empty">還沒有自選標的。到任一支工具點基金名稱左邊的星號就會加入，三張保單共用同一份清單。</div>';
+        return;
+      }
+      if (cnt) cnt.textContent = want.length + ' 檔';
+  
+      var found = {};
+      await Promise.all(FAV_INS.map(async function (ins) {
+        try {
+          var res = await fetch('/api/data?code=' + ins.code, { headers: { Authorization: 'Bearer ' + token } });
+          if (!res.ok) return;
+          var snap = await res.json();
+          (snap.report || []).forEach(function (f) {
+            if (!codes[f.code]) return;
+            if (!found[f.code]) found[f.code] = { name: f.name, rate: f.rate, freq: f.freq, where: [] };
+            found[f.code].where.push(ins);
+            if (found[f.code].rate == null && f.rate != null) found[f.code].rate = f.rate;
+          });
+        } catch (e) {}
+      }));
+  
+      var list = Object.keys(found).map(function (c) { var f = found[c]; f.code = c; return f; })
+        .sort(function (a, b) {
+          var ar = (typeof a.rate === 'number' && isFinite(a.rate)) ? a.rate : -1;
+          var br = (typeof b.rate === 'number' && isFinite(b.rate)) ? b.rate : -1;
+          if (ar !== br) return br - ar;
+          return a.code.localeCompare(b.code);
+        });
+  
+      if (!list.length) {
+        body.innerHTML = '<div class="fav-empty">自選清單有 ' + want.length + ' 檔，但今天的快照裡找不到對應資料，可能是標的已下架。</div>';
+        return;
+      }
+  
+      body.innerHTML = list.map(function (f) {
+        var has = (typeof f.rate === 'number' && isFinite(f.rate));
+        var links = f.where.map(function (ins) {
+          return '<a class="fav-ins" href="' + ins.path + '">' + ins.code + '</a>';
+        }).join('');
+        return '<div class="fav-row"><div class="fav-nm">' + favEsc(f.name || f.code)
+          + '<span class="fav-meta">' + links + favEsc(f.code)
+          + (f.freq ? ' · ' + favEsc(f.freq) : '') + '</span></div>'
+          + '<div class="fav-rate' + (has ? '' : ' none') + '">' + (has ? f.rate.toFixed(2) + '%' : '—') + '</div>'
+          + '<div></div></div>';
+      }).join('');
+    } catch (e) {}
+  }
+  
   async function loadPlan(token){
     var chip = $("h-chip"), sup = $("h-sup"), st = $("h-state");
     try {
