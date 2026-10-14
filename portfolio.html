@@ -2577,6 +2577,23 @@ window.pfSetOnlyFav = function (on) { _pfOnlyFav = !!on; renderSearchResults(); 
     var tabs = document.querySelector('.pf-tabs');
     if (!tabs) return setTimeout(go, 200);
     tabs.style.display = 'none';
+    // 頁面多處寫著「跨險種」，鎖定時一併換掉，
+    // 否則會出現「只能選 UND」但文案說「可混合三張保單」的矛盾。
+    var swap = [
+      ['組合分析工具', _pfLocked + ' 組合試算'],
+      ['VBCT / VCCT / UND', _pfLocked],
+      ['VBCT + VCCT + UND', _pfLocked],
+      ['可同時混合', '限']
+    ];
+    var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
+    var tn;
+    while ((tn = walker.nextNode())) {
+      for (var si = 0; si < swap.length; si++) {
+        if (tn.nodeValue.indexOf(swap[si][0]) >= 0) {
+          tn.nodeValue = tn.nodeValue.split(swap[si][0]).join(swap[si][1]);
+        }
+      }
+    }
     var h = document.querySelector('h1');
     if (h && h.textContent.indexOf(_pfLocked) < 0) {
       h.textContent = _pfLocked + ' 組合試算';
