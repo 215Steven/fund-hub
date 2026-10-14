@@ -2364,12 +2364,26 @@ function saveFundCache(list) {
 // 基金清單抓取（同時支援 VBCT／VCCT／UND 三種商品代碼）
 // ─────────────────────────────────────────────────────────
 var _assetsCache = null;
+// 三支工具頁已經把年化配息率算好存在 <code>-v2 快取裡（頁首的預熱區塊會先寫好）。
+// 用同一份數字，既不用重算，也不會和工具頁對不起來。
+function toolCacheMap(product) {
+  try {
+    var raw = localStorage.getItem(product.toLowerCase() + '-v2');
+    if (!raw) return {};
+    var rep = (JSON.parse(raw) || {}).report;
+    if (!Array.isArray(rep)) return {};
+    var m = {};
+    for (var i = 0; i < rep.length; i++) { if (rep[i] && rep[i].v40) m[rep[i].v40] = rep[i]; }
+    return m;
+  } catch (e) { return {}; }
+}
 async function fetchFundList(product) {
   // 富邦 2026/10 改版：一次 getAssets 拿全部標的，三個險種共用同一份
   if (!_assetsCache) _assetsCache = await fbPost('/api/asset/getAssets', {});
   var mine = (_assetsCache || []).filter(function(a) {
     return (a.insurances || []).some(function(x) { return x.code === product; });
   });
+  var _tc = toolCacheMap(product);
   return mine.map(toLegacy)
     .filter(function(f) { return !isDiscretionary(f); }) // 排除 D 型全權委託（不支援逐日淨值）
     .map(function(f) {
@@ -2390,7 +2404,14 @@ async function fetchFundList(product) {
         ret6m: pctNum(a.sixMonthReturn),
         ret1y: pctNum(a.oneYearReturn),
         ret3y: pctNum(a.threeYearReturn),
-        url: getFundUrl(f)
+        url: getFundUrl(f),
+        rate: (function () {
+          var c = _tc[f.V40];
+          if (!c) return undefined;
+          var v = Number(c.rate);
+          return (c.rate !== '' && c.rate != null && isFinite(v)) ? v : null;
+        })(),
+        divs: (_tc[f.V40] || {}).divs || null
       };
     });
 }
