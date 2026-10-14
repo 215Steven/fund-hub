@@ -229,6 +229,7 @@
     if (c) return (c.textContent || '').trim();
     var tds = tdsOf(tr);
     for (var j = 0; j < tds.length; j++) {
+      if (tds[j].querySelector('.src-badge')) continue;
       var t = (tds[j].textContent || '').trim();
       if (/^[A-Z0-9]{2,8}$/.test(t)) return t;
     }
