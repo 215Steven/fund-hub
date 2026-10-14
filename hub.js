@@ -328,6 +328,22 @@
       document.getElementById('hub-fav').addEventListener('click', function () {
         onlyFav = !onlyFav;
         if (typeof window.pfSetOnlyFav === 'function') window.pfSetOnlyFav(onlyFav);
+        // 組合試算入口：鎖定在本險種。內嵌版（部落格）不會執行到這裡，
+        // 所以部落格上不會出現這顆按鈕，組合試算仍是開通後才有的功能。
+        (function addPfLink() {
+          if (PAID_ONLY.indexOf(CODE) >= 0) return;
+          if (document.getElementById('hub-pf')) return;
+          var bar = document.getElementById('hub-fav');
+          if (!bar || !bar.parentElement) return;
+          var a = document.createElement('a');
+          a.id = 'hub-pf';
+          a.href = '/portfolio?ins=' + CODE;
+          a.textContent = '組合試算';
+          a.style.cssText = 'display:inline-block;margin-left:8px;padding:7px 13px;border-radius:8px;'
+            + 'border:1px solid #dbe4f0;background:#fff;color:#2657a0;font-size:13px;'
+            + 'font-weight:600;text-decoration:none;vertical-align:middle';
+          bar.parentElement.insertBefore(a, bar.nextSibling);
+        })();
         decorate();
       });
     }
