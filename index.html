@@ -109,21 +109,25 @@
     .fav-head { display: flex; align-items: baseline; gap: 9px; margin-bottom: 12px; }
     .fav-head h2 { margin: 0; font-size: 17px; }
     .fav-count { font-size: 12.5px; color: #94a3b8; }
+    /* 欄位多，窄螢幕讓它橫向捲動而不是把每列擠成四行 */
     .fav-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    table.favt { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    table.favt { width: 100%; min-width: 1020px; border-collapse: collapse; font-size: 12.5px; }
     table.favt th { background: #1e3a5f; color: #fff; font-weight: 600; font-size: 11.5px;
-      padding: 9px 8px; text-align: right; white-space: nowrap; }
+      padding: 8px 7px; text-align: right; white-space: nowrap; }
     table.favt th.l { text-align: left; }
     table.favt th small { display: block; font-weight: 400; opacity: .72; font-size: 10px; }
-    table.favt td { padding: 9px 8px; border-bottom: 1px solid #f1f5f9; text-align: right;
+    table.favt td { padding: 8px 7px; border-bottom: 1px solid #f1f5f9; text-align: right;
       white-space: nowrap; vertical-align: middle; }
-    table.favt td.l { text-align: left; white-space: normal; }
+    table.favt td.l { text-align: left; }
     table.favt tr:last-child td { border-bottom: 0; }
-    .fav-nm { color: #0f172a; line-height: 1.5; max-width: 290px; }
+    /* 只有基金名稱允許換行，最多兩行 */
+    .fav-nm { white-space: normal; color: #0f172a; line-height: 1.45; width: 260px;
+      max-width: 260px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden; }
     .fav-nm a { color: inherit; text-decoration: none; border-bottom: 1px dotted #cbd5e1; }
     .fav-nm a:hover { border-bottom-color: #2657a0; }
-    .fav-ins { display: inline-block; margin-right: 4px; padding: 1px 6px; border-radius: 4px;
-      background: #eef2f8; color: #2657a0; font-size: 10.5px; font-weight: 700; text-decoration: none; }
+    .fav-ins { display: inline-block; margin-right: 3px; padding: 1px 5px; border-radius: 4px;
+      background: #eef2f8; color: #2657a0; font-size: 10px; font-weight: 700; text-decoration: none; }
     .fav-ins:hover { background: #dbe4f0; }
     .fav-mono { font-family: "Courier New", Courier, monospace; }
     .fav-code { color: #94a3b8; }
@@ -132,18 +136,18 @@
     .fav-dim { color: #cbd5e1; }
     .fav-up { color: #1d4ed8; }
     .fav-dn { color: #dc2626; }
-    .fav-badge { display: inline-block; padding: 2px 7px; border-radius: 5px; font-size: 10.5px; font-weight: 700; }
+    .fav-badge { display: inline-block; padding: 2px 7px; border-radius: 5px; font-size: 10.5px;
+      font-weight: 700; white-space: nowrap; }
     .fav-m { background: #2657a0; color: #fff; }
     .fav-q { background: #0f766e; color: #fff; }
     .fav-o { background: #f1f5f9; color: #94a3b8; }
     .fav-rr { display: inline-block; padding: 1px 6px; border-radius: 5px; font-size: 10.5px;
-      font-weight: 700; border: 1px solid currentColor; color: #64748b; }
+      font-weight: 700; border: 1px solid currentColor; color: #64748b; white-space: nowrap; }
     .fav-rr.rr1, .fav-rr.rr2 { color: #15803d; }
     .fav-rr.rr3 { color: #2657a0; }
     .fav-rr.rr4 { color: #b45309; }
     .fav-rr.rr5 { color: #dc2626; }
     .fav-empty { font-size: 13px; color: #64748b; line-height: 1.7; }
-    @media (max-width: 760px) { table.favt { font-size: 11.5px; } .fav-nm { max-width: 180px; } }
   </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -358,15 +362,15 @@
                 ret6m: f.ret6m, ret1y: f.ret1y, ret3y: f.ret3y, where: []
               };
               found[f.code].where.push(ins);
-              if (found[f.code].rate == null && f.rate != null) found[f.code].rate = f.rate;
+              if (!found[f.code].rate && f.rate) found[f.code].rate = f.rate;
             });
           } catch (e) {}
         }));
   
         var list = Object.keys(found).map(function (c) { var f = found[c]; f.code = c; return f; })
           .sort(function (a, b) {
-            var ar = (typeof a.rate === 'number' && isFinite(a.rate)) ? a.rate : -1;
-            var br = (typeof b.rate === 'number' && isFinite(b.rate)) ? b.rate : -1;
+            var ar = isFinite(Number(a.rate)) && a.rate !== '' ? Number(a.rate) : -1;
+            var br = isFinite(Number(b.rate)) && b.rate !== '' ? Number(b.rate) : -1;
             if (ar !== br) return br - ar;
             return a.code.localeCompare(b.code);
           });
@@ -387,8 +391,10 @@
           + '</tr></thead>';
   
         var rows = list.map(function (f) {
-          var has = (typeof f.rate === 'number' && isFinite(f.rate));
-          var hi = has && f.rate >= 8;
+          // 快照裡的 rate 是字串（空字串代表沒有），要先轉數字再判斷
+        var rv = Number(f.rate);
+        var has = (f.rate !== '' && f.rate != null && isFinite(rv));
+          var hi = has && rv >= 8;
           var links = f.where.map(function (ins) {
             return '<a class="fav-ins" href="' + ins.path + '">' + ins.code + '</a>';
           }).join('');
@@ -402,7 +408,7 @@
             + '<td class="l fav-mono fav-code">' + favEsc(f.code) + '</td>'
             + '<td class="l">' + favEsc(f.cur || '') + '</td>'
             + '<td class="fav-mono">' + (f.nav != null ? favEsc(f.nav) : '-') + '</td>'
-            + '<td class="' + cls + '">' + (has ? f.rate.toFixed(2) + '%' : '-') + '</td>'
+            + '<td class="' + cls + '">' + (has ? rv.toFixed(2) + '%' : '-') + '</td>'
             + '<td>' + favRet(f.ret6m) + '</td>'
             + '<td>' + favRet(f.ret1y) + '</td>'
             + '<td>' + favRet(f.ret3y) + '</td>'
