@@ -2509,8 +2509,16 @@ function pfSearchDebounced() {
   _pfSearchDebounceTimer = setTimeout(renderSearchResults, 200);
 }
 // 目前選取之險種分頁
-var _pfSrc = 'VBCT';
+// 一個人通常只有一張保單，VBCT 的錢配不到 UND 的標的，
+// 所以網址帶 ?ins=VBCT 就鎖定該險種，不顯示切換分頁。
+var _pfLocked = (function () {
+  var m = /[?&]ins=([A-Za-z]+)/.exec(location.search);
+  var v = m ? m[1].toUpperCase() : '';
+  return (v === 'VBCT' || v === 'VCCT' || v === 'UND') ? v : '';
+})();
+var _pfSrc = _pfLocked || 'VBCT';
 function pfSetSrc(src) {
+      if (_pfLocked) return;
   _pfSrc = src;
   Array.prototype.forEach.call(document.querySelectorAll('.pf-tab'), function(t) {
     t.setAttribute('aria-selected', t.getAttribute('data-src') === src ? 'true' : 'false');
@@ -2561,6 +2569,24 @@ function pfResetFilters() {
 // 否則自選不在前 60 名時清單會整個空白。
 var _pfOnlyFav = false;
 window.pfSetOnlyFav = function (on) { _pfOnlyFav = !!on; renderSearchResults(); };
+
+// 鎖定單一險種時，隱藏切換分頁並把標題換成該保單
+(function applyLock() {
+  if (!_pfLocked) return;
+  function go() {
+    var tabs = document.querySelector('.pf-tabs');
+    if (!tabs) return setTimeout(go, 200);
+    tabs.style.display = 'none';
+    var h = document.querySelector('h1');
+    if (h && h.textContent.indexOf(_pfLocked) < 0) {
+      h.textContent = _pfLocked + ' 組合試算';
+    }
+    document.title = _pfLocked + ' 組合試算 — 富邦人壽投資型保險';
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', go);
+  } else { go(); }
+})();
 
 function renderSearchResults() {
   var universe = window._fundUniverse || [];
