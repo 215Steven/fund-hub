@@ -2442,10 +2442,25 @@ var _lastPfPaint = 0;
     }));
     saveFundCache(window._fundUniverse || []); // 逐批落地，避免中途離開白做工
     updateRateNote();
-    // 每批都重畫整張表會一直閃，排序中的列也會不停跳動。
-    // 節流到至多每 700ms 一次，迴圈跑完後再補一次完整重繪。
-    var _now = Date.now();
-    if (_now - _lastPfPaint > 700) { renderSearchResults(); _lastPfPaint = _now; }
+      // 587 檔標的裡畫面通常只顯示 60 筆，大多數批次更新到的是看不見的列。
+      // 只有在這批真的影響到目前顯示的列時才重畫，否則整張表每 1.7 秒閃一次。
+      // 保險起見最多 6 秒一定重畫一次，讓使用者看得到進度。
+      var _now = Date.now();
+      var _shown = {};
+      try {
+        var _rows = document.querySelectorAll('tbody tr');
+        for (var _i = 0; _i < _rows.length; _i++) {
+          var _c = _rows[_i].cells && _rows[_i].cells[2];
+          if (_c) _shown[_c.textContent.trim()] = true;
+        }
+      } catch (e) {}
+      var _touchesView = batch.some(function (f) {
+        return _shown[f.code] || _shown[f.v40];
+      });
+      if (_touchesView || _now - _lastPfPaint > 6000) {
+        renderSearchResults();
+        _lastPfPaint = _now;
+      }
     await new Promise(function(r) { setTimeout(r, 120); });
   }
   _rateRunning = false;
