@@ -102,6 +102,8 @@
     main.wrap { display: flex; flex-direction: column; }
     #hello { order: -1; }
     main.wrap:has(#hello:not(.hide)) .tiers { display: none; }
+    /* 體驗期快到了的警示狀態 */
+    .hub-chip.warn { background: #fdf0e3; color: #a35b12; border-color: #f0d8bb; }
   </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -111,7 +113,7 @@
   <div class="wrap">
     <span class="tag">非官方工具</span>
     <h1>基金配息率工具集</h1>
-    <p>配息率高不代表賺得多。把 VBCT、VCCT、UND 三張保單的標的攤開來看：年化配息率、含息與未還原的報酬差多少、風險等級，一次比完。完全免費，不用註冊。</p>
+    <p>配息率高不代表賺得多。把 VBCT、VCCT、UND 三張保單的標的攤開來看：年化配息率、含息與未還原的報酬差多少、風險等級，一次比完。這裡是無廣告版，另有自選清單與跨險種的組合試算。</p>
   </div>
 </header>
 
@@ -131,31 +133,31 @@
 
         <div class="tiers">
         <div class="tier">
-          <div class="tier-tag tier-free">免費</div>
+          <div class="tier-tag tier-free">部落格版</div>
           <div class="tier-body">
-            <strong>看資料與分析</strong>
-            <span>三支工具的完整清單、篩選排序，以及個別標的的配息與報酬分析。不用註冊。</span>
+            <strong>免費看，有廣告</strong>
+            <span>三支工具的完整清單、篩選排序與個別標的分析，資料和付費版一模一樣。在部落格頁面上看，頁面會有廣告。</span>
           </div>
         </div>
         <div class="tier">
-          <div class="tier-tag tier-mail">留 Email</div>
+          <div class="tier-tag tier-mail">體驗 14 天</div>
           <div class="tier-body">
-            <strong>自選清單</strong>
-            <span>把關注的標的加入自選，四支工具共用一份，換裝置也讀得到。</span>
+            <strong>無廣告＋自選＋組合試算</strong>
+            <span>沒有廣告的版本，加上自選清單（四支工具共用、換裝置也讀得到）與跨險種的組合試算。留個 Email 就開通。</span>
           </div>
         </div>
         <div class="tier">
           <div class="tier-tag tier-paid">贊助一次</div>
           <div class="tier-body">
-            <strong>組合試算與持續更新</strong>
-            <span>跨險種自訂權重、回測與配息試算。贊助一次即可持續使用，之後的更新都包含在內。</span>
+            <strong>持續使用</strong>
+            <span>體驗期之後要繼續用無廣告版、自選清單與組合試算，贊助一次就好，之後的更新都包含在內。</span>
           </div>
         </div>
       </div>
 
       <section id="gate" class="card gate">
-    <h2>想把關注的標的存起來？</h2>
-    <p class="sub">上面的工具不用開通就能用。留個 Email 可以多一份自選清單，四支工具共用、換裝置也讀得到，並解鎖跨險種的組合試算。</p>
+    <h2>開通無廣告版</h2>
+    <p class="sub">留個 Email 先體驗 14 天：沒有廣告、自選清單四支工具共用、換裝置也讀得到，再加上跨險種的組合試算。只想看配息率的話，部落格版一直都是免費的。</p>
 
     <div id="g-btn-box"></div>
     <div class="or"><span>或用 Email 開通</span></div>
@@ -247,12 +249,19 @@
       } else if (!j.active) {
         chip.classList.add("end");
         chip.textContent = "體驗期已結束";
+        chip.className = "hub-chip warn";
+        chip.title = "自選清單與組合試算已暫停，存過的清單我們留著。配息率資料在部落格上一直免費。";
         st.textContent = "，配息率清單仍可查看，自選與組合試算已暫停。";
         sup.classList.remove("ghost");
         sup.textContent = "贊助開通";
       } else {
         chip.classList.add("trial");
         chip.textContent = "體驗期剩 " + j.daysLeft + " 天";
+        // 剩沒幾天就講清楚到期會少什麼，不要讓人莫名其妙失去功能
+        if (j.daysLeft != null && j.daysLeft <= 3) {
+          chip.className = "hub-chip warn";
+          chip.title = "到期後：無廣告版、自選清單同步與組合試算會暫停。配息率資料在部落格上一直免費。";
+        }
         st.textContent = "，自選清單已開通。";
         // 剩三天內才把按鈕變顯眼，平常不吵人
         if (j.daysLeft <= 3) { sup.classList.remove("ghost"); sup.textContent = "贊助開通"; }
