@@ -103,7 +103,7 @@
     #hello { order: -1; }
     main.wrap:has(#hello:not(.hide)) .tiers { display: none; }
     /* 體驗期快到了的警示狀態 */
-    .hub-chip.warn { background: #fdf0e3; color: #a35b12; border-color: #f0d8bb; }
+    .chip.warn { background: #fdf0e3; color: #a35b12; border-color: #f0d8bb; }
   </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -249,7 +249,7 @@
       } else if (!j.active) {
         chip.classList.add("end");
         chip.textContent = "體驗期已結束";
-        chip.className = "hub-chip warn";
+        chip.classList.add("warn");
         chip.title = "自選清單與組合試算已暫停，存過的清單我們留著。配息率資料在部落格上一直免費。";
         st.textContent = "，配息率清單仍可查看，自選與組合試算已暫停。";
         sup.classList.remove("ghost");
@@ -259,7 +259,7 @@
         chip.textContent = "體驗期剩 " + j.daysLeft + " 天";
         // 剩沒幾天就講清楚到期會少什麼，不要讓人莫名其妙失去功能
         if (j.daysLeft != null && j.daysLeft <= 3) {
-          chip.className = "hub-chip warn";
+          chip.classList.add("warn");
           chip.title = "到期後：無廣告版、自選清單同步與組合試算會暫停。配息率資料在部落格上一直免費。";
         }
         st.textContent = "，自選清單已開通。";
