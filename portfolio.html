@@ -2557,6 +2557,11 @@ function pfResetFilters() {
   PF_FILTER_IDS.forEach(function(id) { var el = $(id); if (el) el.value = ''; });
   renderSearchResults();
 }
+// 只看自選必須在資料層篩（587 檔），不能只隱藏已渲染的 60 列，
+// 否則自選不在前 60 名時清單會整個空白。
+var _pfOnlyFav = false;
+window.pfSetOnlyFav = function (on) { _pfOnlyFav = !!on; renderSearchResults(); };
+
 function renderSearchResults() {
   var universe = window._fundUniverse || [];
   var q = (($('pf-search-q') || {}).value || '').trim().toLowerCase();
@@ -2565,7 +2570,8 @@ function renderSearchResults() {
   var filtered = universe.filter(function(f) {
     return (!src || f.source === src)
       && (!q || f.name.toLowerCase().includes(q) || f.code.toLowerCase().includes(q))
-      && pfPassFilters(f, ft);
+      && pfPassFilters(f, ft)
+      && (!_pfOnlyFav || !window.hubIsFav || window.hubIsFav(f.code));
   });
   var total = filtered.length;
   if (_pfSortCol >= 0) {
