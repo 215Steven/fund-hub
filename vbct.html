@@ -2416,6 +2416,47 @@ function buildNavChartSvg(dates, navs, navs2, activeIsSecond) {
       var actMax = Math.max.apply(null, act), actMin = Math.min.apply(null, act);
       var maxI = act.indexOf(actMax), minI = act.indexOf(actMin);
 
+      // 最大回撤期間：從波段高點跌到谷底花多久，之後有沒有爬回原來的高度。
+      // 只看一個百分比看不出「套多久」，標出區間才知道要熬多長。
+      var ddPeak = 0, ddTrough = 0, ddVal = 0, runMax = act[0], runMaxI = 0;
+      for (var q = 1; q < act.length; q++) {
+        if (act[q] > runMax) { runMax = act[q]; runMaxI = q; }
+        var ddNow = runMax > 0 ? (runMax - act[q]) / runMax : 0;
+        if (ddNow > ddVal) { ddVal = ddNow; ddPeak = runMaxI; ddTrough = q; }
+      }
+      var ddRec = -1;
+      if (ddVal > 0) {
+        for (var q2 = ddTrough + 1; q2 < act.length; q2++) {
+          if (act[q2] >= act[ddPeak]) { ddRec = q2; break; }
+        }
+      }
+
+      function ddDays(a, b) {
+        var t1 = Date.parse(dates[a]), t2 = Date.parse(dates[b]);
+        if (!isFinite(t1) || !isFinite(t2)) return null;
+        return Math.round((t2 - t1) / 86400000);
+      }
+
+      var band = '', ddNote = '';
+      if (ddVal > 0.005 && ddTrough > ddPeak) {
+        var bx1 = xf(ddPeak), bx2 = xf(ddTrough), by = padT, bh = h - padT - padB;
+        var fallDays = ddDays(ddPeak, ddTrough);
+        band += '<rect x="' + bx1.toFixed(1) + '" y="' + by + '" width="' + Math.max(1, bx2 - bx1).toFixed(1)
+          + '" height="' + bh + '" fill="rgba(220,38,38,0.08)"><title>下跌期間'
+          + (fallDays != null ? ' ' + fallDays + ' 天' : '') + '</title></rect>';
+        ddNote = '下跌 ' + (fallDays != null ? fallDays + ' 天' : '');
+        if (ddRec > 0) {
+          var bx3 = xf(ddRec);
+          var recDays = ddDays(ddTrough, ddRec);
+          band += '<rect x="' + bx2.toFixed(1) + '" y="' + by + '" width="' + Math.max(1, bx3 - bx2).toFixed(1)
+            + '" height="' + bh + '" fill="rgba(22,163,74,0.08)"><title>回到原高點'
+            + (recDays != null ? ' 再花 ' + recDays + ' 天' : '') + '</title></rect>';
+          ddNote += '，回本 ' + (recDays != null ? recDays + ' 天' : '');
+        } else {
+          ddNote += '，尚未回到原高點';
+        }
+      }
+
       var gridLines = "", gridLabels = "";
       for (var g = 0; g <= 4; g++) {
         var gv = minV + range * g / 4;
@@ -2436,10 +2477,12 @@ function buildNavChartSvg(dates, navs, navs2, activeIsSecond) {
           + '<text x="' + (padL + 13) + '" y="11" font-size="9" fill="#64748b">淨值（未還原）</text>'
           + '<rect x="' + (padL + 108) + '" y="6" width="9" height="2.5" fill="' + BLUE + '"/>'
           + '<text x="' + (padL + 121) + '" y="11" font-size="9" fill="#64748b">加上配息後</text>'
+          + (ddNote ? '<rect x="' + (padL + 196) + '" y="6" width="9" height="2.5" fill="rgba(220,38,38,0.35)"/>'
+              + '<text x="' + (padL + 209) + '" y="11" font-size="9" fill="#64748b">最大回撤：' + ddNote + '</text>' : '')
         : "";
 
       return '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;height:auto;display:block">'
-        + gridLines + gridLabels + legend
+        + band + gridLines + gridLabels + legend
         + '<polyline points="' + pts + '" fill="none" stroke="' + c1 + '" stroke-width="' + w1 + '" opacity="' + o1 + '"/>'
         + (has2 ? '<polyline points="' + pts2 + '" fill="none" stroke="' + BLUE + '" stroke-width="' + w2 + '" opacity="' + o2 + '"/>' : "")
         + '<circle cx="' + xf(maxI).toFixed(1) + '" cy="' + yf(actMax).toFixed(1) + '" r="3.5" fill="#dc2626"/>'
