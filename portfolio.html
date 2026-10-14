@@ -2519,6 +2519,9 @@ var _pfLocked = (function () {
   var v = m ? m[1].toUpperCase() : '';
   return (v === 'VBCT' || v === 'VCCT' || v === 'UND') ? v : '';
 })();
+// 組合試算只從單一保單進來（/portfolio?ins=XXXX）。
+// 沒帶參數的舊書籤會跑出跨險種混配，那在實務上不成立，所以退回工具集。
+if (!_pfLocked) { location.replace('/'); }
 var _pfSrc = _pfLocked || 'VBCT';
 function pfSetSrc(src) {
       if (_pfLocked) return;
