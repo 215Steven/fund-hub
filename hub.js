@@ -300,7 +300,9 @@
       var mk = tr.querySelector('.mc-key');
       if (mk && !mk.querySelector('.hub-star')) mk.insertBefore(mkStar(k, tr), mk.firstChild);
       paintStar(tr, k);
-      tr.classList.toggle('hub-off', onlyFav && !set[k]);
+      // 星號用跨險種的 isFav，這裡如果用 set[k]（帶險種前綴的 key），
+      // 組合試算頁的 CODE 和实際標的險種不一致，會把自選全藏起來。
+      tr.classList.toggle('hub-off', onlyFav && !isFav(code));
     }
     paintBar();
   }
