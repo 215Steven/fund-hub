@@ -2397,7 +2397,6 @@ async function fetchFundList(product) {
         code: f.V47 || '',
         cur: f.V26 || '',
         type: (f.V5 || '').replace(/<[^>]+>/g, '').trim(),
-        freq: f.V42 || '無',
         rr: f.V28 || '',
         nav: parseFloat(f.V18) || 0,
         divDate: a.dividendDate || '',
@@ -2411,7 +2410,10 @@ async function fetchFundList(product) {
           var v = Number(c.rate);
           return (c.rate !== '' && c.rate != null && isFinite(v)) ? v : null;
         })(),
-        divs: (_tc[f.V40] || {}).divs || null
+        divs: (_tc[f.V40] || {}).divs || null,
+        // 工具頁的配息頻率是從實際配息間隔推回來的，比原始欄位 V42 準；
+        // 不跟著用的話，會出現「頻率寫無、卻有配息率」的矛盾。
+        freq: (_tc[f.V40] && _tc[f.V40].freq) ? _tc[f.V40].freq : (f.V42 || '無')
       };
     });
 }
@@ -2518,7 +2520,12 @@ async function loadFundUniverse(force) {
     saveFundCache(combined);
     pfUpdateTabCounts();
     renderSearchResults();
-    if (statusEl) statusEl.innerHTML = ICON.zap + ' VBCT ' + lists[0].length + ' 筆／VCCT ' + lists[1].length + ' 筆／UND ' + lists[2].length + ' 筆，共 ' + combined.length + ' 筆標的';
+    if (statusEl) {
+      var _fn = _pfLocked ? combined.filter(function (x) { return x.source === _pfLocked; }).length : combined.length;
+      statusEl.innerHTML = ICON.zap + ' ' + (_pfLocked
+        ? _pfLocked + ' 共 ' + _fn + ' 筆標的'
+        : 'VBCT ' + lists[0].length + ' 筆／VCCT ' + lists[1].length + ' 筆／UND ' + lists[2].length + ' 筆，共 ' + combined.length + ' 筆標的');
+    }
     updateRateNote();
   } catch(e) {
     if (statusEl) statusEl.innerHTML = ICON.error + ' 載入基金清單失敗：' + eh(e.message) + '<br><small style="color:#b91c1c">請確認網路連線後按「重新載入清單」再試一次。</small>';
