@@ -2632,7 +2632,10 @@ function renderSearchResults() {
   } else {
     filtered = filtered.slice().sort(function(a, b) { return a.name.localeCompare(b.name, 'zh-TW'); });
   }
-  filtered = filtered.slice(0, 60);
+  // 鎖定單一保單後最多 223 筆，和三支工具頁一樣可以整頁渲染，
+  // 不必再分段顯示。沒鎖定時維持 60 筆保護效能。
+  var PF_LIMIT = _pfLocked ? 250 : 60;
+  filtered = filtered.slice(0, PF_LIMIT);
   // 只為畫面上看得到的標的排入配息率計算，避免一次打 291 次請求
   queueRates(filtered);
   var inPortfolio = {};
@@ -2663,7 +2666,7 @@ function renderSearchResults() {
       + '</tr>';
   }).join('');
   var noteEl = $('pf-results-note');
-  if (noteEl) noteEl.textContent = total > 60 ? ('符合 ' + total + ' 筆，顯示前 60 筆（請輸入關鍵字縮小範圍）') : ('符合 ' + total + ' 筆');
+  if (noteEl) noteEl.textContent = total > PF_LIMIT ? ('符合 ' + total + ' 筆，顯示前 ' + PF_LIMIT + ' 筆（請輸入關鍵字縮小範圍）') : ('符合 ' + total + ' 筆');
   var tbody = $('pf-results-tbody');
   // 保留捲動位置，避免背景補齊配息率時畫面跳動
   var scrollBox = document.querySelector('.pf-search-scroll');
