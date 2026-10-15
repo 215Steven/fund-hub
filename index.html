@@ -129,6 +129,8 @@
     main.wrap:has(#hello:not(.hide)) .so { display: none; }
     /* 未開通時，組合試算卡點下去是死路，所以改指向開通區並標示鎖住 */
     .tile.locked { opacity: .72; }
+    /* .card 本身沒有 padding/margin，每個區塊都自己給 */
+    .so { padding: 22px 24px; margin-top: 16px; }
     .tile.locked .go { color: #94a3b8; }
     .colgrid { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px 18px; margin: 12px 0 0; padding: 0; list-style: none; }
     .colgrid li { font-size: 13.5px; color: #334155; line-height: 1.6; padding-left: 14px; position: relative; }
