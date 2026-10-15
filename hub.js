@@ -15,8 +15,16 @@
   // 擋了只是把人推走，也會讓性質變成「付錢才看得到配息率分析」。
   var PAID_ONLY = ['PF'];
   var KEY = 'fh-session';
+  // LINE 內建瀏覽器與 Safari 無痕／鎖定模式會擋掉 localStorage；
+  // 只讀 localStorage 的話，這些人會被下面那行無限彈回首頁。
   var s = null;
   try { s = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
+  if (!s || !s.token) {
+    try {
+      var ck = /(?:^|;\s*)fh=([^;]+)/.exec(document.cookie || '');
+      if (ck) s = { token: decodeURIComponent(ck[1]) };
+    } catch (e) {}
+  }
   // 部落格文章用 /embed/<code> 內嵌，那是免費層（廣告長在部落格頁面上）。
   // 主網址是無廣告版，和自選清單、組合試算綁在一起，要開通才看得到。
   var EMBED = /^\/embed\//.test(location.pathname);
