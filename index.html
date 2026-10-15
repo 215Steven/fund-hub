@@ -125,7 +125,19 @@
     /* 已開通的人：身分列排到最上面，價值階梯就不用再看一次 */
     main.wrap { display: flex; flex-direction: column; }
     #hello { order: -1; }
-    main.wrap:has(#hello:not(.hide)) .tiers { display: none; }
+    main.wrap:has(#hello:not(.hide)) .tiers,
+    main.wrap:has(#hello:not(.hide)) .so { display: none; }
+    /* 未開通時，組合試算卡點下去是死路，所以改指向開通區並標示鎖住 */
+    .tile.locked { opacity: .72; }
+    .tile.locked .go { color: #94a3b8; }
+    .colgrid { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px 18px; margin: 12px 0 0; padding: 0; list-style: none; }
+    .colgrid li { font-size: 13.5px; color: #334155; line-height: 1.6; padding-left: 14px; position: relative; }
+    .colgrid li::before { content: ""; position: absolute; left: 0; top: .62em; width: 5px; height: 5px; border-radius: 50%; background: #93b4e3; }
+    .colgrid b { color: #0f2744; font-weight: 700; }
+    .faq dt { font-size: 14px; font-weight: 700; color: #0f2744; margin: 16px 0 4px; }
+    .faq dt:first-of-type { margin-top: 10px; }
+    .faq dd { margin: 0; font-size: 13.5px; color: #64748b; line-height: 1.75; }
+    @media (max-width: 560px) { .colgrid { grid-template-columns: 1fr; } }
     /* 體驗期快到了的警示狀態 */
     .chip.warn { background: #fdf0e3; color: #a35b12; border-color: #f0d8bb; }
     /* 首頁自選表格：沿用工具頁的視覺語言 */
@@ -206,17 +218,17 @@
 
   <!-- 未開通 -->
   <div class="grid">
-    <a class="card tile" href="/vcct"><span class="pill">年金</span><div class="code">VCCT</div>
+    <a class="card tile" href="/vcct" data-tool="VCCT" data-blog="https://oosayhi.com/vcct/"><span class="pill">年金</span><div class="code">VCCT</div>
       <div class="nm">真豐利變額年金保險</div><div class="go">打開 →</div></a>
-    <a class="card tile pf" href="/portfolio?ins=VCCT"><div class="code">VCCT 組合試算</div>
+    <a class="card tile pf" href="/portfolio?ins=VCCT" data-pf="VCCT"><div class="code">VCCT 組合試算</div>
       <div class="nm">自訂權重、回測與配息試算</div><div class="go">打開 →</div></a>
-    <a class="card tile" href="/vbct"><span class="pill">年金</span><div class="code">VBCT</div>
+    <a class="card tile" href="/vbct" data-tool="VBCT" data-blog="https://oosayhi.com/vbct/"><span class="pill">年金</span><div class="code">VBCT</div>
       <div class="nm">真有利變額年金保險</div><div class="go">打開 →</div></a>
-    <a class="card tile pf" href="/portfolio?ins=VBCT"><div class="code">VBCT 組合試算</div>
+    <a class="card tile pf" href="/portfolio?ins=VBCT" data-pf="VBCT"><div class="code">VBCT 組合試算</div>
       <div class="nm">自訂權重、回測與配息試算</div><div class="go">打開 →</div></a>
-    <a class="card tile" href="/und"><span class="pill">壽險</span><div class="code">UND</div>
+    <a class="card tile" href="/und" data-tool="UND" data-blog="https://oosayhi.com/und/"><span class="pill">壽險</span><div class="code">UND</div>
       <div class="nm">年年吉祥變額萬能壽險</div><div class="go">打開 →</div></a>
-    <a class="card tile pf" href="/portfolio?ins=UND"><div class="code">UND 組合試算</div>
+    <a class="card tile pf" href="/portfolio?ins=UND" data-pf="UND"><div class="code">UND 組合試算</div>
       <div class="nm">自訂權重、回測與配息試算</div><div class="go">打開 →</div></a>
   </div>
 
@@ -244,7 +256,36 @@
         </div>
       </div>
 
-            <section id="fav" class="card fav hide">
+            <section class="card so">
+        <h2 style="margin:0 0 4px;font-size:17px">每支標的你會看到這些數字</h2>
+        <p class="sub" style="margin:0;font-size:13.5px;color:#64748b">不是只有配息率。同一個畫面上比完，不用在官網從一頁翻到一頁。</p>
+        <ul class="colgrid">
+          <li><b>年化配息率</b>：近 6 個月月配平均 × 12 ÷ 當日淨值</li>
+          <li><b>含息報酬</b>：六個月、一年、三年三個區間</li>
+          <li><b>淨值與含息走勢</b>：畫在同一張圖上對照</li>
+          <li><b>最大回撚</b>：跌了多久、花幾天回到原高點</li>
+          <li><b>近 6 月配息</b>：每期金額與升降變化</li>
+          <li><b>風險等級</b>：RR1〜RR5、幣別與配息頻率</li>
+        </ul>
+      </section>
+
+      <section class="card so faq">
+        <h2 style="margin:0;font-size:17px">常見問題</h2>
+        <dl style="margin:0">
+          <dt>為什麼要留 Email？</dt>
+          <dd>自選清單要跟著你跑，手機、電腦都讀得到，就需要一個認得出你的記號。留 Email 是最輕的做法，不用設密碼。</dd>
+          <dt>會不會寄一堆信？</dt>
+          <dd>不會。沒勾選同意就完全不寄，勾了也只有配息變化與新功能通知，隨時可退訂。Email 不會給第三方。</dd>
+          <dt>資料從哪裡來？準嗎？</dt>
+          <dd>全部整理自富邦投資型保險專區的公開資料，每天更新一次。本站是個人製作的非官方工具，計算口徑寫在每支工具的說明裡，數字請以官方公告為準。</dd>
+          <dt>和部落格版差在哪？</dt>
+          <dd>資料一模一樣。差別是這裡沒有廣告，而且多了自選清單與組合試算。只想查配息率的話，部落格一直都是免費的。</dd>
+          <dt>這是投資建議嗎？</dt>
+          <dd>不是。本站只做資料整理與計算，不推薦任何標的，也不保證任何收益。</dd>
+        </dl>
+      </section>
+
+      <section id="fav" class="card fav hide">
         <div class="fav-head">
           <h2>我的自選</h2>
           <span id="fav-count" class="fav-count"></span>
@@ -317,17 +358,39 @@
   function session(){
     try { return JSON.parse(localStorage.getItem(KEY) || "null"); } catch(e){ return null; }
   }
+  function ev(name, data){ try { if (window.va) window.va("event", { name: name, data: data || {} }); } catch(e){} }
+
+  // 未開通時工具頁會把人彈回首頁，所以卡片不能直指工具：
+  // 險種卡改指部落格（免費且資料相同），組合試算卡指向開通區。
+  function retarget(open){
+    var tools = document.querySelectorAll("[data-tool]");
+    for (var i = 0; i < tools.length; i++) {
+      var a = tools[i], code = a.getAttribute("data-tool"), go = a.querySelector(".go");
+      a.href = open ? ("/" + code.toLowerCase()) : a.getAttribute("data-blog");
+      if (go) go.textContent = open ? "打開 →" : "部落格版（免費）→";
+    }
+    var pfs = document.querySelectorAll("[data-pf]");
+    for (var j = 0; j < pfs.length; j++) {
+      var b = pfs[j], pc = b.getAttribute("data-pf"), g2 = b.querySelector(".go");
+      b.href = open ? ("/portfolio?ins=" + pc) : "#gate";
+      b.classList.toggle("locked", !open);
+      if (g2) g2.textContent = open ? "打開 →" : "開通後使用";
+    }
+  }
+
   function paint(){
     var s = session();
     if (s && s.token) {
       $("gate").classList.add("hide");
       $("hello").classList.remove("hide");
       $("h-name").textContent = (s.name ? s.name : "你好");
+      retarget(true);
       loadPlan(s.token);
       loadFav(s.token);
     } else {
       $("gate").classList.remove("hide");
       $("hello").classList.add("hide");
+      retarget(false);
     }
   }
 
@@ -544,6 +607,7 @@
       var j = await r.json();
       if (!r.ok || !j.token) throw new Error(j.error || "開通失敗");
       localStorage.setItem(KEY, JSON.stringify({ token: j.token, email: email, name: name }));
+      ev("signup", { method: "email" });
       paint();
     } catch (e) {
       err.textContent = String(e.message || e); err.style.display = "block";
@@ -565,6 +629,7 @@
       var j = await r.json();
       if (!r.ok || !j.token) throw new Error(j.error || '登入失敗');
       localStorage.setItem(KEY, JSON.stringify({ token: j.token, email: j.email, name: j.name }));
+      ev("signup", { method: "google" });
       paint();
     } catch (e) {
       err.textContent = String(e.message || e); err.style.display = 'block';
@@ -579,6 +644,15 @@
     });
   }
   if (!session()) initGoogle();
+
+  // 追蹤入口點擊：哪張保單、有沒人點組合試算、有沒人點贊助。
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest ? e.target.closest("a") : null;
+    if (!a) return;
+    if (a.hasAttribute("data-tool")) ev("open_tool", { code: a.getAttribute("data-tool"), gated: a.href.indexOf("oosayhi.com") > -1 && a.href.indexOf("fund.") < 0 });
+    else if (a.hasAttribute("data-pf")) ev("open_portfolio", { code: a.getAttribute("data-pf"), locked: a.classList.contains("locked") });
+    else if (a.getAttribute("href") === "/support") ev("open_support");
+  });
 
   paint();
 })();
