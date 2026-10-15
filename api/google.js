@@ -84,8 +84,14 @@ module.exports = async function handler(req, res) {
     console.error('plan failed:', e && e.message);
   }
 
+  const token = sign({ e: email, n: name, t: firstMs, i: Date.now() });
+
+  // 跟 lead.js 一樣：localStorage 被擋掉的環境靠 cookie 才能認得出人。
+  res.setHeader('Set-Cookie',
+    'fh=' + encodeURIComponent(token) + '; Path=/; Max-Age=15552000; SameSite=Lax; Secure');
+
   return res.status(200).json({
-    token: sign({ e: email, n: name, t: firstMs, i: Date.now() }),
+    token: token,
     email: email,
     name: name,
     picture: info.picture || '',
