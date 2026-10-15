@@ -134,6 +134,14 @@
     .fav-head h2 { margin: 0; font-size: 17px; }
     .fav-count { font-size: 12.5px; color: #94a3b8; }
     /* 欄位多，窄螢幕讓它橫向捲動而不是把每列擠成四行 */
+    .fav-wrap { position: relative; }
+    /* 表格比容器寬，右邊漸層告訴使用者還有欄位，捲到底就消失 */
+    .fav-wrap::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0;
+      width: 44px; pointer-events: none; opacity: 1; transition: opacity .2s;
+      background: linear-gradient(to right, rgba(255,255,255,0), #fff 78%); }
+    .fav-wrap.at-end::after { opacity: 0; }
+    .fav-hint { display: none; margin: 8px 0 0; font-size: 11.5px; color: #94a3b8; }
+    .fav-wrap.scrollable + .fav-hint { display: block; }
     .fav-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     table.favt { width: 100%; min-width: 1020px; border-collapse: collapse; font-size: 12.5px; }
     table.favt th { background: #1e3a5f; color: #fff; font-weight: 600; font-size: 11.5px;
@@ -174,6 +182,9 @@
     .fav-empty { font-size: 13px; color: #64748b; line-height: 1.7; }
   </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<!-- Vercel Web Analytics：無 cookie，不需同意視窗 -->
+<script>window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments);};</script>
+<script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
 
@@ -239,6 +250,7 @@
           <span id="fav-count" class="fav-count"></span>
         </div>
         <div id="fav-body" class="fav-body">讀取中…</div>
+        <p class="fav-hint" id="fav-hint">← 表格可左右滑動，右邊還有近 6 月配息</p>
       </section>
 
       <section id="gate" class="card gate">
@@ -272,7 +284,7 @@
       資料類別：Email，以及你選填或 Google 帳號上的稱呼。使用 Google 登入不會取得你的密碼。利用期間：至你要求刪除或本服務終止為止。
       利用地區與對象：僅限本服務，不提供給第三方。
       詳見<a href="/privacy" style="color:var(--blue)">隱私權政策</a>與<a href="/terms" style="color:var(--blue)">服務條款</a>。
-      不提供 Email 不影響你使用工具，只是自選清單無法跨裝置保存。
+      不提供 Email 就無法開通無廣告版、自選清單與組合試算；三張保單的配息率清單在部落格上仍然免費，資料完全相同。
     </div>
   </section>
 
@@ -453,10 +465,27 @@
             + '</tr>';
         }).join('');
   
-        body.innerHTML = '<div class="fav-scroll"><table class="favt">' + head + '<tbody>' + rows + '</tbody></table></div>';
+        body.innerHTML = '<div class="fav-wrap"><div class="fav-scroll"><table class="favt">' + head + '<tbody>' + rows + '</tbody></table></div></div>';
+        markScroll();
       } catch (e) {}
     }
   
+  // 橫向捲動的漸層與提示：沒溢出就不顯示，捲到底就淡出。
+  function markScroll() {
+    var wrap = document.querySelector("#fav-body .fav-wrap");
+    if (!wrap) return;
+    var sc = wrap.querySelector(".fav-scroll");
+    if (!sc) return;
+    function upd() {
+      var over = sc.scrollWidth - sc.clientWidth;
+      wrap.classList.toggle("scrollable", over > 4);
+      wrap.classList.toggle("at-end", over <= 4 || sc.scrollLeft >= over - 4);
+    }
+    sc.addEventListener("scroll", upd, { passive: true });
+    window.addEventListener("resize", upd);
+    upd();
+  }
+
   async function loadPlan(token){
     var chip = $("h-chip"), sup = $("h-sup"), st = $("h-state");
     try {
