@@ -396,8 +396,34 @@
   var $ = function(id){ return document.getElementById(id); };
   var KEY = "fh-session";
 
-  function session(){
+  // LINE 內建瀏覽器、Safari 無痕與鎖定模式會擋掉 localStorage。
+  // 以前只讀 localStorage，這些人登入完還是被當成未登入，永遠卡在門口。
+  // 現在多一層 cookie（由 /api/lead、/api/google 寫入）當後援。
+  function cookieToken(){
+    try {
+      var m = /(?:^|;\s*)fh=([^;]+)/.exec(document.cookie || "");
+      return m ? decodeURIComponent(m[1]) : "";
+    } catch(e){ return ""; }
+  }
+  function lsGet(){
     try { return JSON.parse(localStorage.getItem(KEY) || "null"); } catch(e){ return null; }
+  }
+  function session(){
+    var s = lsGet();
+    if (s && s.token) return s;
+    var t = cookieToken();
+    return t ? { token: t } : null;
+  }
+  function saveSession(obj){
+    try { localStorage.setItem(KEY, JSON.stringify(obj)); } catch(e){}
+    try {
+      document.cookie = "fh=" + encodeURIComponent(obj.token)
+        + "; Path=/; Max-Age=15552000; SameSite=Lax; Secure";
+    } catch(e){}
+  }
+  function clearSession(){
+    try { localStorage.removeItem(KEY); } catch(e){}
+    try { document.cookie = "fh=; Path=/; Max-Age=0; SameSite=Lax; Secure"; } catch(e){}
   }
   function ev(name, data){ try { if (window.va) window.va("event", { name: name, data: data || {} }); } catch(e){} }
 
@@ -628,7 +654,7 @@
   }
 
   $("h-out").addEventListener("click", function(){
-    localStorage.removeItem(KEY); paint();
+    clearSession(); paint();
   });
 
   $("g-btn").addEventListener("click", async function(){
@@ -649,7 +675,7 @@
       });
       var j = await r.json();
       if (!r.ok || !j.token) throw new Error(j.error || "開通失敗");
-      localStorage.setItem(KEY, JSON.stringify({ token: j.token, email: email, name: name }));
+      saveSession({ token: j.token, email: email, name: name });
       ev("signup", { method: "email" });
       paint();
     } catch (e) {
@@ -671,7 +697,7 @@
       });
       var j = await r.json();
       if (!r.ok || !j.token) throw new Error(j.error || '登入失敗');
-      localStorage.setItem(KEY, JSON.stringify({ token: j.token, email: j.email, name: j.name }));
+      saveSession({ token: j.token, email: j.email, name: j.name });
       ev("signup", { method: "google" });
       paint();
     } catch (e) {
