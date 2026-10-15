@@ -131,6 +131,29 @@
     .tile.locked { opacity: .72; }
     /* .card 本身沒有 padding/margin，每個區塊都自己給 */
     .so { padding: 22px 24px; margin-top: 16px; }
+    /* 畫面示意：用 HTML 重畫而不放截圖，所以不會模糊、不會過期、不吃頻寬 */
+    .shots { display: grid; grid-template-columns: 1.25fr 1fr; gap: 14px; margin-top: 14px; }
+    .shot { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #fff; }
+    .shot-bar { display: flex; align-items: center; gap: 5px; padding: 7px 10px; background: #f8fafc; border-bottom: 1px solid #eef2f7; }
+    .shot-bar i { width: 7px; height: 7px; border-radius: 50%; background: #dbe3ec; display: block; }
+    .shot-bar span { margin-left: 6px; font-size: 10.5px; color: #94a3b8; letter-spacing: .2px; }
+    .shot-in { padding: 10px 11px 12px; }
+    table.mini { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+    table.mini th { background: #1e3a5f; color: #fff; font-weight: 600; font-size: 9.5px; padding: 5px 6px; text-align: right; white-space: nowrap; }
+    table.mini th:first-child { text-align: left; border-radius: 5px 0 0 5px; }
+    table.mini th:last-child { border-radius: 0 5px 5px 0; }
+    table.mini td { padding: 6px; border-bottom: 1px solid #f1f5f9; text-align: right; white-space: nowrap; color: #334155; }
+    table.mini td:first-child { text-align: left; color: #0f172a; }
+    table.mini tr:last-child td { border-bottom: 0; }
+    .m-up { color: #c2410c; font-weight: 700; }
+    .m-pos { color: #1d4ed8; }
+    .m-neg { color: #dc2626; }
+    .m-rr { display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 4px; background: #eef4ff; color: #2657a0; }
+    .m-legend { display: flex; gap: 12px; margin: 0 0 6px; font-size: 10px; color: #64748b; }
+    .m-legend b { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 4px; }
+    .m-note { margin: 8px 0 0; font-size: 10.5px; color: #94a3b8; line-height: 1.6; }
+    .shot-cap { margin: 10px 0 0; font-size: 11.5px; color: #94a3b8; }
+    @media (max-width: 680px) { .shots { grid-template-columns: 1fr; } }
     .tile.locked .go { color: #94a3b8; }
     .colgrid { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px 18px; margin: 12px 0 0; padding: 0; list-style: none; }
     .colgrid li { font-size: 13.5px; color: #334155; line-height: 1.6; padding-left: 14px; position: relative; }
@@ -269,6 +292,39 @@
           <li><b>近 6 月配息</b>：每期金額與升降變化</li>
           <li><b>風險等級</b>：RR1〜RR5、幣別與配息頻率</li>
         </ul>
+
+        <div class="shots">
+          <div class="shot">
+            <div class="shot-bar"><i></i><i></i><i></i><span>清單畫面</span></div>
+            <div class="shot-in">
+              <table class="mini"><thead><tr>
+                <th>基金名稱</th><th>年化配息率</th><th>六個月</th><th>一年</th><th>三年</th><th>風險</th>
+              </tr></thead><tbody>
+                <tr><td>基金 A（月配）</td><td class="m-up">13.54%</td><td class="m-pos">+10.48</td><td class="m-pos">+6.76</td><td class="m-pos">+21.4</td><td><span class="m-rr">RR4</span></td></tr>
+                <tr><td>基金 B（月配）</td><td class="m-up">11.22%</td><td class="m-pos">+3.48</td><td class="m-pos">+8.79</td><td class="m-pos">+36.9</td><td><span class="m-rr">RR3</span></td></tr>
+                <tr><td>基金 C（月配）</td><td class="m-up">10.36%</td><td class="m-neg">−1.69</td><td class="m-neg">−0.56</td><td class="m-pos">+8.8</td><td><span class="m-rr">RR2</span></td></tr>
+                <tr><td>基金 D（不配息）</td><td>—</td><td class="m-pos">+13.98</td><td class="m-pos">+18.70</td><td class="m-pos">+87.4</td><td><span class="m-rr">RR5</span></td></tr>
+              </tbody></table>
+              <p class="m-note">配息率最高的那檔，六個月含息報酬不一定最好——兩欄放在一起就看得出來。</p>
+            </div>
+          </div>
+
+          <div class="shot">
+            <div class="shot-bar"><i></i><i></i><i></i><span>分析畫面</span></div>
+            <div class="shot-in">
+              <p class="m-legend"><span><b style="background:#dc2626"></b>淨值</span><span><b style="background:#2657a0"></b>加上配息</span></p>
+              <svg viewBox="0 0 300 120" style="width:100%;height:auto;display:block" aria-hidden="true">
+                <rect x="96" y="6" width="78" height="104" fill="rgba(220,38,38,.07)"/>
+                <rect x="174" y="6" width="62" height="104" fill="rgba(22,163,74,.07)"/>
+                <g stroke="#eef2f7" stroke-width="1"><path d="M0 30h300M0 60h300M0 90h300"/></g>
+                <polyline fill="none" stroke="#dc2626" stroke-width="1.8" points="0,62 30,56 60,48 96,44 126,70 156,86 174,80 206,62 236,52 268,50 300,47"/>
+                <polyline fill="none" stroke="#2657a0" stroke-width="1.8" points="0,62 30,54 60,43 96,36 126,60 156,74 174,66 206,44 236,30 268,24 300,18"/>
+              </svg>
+              <p class="m-note">紅色是淨值，藍色是把配息加回去。淺紅區塊是最大回撚的下跌段，淺綠是回到原高點的路。</p>
+            </div>
+          </div>
+        </div>
+        <p class="shot-cap">以上為畫面示意，數字與名稱為範例；實際內容以工具頁當日資料為準。</p>
       </section>
 
       <section class="card so faq">
