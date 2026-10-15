@@ -64,8 +64,16 @@ module.exports = async function handler(req, res) {
     console.error('plan failed:', e && e.message);
   }
 
+  const token = sign({ e: email, n: name, t: firstMs, i: Date.now() });
+
+  // LINE 內建瀏覽器與 Safari 無痕模式會擋掉 localStorage；
+  // 只存 localStorage 的話，這些人會永遠卡在登入畫面。
+  // 伺服器端 Set-Cookie 不受 Safari 對 script 寫 cookie 的 7 天上限限制。
+  res.setHeader('Set-Cookie',
+    'fh=' + encodeURIComponent(token) + '; Path=/; Max-Age=15552000; SameSite=Lax; Secure');
+
   return res.status(200).json({
-    token: sign({ e: email, n: name, t: firstMs, i: Date.now() }),
+    token: token,
     plan: plan.plan,
     active: plan.active,
     daysLeft: plan.daysLeft,
