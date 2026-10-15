@@ -131,6 +131,18 @@
     .tile.locked { opacity: .72; }
     /* .card 本身沒有 padding/margin，每個區塊都自己給 */
     .so { padding: 22px 24px; margin-top: 16px; }
+    .heroimg { padding: 0; overflow: hidden; margin-top: 0; }
+    .heroimg img { display: block; width: 100%; height: auto; }
+    /* 未開通：圖 → 數字 → 開通 → 方案 → 工具 → FAQ
+       已開通：身分列 → 工具 → 自選（銷售區塊都是 .so，會被藏起來） */
+    .heroimg { order: 1; }
+    #sec-nums { order: 2; }
+    #gate    { order: 3; }
+    .tiers   { order: 4; }
+    .grid    { order: 5; }
+    .so.faq  { order: 6; }
+    #fav     { order: 7; }
+    .disc    { order: 8; }
     /* 畫面示意：用 HTML 重畫而不放截圖，所以不會模糊、不會過期、不吃頻寬 */
     .shots { display: grid; grid-template-columns: 1.25fr 1fr; gap: 14px; margin-top: 14px; }
     .shot { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #fff; }
@@ -230,16 +242,18 @@
     <span class="tag">非官方工具</span>
     <h1>基金小工具</h1>
     <p class="lead">配息率高，不代表你真的賺得多。投資不能只看配息率，還要看懂更多關鍵數據——讓數據成為判斷的幫手，不再只被漂亮的配息數字吸引。</p>
-    <ul class="feats">
-      <li><svg viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='12' r='8.5'/><path d='M6 6l12 12'/></svg><div><b>無廣告介面</b><span>查資料更清爽</span></div></li>
-      <li><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M12 3.8l2.5 5.1 5.6.8-4.1 4 1 5.6-5-2.7-5 2.7 1-5.6-4.1-4 5.6-.8z'/></svg><div><b>自選清單</b><span>追蹤關注的投資標的</span></div></li>
-      <li><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M3 20h18M7 20v-6M12 20V6M17 20v-9'/></svg><div><b>快速組合試算</b><span>比較不同配置的可能表現</span></div></li>
-    </ul>
-    <p class="feat-foot">投資前多看幾個數字，才能更全面地評估報酬與風險。</p>
   </div>
 </header>
 
 <main class="wrap">
+
+  <section class="card so heroimg">
+    <picture>
+      <source srcset="/hero.webp" type="image/webp">
+      <img src="/hero.jpg" width="1280" height="853" decoding="async"
+           alt="工具畫面示意：清單上同時列出年化配息率、含息報酬、淨值走勢、風險等級與自選清單，手機與電腦都能看">
+    </picture>
+  </section>
 
   <!-- 未開通 -->
   <div class="grid">
@@ -281,7 +295,7 @@
         </div>
       </div>
 
-            <section class="card so">
+            <section class="card so" id="sec-nums">
         <h2 style="margin:0 0 4px;font-size:17px">每支標的你會看到這些數字</h2>
         <p class="sub" style="margin:0;font-size:13.5px;color:#64748b">不是只有配息率。同一個畫面上比完，不用在官網從一頁翻到一頁。</p>
         <ul class="colgrid">
@@ -293,38 +307,7 @@
           <li><b>風險等級</b>：RR1〜RR5、幣別與配息頻率</li>
         </ul>
 
-        <div class="shots">
-          <div class="shot">
-            <div class="shot-bar"><i></i><i></i><i></i><span>清單畫面</span></div>
-            <div class="shot-in">
-              <table class="mini"><thead><tr>
-                <th>基金名稱</th><th>年化配息率</th><th>六個月</th><th>一年</th><th>三年</th><th>風險</th>
-              </tr></thead><tbody>
-                <tr><td>基金 A（月配）</td><td class="m-up">13.54%</td><td class="m-pos">+10.48</td><td class="m-pos">+6.76</td><td class="m-pos">+21.4</td><td><span class="m-rr">RR4</span></td></tr>
-                <tr><td>基金 B（月配）</td><td class="m-up">11.22%</td><td class="m-pos">+3.48</td><td class="m-pos">+8.79</td><td class="m-pos">+36.9</td><td><span class="m-rr">RR3</span></td></tr>
-                <tr><td>基金 C（月配）</td><td class="m-up">10.36%</td><td class="m-neg">−1.69</td><td class="m-neg">−0.56</td><td class="m-pos">+8.8</td><td><span class="m-rr">RR2</span></td></tr>
-                <tr><td>基金 D（不配息）</td><td>—</td><td class="m-pos">+13.98</td><td class="m-pos">+18.70</td><td class="m-pos">+87.4</td><td><span class="m-rr">RR5</span></td></tr>
-              </tbody></table>
-              <p class="m-note">配息率最高的那檔，六個月含息報酬不一定最好——兩欄放在一起就看得出來。</p>
-            </div>
-          </div>
 
-          <div class="shot">
-            <div class="shot-bar"><i></i><i></i><i></i><span>分析畫面</span></div>
-            <div class="shot-in">
-              <p class="m-legend"><span><b style="background:#dc2626"></b>淨值</span><span><b style="background:#2657a0"></b>加上配息</span></p>
-              <svg viewBox="0 0 300 120" style="width:100%;height:auto;display:block" aria-hidden="true">
-                <rect x="96" y="6" width="78" height="104" fill="rgba(220,38,38,.07)"/>
-                <rect x="174" y="6" width="62" height="104" fill="rgba(22,163,74,.07)"/>
-                <g stroke="#eef2f7" stroke-width="1"><path d="M0 30h300M0 60h300M0 90h300"/></g>
-                <polyline fill="none" stroke="#dc2626" stroke-width="1.8" points="0,62 30,56 60,48 96,44 126,70 156,86 174,80 206,62 236,52 268,50 300,47"/>
-                <polyline fill="none" stroke="#2657a0" stroke-width="1.8" points="0,62 30,54 60,43 96,36 126,60 156,74 174,66 206,44 236,30 268,24 300,18"/>
-              </svg>
-              <p class="m-note">紅色是淨值，藍色是把配息加回去。淺紅區塊是最大回撚的下跌段，淺綠是回到原高點的路。</p>
-            </div>
-          </div>
-        </div>
-        <p class="shot-cap">以上為畫面示意，數字與名稱為範例；實際內容以工具頁當日資料為準。</p>
       </section>
 
       <section class="card so faq">
