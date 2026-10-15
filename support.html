@@ -25,6 +25,8 @@
   .tier.on{border-color:var(--blue);background:#eff4ff}
   .tier b{display:block;font-size:20px;letter-spacing:-.5px}
   .tier span{font-size:12.5px;color:var(--dim)}
+  .tier.off{opacity:.45;cursor:not-allowed}
+  .tier .tag{display:block;margin-top:4px;font-size:11px;font-weight:700;color:#b45309}
   .pay{background:#f8fafc;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:12px 0}
   .pay dl{margin:0;display:grid;grid-template-columns:92px 1fr;gap:6px 10px;font-size:14px}
   .pay dt{color:var(--dim)}
@@ -59,20 +61,19 @@
   <div class="card">
     <h2>贊助換到什麼</h2>
     <ul>
-      <li>四支工具<b>永久</b>無廣告（未贊助為 14 天體驗期）</li>
-      <li>自選清單永久保留，四支工具共用，換裝置也讀得到</li>
-      <li>跨險種組合試算</li>
+      <li>此網站<b>無廣告</b>（未贊助提供 14 天體驗期）</li>
+      <li>自選清單永久保留，換裝置也讀得到</li>
     </ul>
     <p class="dim" style="margin-top:14px">
-      三張保單的配息率清單在<span id="blogtxt">部落格</span>上一直是免費的，資料完全相同。
-      贊助買到的是便利性，不是別人看不到的資料，也不是投資建議。</p>
+      三張保單的配息率小工具在<span id="blogtxt">部落格</span>上一直是免費的，資料完全相同。
+      贊助買到的是便利性、未來更多小工具，不是別人看不到的資料，也不是投資建議。</p>
   </div>
 
   <div class="card" id="form-card">
     <h2>贊助金額</h2>
     <div class="tiers" id="tiers"></div>
-    <label for="amt">自訂金額（TWD）</label>
-    <input id="amt" type="number" min="1" step="1" inputmode="numeric" placeholder="例如 300">
+    <p class="dim" id="tier-note" style="margin:10px 0 0"></p>
+    <input id="amt" type="hidden" value="300">
 
     <h2 style="margin-top:26px">匯款資訊</h2>
     <div class="pay"><dl id="payinfo"></dl></div>
@@ -108,9 +109,9 @@
 (function () {
   /* ══ 要改的只有這一段 ══ */
   var TIERS = [
-    { amount: 150, label: "喝杯咖啡" },
-    { amount: 300, label: "最多人選" },
-    { amount: 600, label: "幫大忙" }
+    { amount: 200, label: "早鳥", early: true },
+    { amount: 300, label: "正常" },
+    { amount: 600, label: "額外贊助" }
   ];
   var PAY = {
     "銀行": "（待填）",
@@ -133,19 +134,46 @@
     return "<dt>" + k + "</dt><dd>" + PAY[k] + "</dd>";
   }).join("");
 
-  $("tiers").innerHTML = TIERS.map(function (t) {
-    return '<div class="tier" data-a="' + t.amount + '"><b>$' + t.amount + "</b><span>" + t.label + "</span></div>";
-  }).join("");
+  // 早鳥：開通後 3 天內算。endsAt 減掉 trialDays 就是開通時間，
+  // 所以早鳥截止 = endsAt - (trialDays - 3) 天。拿不到帳號資料時不給早鳥價。
+  var earlyUntil = null;
+  function earlyOpen() { return earlyUntil !== null && Date.now() < earlyUntil; }
+  function paintTiers() {
+    var ok = earlyOpen();
+    $("tiers").innerHTML = TIERS.map(function (t) {
+      var dead = t.early && !ok;
+      return '<div class="tier' + (dead ? ' off' : '') + '" data-a="' + t.amount + '">'
+        + '<b>$' + t.amount + "</b><span>" + t.label + "</span>"
+        + (t.early ? '<span class="tag">' + (ok ? "優惠中" : "已截止") + "</span>" : "")
+        + "</div>";
+    }).join("");
+    var want = ok ? 200 : 300;
+    $("amt").value = String(want);
+    [].forEach.call($("tiers").children, function (c) {
+      c.classList.toggle("on", c.getAttribute("data-a") === String(want));
+    });
+    var note = $("tier-note");
+    if (note) {
+      note.textContent = ok
+        ? "早鳥優惠還剩 " + Math.max(1, Math.ceil((earlyUntil - Date.now()) / 3600000)) + " 小時（開通後 3 天內）。"
+        : "早鳥優惠限開通後 3 天內，你的優惠期已結束。";
+    }
+  }
+  paintTiers();
+  fetch("/api/me", { headers: { Authorization: "Bearer " + s.token } })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (j) {
+      if (!j || !j.endsAt || !j.trialDays) return;
+      earlyUntil = new Date(j.endsAt).getTime() - (j.trialDays - 3) * 86400000;
+      paintTiers();
+    })
+    .catch(function () {});
   $("tiers").addEventListener("click", function (e) {
     var el = e.target.closest(".tier"); if (!el) return;
+    if (el.classList.contains("off")) return;
     [].forEach.call(this.children, function (c) { c.classList.remove("on"); });
     el.classList.add("on");
     $("amt").value = el.getAttribute("data-a");
-  });
-  $("amt").addEventListener("input", function () {
-    [].forEach.call($("tiers").children, function (c) {
-      c.classList.toggle("on", c.getAttribute("data-a") === $("amt").value);
-    });
   });
 
   function api(path, opt) {
