@@ -307,7 +307,37 @@
           <li><b>風險等級</b>：RR1〜RR5、幣別與配息頻率</li>
         </ul>
 
-
+        <div class="shots">
+          <div class="shot">
+            <div class="shot-bar"><i></i><i></i><i></i><span>清單畫面</span></div>
+            <div class="shot-in">
+              <table class="mini"><thead><tr>
+                <th>基金名稱</th><th>年化配息率</th><th>六個月</th><th>一年</th><th>三年</th><th>風險</th>
+              </tr></thead><tbody>
+                <tr><td>基金 A（月配）</td><td class="m-up">13.54%</td><td class="m-pos">+10.48</td><td class="m-pos">+6.76</td><td class="m-pos">+21.4</td><td><span class="m-rr">RR4</span></td></tr>
+                <tr><td>基金 B（月配）</td><td class="m-up">11.22%</td><td class="m-pos">+3.48</td><td class="m-pos">+8.79</td><td class="m-pos">+36.9</td><td><span class="m-rr">RR3</span></td></tr>
+                <tr><td>基金 C（月配）</td><td class="m-up">10.36%</td><td class="m-neg">−1.69</td><td class="m-neg">−0.56</td><td class="m-pos">+8.8</td><td><span class="m-rr">RR2</span></td></tr>
+                <tr><td>基金 D（不配息）</td><td>—</td><td class="m-pos">+13.98</td><td class="m-pos">+18.70</td><td class="m-pos">+87.4</td><td><span class="m-rr">RR5</span></td></tr>
+              </tbody></table>
+              <p class="m-note">配息率最高的那檔，六個月含息報酬不一定最好——兩欄放在一起就看得出來。</p>
+            </div>
+          </div>
+          <div class="shot">
+            <div class="shot-bar"><i></i><i></i><i></i><span>分析畫面</span></div>
+            <div class="shot-in">
+              <p class="m-legend"><span><b style="background:#dc2626"></b>淨值</span><span><b style="background:#2657a0"></b>加上配息</span></p>
+              <svg viewBox="0 0 300 120" style="width:100%;height:auto;display:block" aria-hidden="true">
+                <rect x="96" y="6" width="78" height="104" fill="rgba(220,38,38,.07)"/>
+                <rect x="174" y="6" width="62" height="104" fill="rgba(22,163,74,.07)"/>
+                <g stroke="#eef2f7" stroke-width="1"><path d="M0 30h300M0 60h300M0 90h300"/></g>
+                <polyline fill="none" stroke="#dc2626" stroke-width="1.8" points="0,62 30,56 60,48 96,44 126,70 156,86 174,80 206,62 236,52 268,50 300,47"/>
+                <polyline fill="none" stroke="#2657a0" stroke-width="1.8" points="0,62 30,54 60,43 96,36 126,60 156,74 174,66 206,44 236,30 268,24 300,18"/>
+              </svg>
+              <p class="m-note">紅色是淨值，藍色是把配息加回去。淺紅區塊是最大回撚的下跌段，淺綠是回到原高點的路。</p>
+            </div>
+          </div>
+        </div>
+        <p class="shot-cap">以上為畫面示意，數字與名稱為範例；實際內容以工具頁當日資料為準。</p>
       </section>
 
       <section class="card so faq">
