@@ -107,6 +107,9 @@
     'table[class$=\"-tbl\"] th{font-size:11px;padding:10px 8px;line-height:1.35}' +
     'table[class$=\"-tbl\"] td{font-size:12.5px;padding:10px 8px;line-height:1.4}' +
     'table[class$=\"-tbl\"] > tbody > tr.vr{height:44px}' +
+    /* 近6月配息折成兩行會把列擐到 59px，鎖成一行。 */
+    'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"近6月配息\"]{white-space:nowrap}' +
+    'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"近6月配息\"] > *{white-space:nowrap}' +
     /* 名稱過長就截斷，不折行。這樣每一列都是整齊的 44px， */
     /* 完整名稱滑鼠移上去（或點進去）看得到。 */
     'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"基金名稱\"]{max-width:0}' +
