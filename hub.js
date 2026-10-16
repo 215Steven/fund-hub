@@ -129,14 +129,15 @@
       'table[class$=\"-tbl\"] > thead > tr > th[data-col],' +
       'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label]{display:table-cell !important}' +
       /* 再統一隱藏次要欄位 */
-      'table[class$=\"-tbl\"] > thead > tr > th[data-col=\"\u5e63\u5225\"],' +
-      'table[class$=\"-tbl\"] > thead > tr > th[data-col=\"\u6a19\u7684\u985e\u578b\"],' +
-      'table[class$=\"-tbl\"] > thead > tr > th[data-col=\"\u4e00\u5e74\u5831\u916c\"],' +
-      'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"\u5e63\u5225\"],' +
-      'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"\u6a19\u7684\u985e\u578b\"],' +
-      'table[class$=\"-tbl\"] > thead > tr > th[data-col=\"近6月配息\"],' +
-      'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"近6月配息\"],' +
-      'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"\u4e00\u5e74\u5831\u916c\"]{display:none !important}' +
+      'table[class$=\"-tbl\"]:not(.div-tbl) > thead > tr > th[data-col=\"幣別\"],' +
+      'table[class$=\"-tbl\"]:not(.div-tbl) > tbody > tr.vr > td[data-label=\"幣別\"],' +
+      'table[class$=\"-tbl\"]:not(.div-tbl) > thead > tr > th[data-col=\"標的類型\"],' +
+      'table[class$=\"-tbl\"]:not(.div-tbl) > tbody > tr.vr > td[data-label=\"標的類型\"],' +
+      'table[class$=\"-tbl\"]:not(.div-tbl) > thead > tr > th[data-col=\"近6月配息\"],' +
+      'table[class$=\"-tbl\"]:not(.div-tbl) > tbody > tr.vr > td[data-label=\"近6月配息\"]{display:none !important}' +
+      /* 欄位多，收緊內距才塞得下，不用左右滑。 */
+      'table[class$=\"-tbl\"]:not(.div-tbl) > thead > tr > th,' +
+      'table[class$=\"-tbl\"]:not(.div-tbl) > tbody > tr > td{padding:8px 6px !important}' +
       'table[class$=\"-tbl\"] > thead > tr > th.hub-th + th,' +
       'table[class$=\"-tbl\"] > tbody > tr.vr > td.hub-td + td{min-width:180px !important}' +
     '}' +
