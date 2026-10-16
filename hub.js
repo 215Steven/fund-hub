@@ -137,9 +137,9 @@
       'table[class$=\"-tbl\"]:not(.div-tbl) > tbody > tr.vr > td[data-label=\"近6月配息\"]{display:none !important}' +
       /* 欄位多，收緊內距才塞得下，不用左右滑。 */
       'table[class$=\"-tbl\"]:not(.div-tbl) > thead > tr > th,' +
-      'table[class$=\"-tbl\"]:not(.div-tbl) > tbody > tr > td{padding:8px 6px !important}' +
+      'table[class$=\"-tbl\"]:not(.div-tbl) > tbody > tr > td{padding:6px 4px !important}' +
       'table[class$=\"-tbl\"] > thead > tr > th.hub-th + th,' +
-      'table[class$=\"-tbl\"] > tbody > tr.vr > td.hub-td + td{min-width:180px !important}' +
+      'table[class$=\"-tbl\"] > tbody > tr.vr > td.hub-td + td{min-width:140px !important}' +
     '}' +
     'tr.vr.hub-off{display:none !important}' +
     '.hub-chip.warn{background:#fdf0e3;color:#a35b12;border-color:#f0d8bb}' + '.hub-chip{font-size:12px;font-weight:700;padding:7px 11px;border-radius:999px}' +
