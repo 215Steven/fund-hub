@@ -107,6 +107,10 @@
     'table[class$=\"-tbl\"] th{font-size:11px;padding:10px 8px;line-height:1.35}' +
     'table[class$=\"-tbl\"] td{font-size:12.5px;padding:10px 8px;line-height:1.4}' +
     'table[class$=\"-tbl\"] > tbody > tr.vr{height:44px}' +
+    /* 名稱最多兩行，不然長名稱會把列擐到 90px。 */
+    'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"基金名稱\"] > a,' +
+    'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"基金名稱\"] > span{display:-webkit-box;' +
+      '-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}' +
     'table[class$=\"-tbl\"] > thead > tr > th.hub-th,' +
     'table[class$=\"-tbl\"] > tbody > tr.vr > td.hub-td{width:34px !important;min-width:34px !important;' +
       'padding-left:4px !important;padding-right:4px !important}' +
