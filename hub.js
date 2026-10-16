@@ -100,6 +100,15 @@
     '.hub-star.on{color:#f59e0b}' +
     'th.hub-th,td.hub-td{width:34px;min-width:34px;max-width:34px;padding-left:4px !important;' +
       'padding-right:4px !important;text-align:center !important}' +
+    /* 平板（768-1200px）：工具頁的 nth-child(1) 寬度規則是在我們插星號欄之前寫的， */
+    /* 插完之後第一欄變成星號，176px 就跡到星號格上，名稱欄反而被擠窄。 */
+    /* 這裡把寬度移回星號欄後面那一欄（即基金名稱）。 */
+    '@media (min-width:768px) and (max-width:1200px){' +
+      'table[class$="-tbl"] > thead > tr > th.hub-th,' +
+      'table[class$="-tbl"] > tbody > tr.vr > td.hub-td{min-width:34px !important;width:34px}' +
+      'table[class$="-tbl"] > thead > tr > th.hub-th + th,' +
+      'table[class$="-tbl"] > tbody > tr.vr > td.hub-td + td{min-width:176px !important}' +
+    '}' +
     'tr.vr.hub-off{display:none !important}' +
     '.hub-chip.warn{background:#fdf0e3;color:#a35b12;border-color:#f0d8bb}' + '.hub-chip{font-size:12px;font-weight:700;padding:7px 11px;border-radius:999px}' +
     '.hub-chip.trial{background:#f1f5f9;color:#475569}' +
