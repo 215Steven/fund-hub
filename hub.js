@@ -271,16 +271,20 @@
   // 把每一欄的 data-label 複製到表頭，讓 CSS 可以用欄位名稱定位。
   // 不用 nth-child 是因為我們會插星號欄，序號會整排位移。
   function tagCols() {
-    var tbl = document.querySelector('table[class$="-tbl"]');
-    if (!tbl) return;
-    var row = tbl.querySelector('tbody tr.vr');
-    if (!row) return;
-    var ths = tbl.querySelectorAll('thead th');
-    for (var i = 0; i < ths.length && i < row.cells.length; i++) {
-      var lbl = row.cells[i].getAttribute('data-label');
-      if (lbl && ths[i].getAttribute('data-col') !== lbl) ths[i].setAttribute('data-col', lbl);
+    var tbls = document.querySelectorAll('table[class$="-tbl"]');
+    for (var t = 0; t < tbls.length; t++) {
+      var tbl = tbls[t];
+      if (tbl.classList.contains('div-tbl')) continue;
+      var row = tbl.querySelector('tbody tr.vr');
+      if (!row) continue;
+      var ths = tbl.querySelectorAll('thead th');
+      for (var i = 0; i < ths.length && i < row.cells.length; i++) {
+        var lbl = row.cells[i].getAttribute('data-label');
+        if (lbl && ths[i].getAttribute('data-col') !== lbl) ths[i].setAttribute('data-col', lbl);
+      }
     }
   }
+
 
   // 名稱欄會被截斷，把完整名稱放進 title，滑鼠移上去就看得到。
   function tagNames() {
