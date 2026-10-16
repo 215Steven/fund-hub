@@ -124,7 +124,7 @@
       'padding-left:4px !important;padding-right:4px !important}' +
     'table[class$=\"-tbl\"] > thead > tr > th.hub-th + th,' +
     'table[class$=\"-tbl\"] > tbody > tr.vr > td.hub-td + td{min-width:220px !important}' +
-    '@media (max-width:1023px){' +
+    '@media (max-width:1199px){' +
       /* 先把被錯位規則藏掉的欄位全部讓它回來 */
       'table[class$=\"-tbl\"] > thead > tr > th[data-col],' +
       'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label]{display:table-cell !important}' +
