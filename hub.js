@@ -113,6 +113,9 @@
     /* 名稱過長就截斷，不折行。這樣每一列都是整齊的 44px， */
     /* 完整名稱滑鼠移上去（或點進去）看得到。 */
     'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"基金名稱\"]{max-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+    /* 操作按鈕不要折行，不然「加入」會被拆成兩行把列擐高。 */
+    'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"操作\"],' +
+    'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"分析\"]{white-space:nowrap}' +
     'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"基金名稱\"] > a,' +
     'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"基金名稱\"] > span{display:block;' +
       'white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
