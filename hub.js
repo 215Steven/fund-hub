@@ -107,6 +107,10 @@
     'table[class$=\"-tbl\"] th{font-size:11px;padding:10px 8px;line-height:1.35}' +
     'table[class$=\"-tbl\"] td{font-size:12.5px;padding:10px 8px;line-height:1.4}' +
     'table[class$=\"-tbl\"] > tbody > tr.vr{height:44px}' +
+    /* 名稱字級調小、行高收緊，兩行加上內距剛好在 44px 內， */
+    /* 所以長名稱也不會把列擐高。 */
+    'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"基金名稱\"]{font-size:11px;line-height:1.3;' +
+      'padding-top:7px;padding-bottom:7px}' +
     /* 名稱最多兩行，不然長名稱會把列擐到 90px。 */
     'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"基金名稱\"] > a,' +
     'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"基金名稱\"] > span{display:-webkit-box;' +
