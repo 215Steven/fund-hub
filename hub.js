@@ -145,6 +145,22 @@
       /* 表格儲存格會忽略 max-width，要限在裡面的元素才有用。 */
       'table[class$=\"-tbl\"]:not(.div-tbl) > tbody > tr.vr > td.hub-td + td > *{max-width:120px}' +
     '}' +
+    /* ── 頂部統計：五張卡片改成一行輕量標籤 ── */
+    'div[class$="-stats"]{display:flex !important;flex-wrap:wrap;gap:6px !important;margin:0 0 10px !important}' +
+    'div[class$="-stats"] > div[class$="-stat"]{display:flex !important;flex-direction:row-reverse;' +
+      'align-items:baseline;gap:5px;flex:0 0 auto;padding:5px 10px !important;border-radius:8px}' +
+    'div[class$="-stats"] > div[class$="-stat"] > div[class$="-stat-num"]{font-size:14px !important;line-height:1.3}' +
+    'div[class$="-stats"] > div[class$="-stat"] > div[class$="-stat-label"]{font-size:11px !important;' +
+      'line-height:1.3;opacity:.7;margin:0 !important}' +
+    /* 平板還差幾十 px 就塞得下，按鈕縮一點、名稱再窄一點，就不必左右滑。 */
+    '@media (max-width:1023px){' +
+      'table[class$="-tbl"]:not(.div-tbl) > tbody > tr.vr > td[data-label="操作"] > *,' +
+      'table[class$="-tbl"]:not(.div-tbl) > tbody > tr.vr > td[data-label="分析"] > *{' +
+        'font-size:11px !important;padding:4px 7px !important}' +
+      'table[class$="-tbl"] > thead > tr > th.hub-th + th,' +
+      'table[class$="-tbl"] > tbody > tr.vr > td.hub-td + td{min-width:96px !important;width:96px !important}' +
+      'table[class$="-tbl"]:not(.div-tbl) > tbody > tr.vr > td.hub-td + td > *{max-width:96px}' +
+    '}' +
     'tr.vr.hub-off{display:none !important}' +
     '.hub-chip.warn{background:#fdf0e3;color:#a35b12;border-color:#f0d8bb}' + '.hub-chip{font-size:12px;font-weight:700;padding:7px 11px;border-radius:999px}' +
     '.hub-chip.trial{background:#f1f5f9;color:#475569}' +
