@@ -104,8 +104,8 @@
     /* 工具頁的 nth-child 規則是在插星號欄之前寫的，插完序號全部 +1， */
     /* 會藏錯欄位（直式平板曾經把「基金名稱」整欄藏掉）。 */
     /* 這裡全改用 data-label / data-col 定位，以後再插欄也不會錯位。 */
-    'table[class$=\"-tbl\"] th{font-size:11px;padding:10px 8px;line-height:1.35}' +
-    'table[class$=\"-tbl\"] td{font-size:12.5px;padding:10px 8px;line-height:1.4}' +
+    'table[class$=\"-tbl\"]:not(.div-tbl) > thead > tr > th{font-size:11px;padding:10px 8px;line-height:1.35}' +
+    'table[class$=\"-tbl\"]:not(.div-tbl) > tbody > tr > td{font-size:12.5px;padding:10px 8px;line-height:1.4}' +
     'table[class$=\"-tbl\"] > tbody > tr.vr{height:44px}' +
     /* 近6月配息折成兩行會把列擐到 59px，鎖成一行。 */
     'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"近6月配息\"]{white-space:nowrap}' +
