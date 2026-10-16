@@ -112,7 +112,7 @@
     'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"近6月配息\"] > *{white-space:nowrap}' +
     /* 名稱過長就截斷，不折行。這樣每一列都是整齊的 44px， */
     /* 完整名稱滑鼠移上去（或點進去）看得到。 */
-    'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"基金名稱\"]{max-width:0}' +
+    'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"基金名稱\"]{max-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
     'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"基金名稱\"] > a,' +
     'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"基金名稱\"] > span{display:block;' +
       'white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
