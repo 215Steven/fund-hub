@@ -129,6 +129,8 @@
       'table[class$=\"-tbl\"] > thead > tr > th[data-col],' +
       'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label]{display:table-cell !important}' +
       /* 再統一隱藏次要欄位 */
+      'table[class$=\"-tbl\"]:not(.div-tbl) > thead > tr > th[data-col=\"來源\"],' +
+      'table[class$=\"-tbl\"]:not(.div-tbl) > tbody > tr.vr > td[data-label=\"來源\"],' +
       'table[class$=\"-tbl\"]:not(.div-tbl) > thead > tr > th[data-col=\"幣別\"],' +
       'table[class$=\"-tbl\"]:not(.div-tbl) > tbody > tr.vr > td[data-label=\"幣別\"],' +
       'table[class$=\"-tbl\"]:not(.div-tbl) > thead > tr > th[data-col=\"標的類型\"],' +
@@ -139,9 +141,9 @@
       'table[class$=\"-tbl\"]:not(.div-tbl) > thead > tr > th,' +
       'table[class$=\"-tbl\"]:not(.div-tbl) > tbody > tr > td{padding:6px 4px !important}' +
       'table[class$=\"-tbl\"] > thead > tr > th.hub-th + th,' +
-      'table[class$=\"-tbl\"] > tbody > tr.vr > td.hub-td + td{min-width:140px !important;width:140px !important}' +
+      'table[class$=\"-tbl\"] > tbody > tr.vr > td.hub-td + td{min-width:120px !important;width:120px !important}' +
       /* 表格儲存格會忽略 max-width，要限在裡面的元素才有用。 */
-      'table[class$=\"-tbl\"]:not(.div-tbl) > tbody > tr.vr > td.hub-td + td > *{max-width:140px}' +
+      'table[class$=\"-tbl\"]:not(.div-tbl) > tbody > tr.vr > td.hub-td + td > *{max-width:120px}' +
     '}' +
     'tr.vr.hub-off{display:none !important}' +
     '.hub-chip.warn{background:#fdf0e3;color:#a35b12;border-color:#f0d8bb}' + '.hub-chip{font-size:12px;font-weight:700;padding:7px 11px;border-radius:999px}' +
