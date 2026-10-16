@@ -107,14 +107,12 @@
     'table[class$=\"-tbl\"] th{font-size:11px;padding:10px 8px;line-height:1.35}' +
     'table[class$=\"-tbl\"] td{font-size:12.5px;padding:10px 8px;line-height:1.4}' +
     'table[class$=\"-tbl\"] > tbody > tr.vr{height:44px}' +
-    /* 名稱字級調小、行高收緊，兩行加上內距剛好在 44px 內， */
-    /* 所以長名稱也不會把列擐高。 */
-    'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"基金名稱\"]{font-size:11px;line-height:1.3;' +
-      'padding-top:7px;padding-bottom:7px}' +
-    /* 名稱最多兩行，不然長名稱會把列擐到 90px。 */
+    /* 名稱過長就截斷，不折行。這樣每一列都是整齊的 44px， */
+    /* 完整名稱滑鼠移上去（或點進去）看得到。 */
+    'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"基金名稱\"]{max-width:0}' +
     'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"基金名稱\"] > a,' +
-    'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"基金名稱\"] > span{display:-webkit-box;' +
-      '-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}' +
+    'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"基金名稱\"] > span{display:block;' +
+      'white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
     'table[class$=\"-tbl\"] > thead > tr > th.hub-th,' +
     'table[class$=\"-tbl\"] > tbody > tr.vr > td.hub-td{width:34px !important;min-width:34px !important;' +
       'padding-left:4px !important;padding-right:4px !important}' +
@@ -273,6 +271,16 @@
     }
   }
 
+  // 名稱欄會被截斷，把完整名稱放進 title，滑鼠移上去就看得到。
+  function tagNames() {
+    var cells = document.querySelectorAll('table[class$="-tbl"] > tbody > tr.vr > td[data-label="基金名稱"]');
+    for (var i = 0; i < cells.length; i++) {
+      var inner = cells[i].firstElementChild || cells[i];
+      var txt = (inner.textContent || '').trim();
+      if (txt && inner.getAttribute('title') !== txt) inner.setAttribute('title', txt);
+    }
+  }
+
   function tdsOf(tr) {
     var a = [];
     for (var i = 0; i < tr.children.length; i++) {
@@ -361,6 +369,7 @@
       tr.classList.toggle('hub-off', onlyFav && !isFav(code));
     }
     tagCols();
+    tagNames();
     paintBar();
   }
 
