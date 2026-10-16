@@ -100,14 +100,31 @@
     '.hub-star.on{color:#f59e0b}' +
     'th.hub-th,td.hub-td{width:34px;min-width:34px;max-width:34px;padding-left:4px !important;' +
       'padding-right:4px !important;text-align:center !important}' +
-    /* 平板（768-1200px）：工具頁的 nth-child(1) 寬度規則是在我們插星號欄之前寫的， */
-    /* 插完之後第一欄變成星號，176px 就跡到星號格上，名稱欄反而被擠窄。 */
-    /* 這裡把寬度移回星號欄後面那一欄（即基金名稱）。 */
-    '@media (min-width:768px) and (max-width:1200px){' +
-      'table[class$="-tbl"] > thead > tr > th.hub-th,' +
-      'table[class$="-tbl"] > tbody > tr.vr > td.hub-td{min-width:34px !important;width:34px}' +
-      'table[class$="-tbl"] > thead > tr > th.hub-th + th,' +
-      'table[class$="-tbl"] > tbody > tr.vr > td.hub-td + td{min-width:176px !important}' +
+    /* ── 表格統一規格：列高 44px、內容 12.5px、內距 10·8 ── */
+    /* 工具頁的 nth-child 規則是在插星號欄之前寫的，插完序號全部 +1， */
+    /* 會藏錯欄位（直式平板曾經把「基金名稱」整欄藏掉）。 */
+    /* 這裡全改用 data-label / data-col 定位，以後再插欄也不會錯位。 */
+    'table[class$=\"-tbl\"] th{font-size:11px;padding:10px 8px;line-height:1.35}' +
+    'table[class$=\"-tbl\"] td{font-size:12.5px;padding:10px 8px;line-height:1.4}' +
+    'table[class$=\"-tbl\"] > tbody > tr.vr{height:44px}' +
+    'table[class$=\"-tbl\"] > thead > tr > th.hub-th,' +
+    'table[class$=\"-tbl\"] > tbody > tr.vr > td.hub-td{width:34px !important;min-width:34px !important;' +
+      'padding-left:4px !important;padding-right:4px !important}' +
+    'table[class$=\"-tbl\"] > thead > tr > th.hub-th + th,' +
+    'table[class$=\"-tbl\"] > tbody > tr.vr > td.hub-td + td{min-width:220px !important}' +
+    '@media (max-width:1023px){' +
+      /* 先把被錯位規則藏掉的欄位全部讓它回來 */
+      'table[class$=\"-tbl\"] > thead > tr > th[data-col],' +
+      'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label]{display:table-cell !important}' +
+      /* 再統一隱藏次要欄位 */
+      'table[class$=\"-tbl\"] > thead > tr > th[data-col=\"\u5e63\u5225\"],' +
+      'table[class$=\"-tbl\"] > thead > tr > th[data-col=\"\u6a19\u7684\u985e\u578b\"],' +
+      'table[class$=\"-tbl\"] > thead > tr > th[data-col=\"\u4e00\u5e74\u5831\u916c\"],' +
+      'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"\u5e63\u5225\"],' +
+      'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"\u6a19\u7684\u985e\u578b\"],' +
+      'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"\u4e00\u5e74\u5831\u916c\"]{display:none !important}' +
+      'table[class$=\"-tbl\"] > thead > tr > th.hub-th + th,' +
+      'table[class$=\"-tbl\"] > tbody > tr.vr > td.hub-td + td{min-width:180px !important}' +
     '}' +
     'tr.vr.hub-off{display:none !important}' +
     '.hub-chip.warn{background:#fdf0e3;color:#a35b12;border-color:#f0d8bb}' + '.hub-chip{font-size:12px;font-weight:700;padding:7px 11px;border-radius:999px}' +
@@ -234,6 +251,20 @@
     }
   }
 
+  // 把每一欄的 data-label 複製到表頭，讓 CSS 可以用欄位名稱定位。
+  // 不用 nth-child 是因為我們會插星號欄，序號會整排位移。
+  function tagCols() {
+    var tbl = document.querySelector('table[class$="-tbl"]');
+    if (!tbl) return;
+    var row = tbl.querySelector('tbody tr.vr');
+    if (!row) return;
+    var ths = tbl.querySelectorAll('thead th');
+    for (var i = 0; i < ths.length && i < row.cells.length; i++) {
+      var lbl = row.cells[i].getAttribute('data-label');
+      if (lbl && ths[i].getAttribute('data-col') !== lbl) ths[i].setAttribute('data-col', lbl);
+    }
+  }
+
   function tdsOf(tr) {
     var a = [];
     for (var i = 0; i < tr.children.length; i++) {
@@ -321,6 +352,7 @@
       // 組合試算頁的 CODE 和实際標的險種不一致，會把自選全藏起來。
       tr.classList.toggle('hub-off', onlyFav && !isFav(code));
     }
+    tagCols();
     paintBar();
   }
 
