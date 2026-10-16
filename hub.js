@@ -131,6 +131,8 @@
       'table[class$=\"-tbl\"] > thead > tr > th[data-col=\"\u4e00\u5e74\u5831\u916c\"],' +
       'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"\u5e63\u5225\"],' +
       'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"\u6a19\u7684\u985e\u578b\"],' +
+      'table[class$=\"-tbl\"] > thead > tr > th[data-col=\"近6月配息\"],' +
+      'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"近6月配息\"],' +
       'table[class$=\"-tbl\"] > tbody > tr.vr > td[data-label=\"\u4e00\u5e74\u5831\u916c\"]{display:none !important}' +
       'table[class$=\"-tbl\"] > thead > tr > th.hub-th + th,' +
       'table[class$=\"-tbl\"] > tbody > tr.vr > td.hub-td + td{min-width:180px !important}' +
