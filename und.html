@@ -2363,18 +2363,24 @@ function mapDivToIndex(dates, divs) {
 // 還原邏輯：adj[最後一日] = 淨值[最後一日]；往回逐日以「(次日淨值+次日配息)/當日淨值」反推，
 // 使任意兩日之間的還原值變化率 = 該期間實際含息報酬率（視為配息發生當日按淨值滾入、含再投資複利效果）
 function buildAdjustedNav(dates, navs, divOnIdx) {
-  // 「含息」＝當日淨值＋累計到當日為止的每單位配息。
-  // 舊做法是「往回折算」：把除息日之前的歷史乘上折扣系數、終點錨在今天的淨值，
-  // 數學上沒錯，但線會畫在淨值下面，跟組合分析那張圖的方向相反，
-  // 看起來像「配息讓績效變差」。改成直接疊加，與下方「歷史區間回顧」同一套口徑。
-  // 除息當天就算領到，所以跨除息日不會出現人為的掉一段。
+  // 「含息」＝每次配息當天按當時淨值再投入，從起點往上累乘。
+  //
+  // 為什麼不是「直接把配息金額加上去」：
+  //   這支函式拿到的是完整歷史，圖表之後才切出 1 年／3 年顯示。
+  //   加法的累計值會把「窗口之前」的配息也墊進起點，期間報酬會失真；
+  //   累乘的因子在相除時會互相抵消，不管切哪一段都算得出一樣的結果，
+  //   才會跟表格那三欄（富邦官方的含息報酬）對得起來。
+  //
+  // 因子用 nav/(nav-d)，與舊版往回折算的 (nav-d)/nav 互為倒數，
+  // 所以整條序列只是乘上一個常數：期間報酬、回撐、夏普比率全部不變，
+  // 變的只有線從淨值下方移到上方。
   if (!divOnIdx) return null;
   var out = new Array(navs.length);
-  var cum = 0;
+  var mult = 1;
   for (var i = 0; i < navs.length; i++) {
     var d = Number(divOnIdx[i]) || 0;
-    cum += d;
-    out[i] = navs[i] + cum;
+    if (d > 0 && navs[i] > d) mult *= navs[i] / (navs[i] - d);
+    out[i] = navs[i] * mult;
   }
   return out;
 }
@@ -2641,7 +2647,7 @@ function renderBacktest(series, r, divs) {
     mode: 'raw', range: 3, customStart: null, customEnd: null
   };
   var divNote = adjNavs
-    ? '<div class="bt-div-note">' + ICON.coin + ' 已抓取此標的歷史配息記錄，「含息」線＝當日淨值＋累計至當日的每單位配息（假設配息發生於當月最後一個交易日，不含配息再投資的複利效果，故與真實除息日可能有些微誤差，僅供參考）。可用下方按鈕切換顯示淨值（未含息）或含息結果。下方「歷史區間回顧」採同一套「淨值變化＋配息金額」口徑，不再有兩種算法的差異。</div>'
+    ? '<div class="bt-div-note">' + ICON.coin + ' 已抓取此標的歷史配息記錄，「含息」線＝每次配息都按當時淨值再投入後的累積成長（假設配息發生於當月最後一個交易日，與真實除息日可能有些微誤差）。口徑與上方表格的六個月／一年／三年含息報酬一致，數字應該對得起來。下方「歷史區間回顧」則是較單純的「淨值變化＋配息金額」，不含再投資複利，因此會略低於上方。</div>'
     : '';
   var modeToggle = adjNavs
     ? '<div class="bt-mode-toggle" id="bt-mode-toggle">'
