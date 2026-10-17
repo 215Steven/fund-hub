@@ -907,7 +907,7 @@ table.vbct-tbl td.c { text-align: center; }
 .wr-fill { height: 100%; border-radius:var(--r-xs); transition: width 0.3s; }
 .wr-pct { width: 48px; flex-shrink: 0; text-align: right; font-weight: 800; color: var(--text); font-family: 'Courier New',monospace; }
 .bt-wr-note { font-size: 10.5px; color: #b0b8c4; margin-top: 8px; }
-/* 還原(含息)模式切換 */
+/* 含息（再投入）模式切換 */
 .bt-mode-toggle { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 4px; }
 .bt-asof-note { font-size: 11px; color: var(--muted); white-space: nowrap; margin-left: 2px; }
 .bt-export-row { display: flex; justify-content: flex-end; margin: -6px 0 14px; }
@@ -1496,7 +1496,11 @@ table.vbct-tbl td.c { text-align: center; }
       .mob-sort-pill.ms-active { background-color: #1d4ed8; color: #fff; border-color: #1d4ed8; font-weight: 700; }
       .mob-sort-pill:active { transform: scale(0.96); }
     }
-  </style>
+  
+  /* 自訂日期兩個輸入框改成等寬同高，跟上方區間按鈕排齊。 */
+  .bt-custom-range,.pf-custom-range{display:grid !important;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;width:100%}
+  .bt-custom-range input[type="date"],.pf-custom-range input[type="date"]{width:100% !important;min-width:0;min-height:40px;padding:0 10px;font-size:13px;font-family:inherit;color:inherit;border:1.5px solid #e2e8f0;border-radius:var(--r-sm);background:#fff}
+</style>
 </head>
 <body>
 <!-- ═══════════════════════════════════════════════════════════
@@ -1646,19 +1650,19 @@ table.vbct-tbl td.c { text-align: center; }
     <ol>
       <li>
         <span class="note-num">註1</span>
-        <span>組合分析將各基金逐日淨值依使用者設定之權重，正規化後加權合成為單一指數化序列（基準日 = 100），用以模擬「依設定權重持有一籃子基金」之本金（淨值）走勢；各基金之配息亦依相同權重與正規化基準換算後加總，分開呈現於「期間配息合計」與「還原(含息)」計算中，並未假設配息之間有再投資至其他基金之效果。</span>
+        <span>組合走勢＝各檔每日淨值按你設定的權重加權，再以所選區間第一天為 100 換算。配息分開計算，不混進本金；每檔自己的配息會滾入，但不會跨基金再投入。</span>
       </li>
       <li>
         <span class="note-num">註2</span>
-        <span>各基金交易日曆可能不同（例如不同市場之休市日），組合計算採「前一交易日數值延展」方式對齊至統一日期軸，僅選取所有基金皆有資料之重疊期間進行分析；若某基金逐日淨值資料筆數不足（少於 10 筆），將自動排除於本次組合分析之外。</span>
+        <span>各檔休市日不同，缺的那天沿用前一交易日淨值，只取所有基金都有資料的重疊期間。淨值少於 10 筆的基金會排除。</span>
       </li>
       <li>
         <span class="note-num">註3</span>
-        <span>「還原(含息)」序列假設配息發生於當月最後一個交易日、按當時淨值滾入計算，含再投資複利效果；下方「歷史區間回顧」則改以單一長條呈現紅（淨值漲跌）與藍（加上配息後）雙色比較，採「期末淨值－期初淨值＋期間內配息金額」簡單加總計算，不含配息再投資之複利效果。配息資料僅精確至月份，故與真實除息日可能有些微誤差，僅供參考。歷史區間回顧採滾動視窗計算，樣本不足（少於10個視窗）之持有期間將自動隱藏；夏普比率計算假設無風險利率為 0%，僅供參考，不構成投資建議。</span>
+        <span>「含息（再投入）」線＝每次配息按當時淨值再投入後的累積成長。配息只精確到月份，程式假設落在當月最後一個交易日。夏普比率以無風險利率 0% 計算。</span>
       </li>
       <li>
         <span class="note-num">註4</span>
-        <span>下方「各基金投入金額試算明細」表格之「期間報酬（淨值）」欄僅反映個別基金之淨值（本金）漲跌，不含配息；其計算期間與表格其餘欄位一致，皆為上方所選期間（隨「全部／1年／3年／4年／5年／自訂」按鈕切換重新計算起始日），用於比較各成分基金於該期間內之相對表現。</span>
+        <span>明細表的「期間報酬（淨值）」只看本金漲跌、不含配息，區間跟著上方按鈕走，用來比較各檔在同一段時間的表現。</span>
       </li>
     </ol>
   </div>
@@ -1985,7 +1989,7 @@ function computeWinRates(dates, navs) {
   });
   return out;
 }
-// 歷史區間回顧（單色 vs 雙色）：紅＝淨值（未還原）價格漲跌，藍＝「期末淨值－期初淨值＋期間內配息金額」(不含配息再投資複利效果)
+// 歷史區間回顧（單色 vs 雙色）：紅＝淨值（未含息）價格漲跌，藍＝「期末淨值－期初淨值＋期間內配息金額」(不含配息再投資複利效果)
 // divCum[i] = 截至第 i 個交易日（含）為止之累計配息金額；divCum[end]-divCum[start] = 該持有期間內實際收到之配息總額
 function computeWinRatesDual(dates, navs, divCum) {
   var n = navs.length, out = [];
@@ -2034,9 +2038,9 @@ function buildNavChartSvg(dates, navsPrimary, navsSecondary, labelPrimary, label
     secondarySvg = '<polyline points="' + ptsS + '" fill="none" stroke="#c47f17" stroke-width="1.6"/>';
     legendSvg = '<g font-size="9.5">'
       + '<line x1="' + (w - 232) + '" y1="9" x2="' + (w - 220) + '" y2="9" stroke="#2657a0" stroke-width="2.4"/>'
-      + '<text x="' + (w - 215) + '" y="12" fill="#475569">' + eh(labelPrimary || '淨值（未還原）') + '</text>'
+      + '<text x="' + (w - 215) + '" y="12" fill="#475569">' + eh(labelPrimary || '淨值（未含息）') + '</text>'
       + '<line x1="' + (w - 118) + '" y1="9" x2="' + (w - 106) + '" y2="9" stroke="#c47f17" stroke-width="2.4"/>'
-      + '<text x="' + (w - 101) + '" y="12" fill="#475569">' + eh(labelSecondary || '還原(含息)') + '</text>'
+      + '<text x="' + (w - 101) + '" y="12" fill="#475569">' + eh(labelSecondary || '含息（再投入）') + '</text>'
       + '</g>';
   }
   return '<svg id="pf-chart-svg" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;height:auto;display:block;background:#fff">'
@@ -2176,7 +2180,7 @@ async function fetchDividendHistory(r) {
   } catch (e) { /* 配息資料抓取失敗，不中斷回測流程，僅略過還原 */ }
   return [];
 }
-// 將配息（月份粒度）對應至該月最後一個交易日，回傳 {索引: 配息金額}，供「還原(含息)」與「歷史區間回顧」共用
+// 將配息（月份粒度）對應至該月最後一個交易日，回傳 {索引: 配息金額}，供「含息（再投入）」與「歷史區間回顧」共用
 function mapDivToIndex(dates, divs) {
   if (!divs || !divs.length) return null;
   var divByMonth = {};
@@ -2964,12 +2968,12 @@ function renderPfAnalysis() {
   var s = _pfState;
   if (!s) return;
   var divNote = s.hasAnyDiv
-    ? '<div class="bt-div-note">' + ICON.coin + ' 已將各基金歷史配息依權重併入「還原(含息)」組合序列（假設配息發生於當月最後一個交易日，並按當時淨值滾入計算，含再投資複利效果）。下方走勢圖已同時疊加顯示「淨值（未還原）」與「還原(含息)」兩條線，按下方按鈕可切換粗實線（主線）並同步更新下方統計數據。下方「歷史區間回顧」則改用較單純之「淨值變化＋配息金額」方式計算。</div>'
+    ? '<div class="bt-div-note">' + ICON.coin + ' 含息線＝各檔配息按權重併入後的累積成長。走勢圖同時顯示兩條線，按鈕可切換主線並同步更新下方統計。</div>'
     : '';
   var modeToggle = s.hasAnyDiv
     ? '<div class="bt-mode-toggle" id="pf-mode-toggle">'
-      + '<button class="bt-mode-btn active" data-mode="raw" onclick="setPfMode(\'raw\')">' + ICON.chart + ' 淨值（未還原）</button>'
-      + '<button class="bt-mode-btn" data-mode="adj" onclick="setPfMode(\'adj\')">' + ICON.coin + ' 還原(含息)</button>'
+      + '<button class="bt-mode-btn active" data-mode="raw" onclick="setPfMode(\'raw\')">' + ICON.chart + ' 淨值（未含息）</button>'
+      + '<button class="bt-mode-btn" data-mode="adj" onclick="setPfMode(\'adj\')">' + ICON.coin + ' 含息（再投入）</button>'
       + '<span class="bt-asof-note" id="pf-asof-note"></span>'
       + '</div>'
     : '';
@@ -2991,7 +2995,7 @@ function renderPfAnalysis() {
   var excludedNote = s.excludedCount > 0
     ? '<div class="pf-breakdown-note">' + ICON.warnSm + ' 有 ' + s.excludedCount + ' 個基金因逐日淨值資料不足已自動排除於本次組合分析</div>'
     : '';
-  var investHtml = s.hasAnyDivMonth
+  var investHtml = true /* 沒配息也要建出來，本金成長跟配息無關 */
     ? '<div class="bt-section-title">' + ICON.coin + ' 投入金額試算（已領金額，與上方期間分頁同步）</div>'
       + '<div class="pf-invest-row"><label for="pf-invest-amt">投入金額</label>'
       + '<input type="number" id="pf-invest-amt" class="pf-weight-input" min="1" step="1" value="100" oninput="pfRenderInvestEstimate();pfRenderTodayDiv()">'
@@ -3009,7 +3013,7 @@ function renderPfAnalysis() {
 }
 // ─────────────────────────────────────────────────────────
 // 核心：依「上方所選期間」之起始日，將各基金重新基準化（該日淨值＝100）後
-// 依目前權重加權合成組合本金指數與配息點數（含「還原(含息)」序列）。
+// 依目前權重加權合成組合本金指數與配息點數（含「含息（再投入）」序列）。
 // 與固定以「整個重疊區間起始日」為基準的舊版做法不同：切換 1年／3年／自訂…
 // 等期間分頁時，等同模擬「在該期間起始日當下，依目前設定權重重新一次性建立此組合」，
 // 避免長期累積的個股漲跌幅差異扭曲短期區間的本金走勢與配息點數換算。
@@ -3063,8 +3067,8 @@ function pfRenderMain() {
   if (!el) return;
   if (!stats) { el.innerHTML = '<div class="bt-loading">' + ICON.warn + ' 資料不足無法計算</div>'; return; }
   var secondaryNavs = hasBoth ? (s.mode === 'adj' ? period.raw : period.adj) : null;
-  var primaryLabel = (hasBoth && s.mode === 'adj') ? '還原(含息)' : '淨值（未還原）';
-  var secondaryLabel = (hasBoth && s.mode === 'adj') ? '淨值（未還原）' : '還原(含息)';
+  var primaryLabel = (hasBoth && s.mode === 'adj') ? '含息（再投入）' : '淨值（未含息）';
+  var secondaryLabel = (hasBoth && s.mode === 'adj') ? '淨值（未含息）' : '含息（再投入）';
   var chartHtml = buildNavChartSvg(dates, navs, secondaryNavs, primaryLabel, secondaryLabel);
   var hasDivData = !!period.divByMonth;
   var divStats = hasDivData ? computeDivStats(period.divByMonth, dates[0].substring(0, 7), dates[dates.length - 1].substring(0, 7)) : { total: 0, adjCount: null, totalCount: 0 };
@@ -3096,7 +3100,7 @@ function renderPfWinRateHtml(s, idxR, period) {
     var winList = computeWinRatesDual(winDates, rawNavs, divCum);
     if (winList.length) {
       return '<div class="bt-section-title">' + ICON.coin + ' 歷史區間回顧（不同起點、相同持有長度：紅＝淨值，藍＝加上配息後）</div>'
-        + '<div class="wr-legend"><span><i style="background:#dc2626"></i>淨值（未還原）</span><span><i style="background:#2657a0"></i>加上配息後</span></div>'
+        + '<div class="wr-legend"><span><i style="background:#dc2626"></i>淨值（未含息）</span><span><i style="background:#2657a0"></i>加上配息後</span></div>'
         + winList.map(function(w) {
             var addSeg = Math.max(0, w.addRate - w.rawRate);
             var rawZero = w.rawRate <= 0.05;
@@ -3105,10 +3109,10 @@ function renderPfWinRateHtml(s, idxR, period) {
             return '<div class="wr-row-dual">'
               + '<div class="wr-label">' + w.label + '</div>'
               + '<div class="wr-track-dual"><div class="wr-seg-raw' + rawFullCls + '" style="width:' + w.rawRate.toFixed(1) + '%"></div><div class="wr-seg-add' + addFullCls + '" style="left:' + w.rawRate.toFixed(1) + '%;width:' + addSeg.toFixed(1) + '%"></div></div>'
-              + '<div class="wr-pct-dual" style="white-space:nowrap;font-variant-numeric:tabular-nums">' + Math.round(w.rawRate * w.samples / 100) + ' → ' + Math.round(w.addRate * w.samples / 100) + ' <span style="color:#94a3b8">／共 ' + w.samples + '</span></div>'
+              + '<div class="wr-pct-dual" style="white-space:nowrap;font-variant-numeric:tabular-nums">' + w.rawRate.toFixed(1) + '% → ' + w.addRate.toFixed(1) + '% <span style="color:#94a3b8">（' + Math.round(w.addRate * w.samples / 100) + '／' + w.samples + '）</span></div>'
               + '</div>';
           }).join('')
-        + '<div class="bt-wr-note">區間以每個交易日為起點逐日取樣，彼此大量重疊，「共 N 個區間」是取樣數不是獨立樣本數——一段三年的資料最多只含三個互不重疊的一年期間，因此比例接近滿分時並不代表穩定度高，不宜單獨解讀。區間數少於 10 的持有期間已自動隱藏。「加上配息後」採「期末淨值－期初淨值＋期間內配息金額」計算，不含配息再投資之複利效果，與上方還原(含息)圖表之計算方式不同，僅供參考。</div>';
+        + '<div class="bt-wr-note">區間以每個交易日為起點逐日取樣，彼此大量重疊——三年資料最多只有三段互不重疊的一年，所以比例接近滿分不代表穩定。樣本少於 10 個的持有期間已隱藏。這裡用「淨值變化＋配息金額」算，不含再投資複利，會略低於上方含息線。</div>';
     }
     return '<div class="bt-section-title">' + ICON.coin + ' 歷史區間回顧</div><div class="bt-loading" style="padding:14px 0">資料區間過短，尚無法回顧任何持有期間</div>';
   }
@@ -3120,7 +3124,7 @@ function renderPfWinRateHtml(s, idxR, period) {
           return '<div class="wr-row">'
             + '<div class="wr-label">' + w.label + '</div>'
             + '<div class="wr-track"><div class="wr-fill" style="width:' + w.winRate.toFixed(1) + '%;background:' + barColor + '"></div></div>'
-            + '<div class="wr-pct" style="white-space:nowrap;font-variant-numeric:tabular-nums">' + Math.round(w.winRate * w.samples / 100) + ' <span style="color:#94a3b8">／' + w.samples + '</span></div>'
+            + '<div class="wr-pct" style="white-space:nowrap;font-variant-numeric:tabular-nums">' + w.winRate.toFixed(1) + '% <span style="color:#94a3b8">（' + Math.round(w.winRate * w.samples / 100) + '／' + w.samples + '）</span></div>'
             + '</div>';
         }).join('')
       + '</div><div class="bt-wr-note">區間以每個交易日為起點逐日取樣，彼此大量重疊，「共 N 個區間」是取樣數不是獨立樣本數——一段三年的資料最多只含三個互不重疊的一年期間，因此比例接近滿分時並不代表穩定度高，不宜單獨解讀。區間數少於 10 的持有期間已自動隱藏</div>';
@@ -3264,7 +3268,7 @@ function pfRenderInvestEstimate() {
   var s = _pfState;
   var el = $('pf-invest-result');
   if (!s || !el) return;
-  if (!s.hasAnyDivMonth) { el.innerHTML = '<div class="bt-loading" style="padding:10px 0">本組合所選基金皆無配息，無法試算配息金額</div>'; return; }
+  if (!s.hasAnyDivMonth) { el.innerHTML = '<div class="bt-loading" style="padding:10px 0">本組合所選基金皆無配息，沒有配息金額可試算；下方明細仍可看本金（淨值）的成長。</div>'; return; }
   var amtEl = $('pf-invest-amt');
   var amt = amtEl ? parseFloat(amtEl.value) : NaN;
   if (!amt || amt <= 0) { el.innerHTML = '<div class="bt-loading" style="padding:10px 0">' + ICON.warnSm + ' 請輸入大於 0 的投入金額</div>'; return; }
