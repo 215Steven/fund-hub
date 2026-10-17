@@ -4,6 +4,9 @@
     "api/data.js": {
       "maxDuration": 60
     },
+    "api/prewarm.js": {
+      "maxDuration": 60
+    },
     "api/cron-notify.js": {
       "maxDuration": 60
     },
@@ -11,6 +14,16 @@
       "maxDuration": 60
     }
   },
+  "crons": [
+    {
+      "path": "/api/prewarm",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron-notify",
+      "schedule": "0 1 * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/embed/:code",
@@ -28,6 +41,33 @@
         {
           "key": "Content-Security-Policy",
           "value": "frame-ancestors 'self' https://oosayhi.com https://*.oosayhi.com"
+        }
+      ]
+    },
+    {
+      "source": "/hub.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, stale-while-revalidate=86400"
+        }
+      ]
+    },
+    {
+      "source": "/hero.jpg",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
+        }
+      ]
+    },
+    {
+      "source": "/hero.webp",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
         }
       ]
     }
