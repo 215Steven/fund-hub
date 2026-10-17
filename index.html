@@ -271,6 +271,37 @@
   .tile:not(.pf) .code{padding-right:56px}
   .tile .nm{margin-bottom:0}
 
+
+  /* ── 互動狀態：載入／空／錯誤／成功 ── */
+  /* 讀取中用跟表格同形狀的骨架，不用轉圈圈。 */
+  .sk{display:grid;gap:7px;padding:4px 0 2px}
+  .sk i{display:block;height:13px;border-radius:var(--r-xs);
+    background:linear-gradient(90deg,#eef2f7 25%,#e2e8f0 37%,#eef2f7 63%);
+    background-size:400% 100%;animation:sk 1.3s ease-in-out infinite}
+  .sk i:nth-child(2){width:92%}.sk i:nth-child(3){width:78%}.sk i:nth-child(4){width:86%}
+  @keyframes sk{0%{background-position:100% 50%}100%{background-position:0 50%}}
+  @media(prefers-reduced-motion:reduce){.sk i{animation:none}}
+  /* 空清單要給出路，不是只說「沒有資料」。 */
+  .fav-empty .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .fav-empty .acts a{font-size:12.5px;font-weight:700;text-decoration:none;color:var(--blue);
+    background:var(--blue-soft);border:1px solid #dbe4f0;border-radius:var(--r-sm);padding:7px 12px}
+  .fav-empty .acts a:hover{background:#e2ecff}
+  /* 錯誤要看得出是錯誤，不只是變紅的小字。注意不要設 display， */
+  /* 不然會覆訊原本的 display:none，變成一進頁就顯示錯誤框。 */
+  .err{padding:10px 12px;line-height:1.6;color:#b91c1c;background:#fef2f2;
+    border:1px solid #fecaca;border-radius:var(--r-sm)}
+  .field input.bad{border-color:#f87171;background:#fef2f2}
+  .btn.busy{position:relative;color:transparent}
+  .btn.busy::after{content:"";position:absolute;left:50%;top:50%;width:17px;height:17px;
+    margin:-8.5px 0 0 -8.5px;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;
+    border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  /* 成功要有回饋，不是表單默默消失。 */
+  .toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);z-index:60;
+    max-width:min(460px,calc(100vw - 32px));padding:12px 16px;border-radius:var(--r-sm);
+    background:#0f2744;color:#fff;font-size:13.5px;line-height:1.6;box-shadow:var(--sh-2);
+    opacity:0;transition:opacity .22s,transform .22s;pointer-events:none}
+  .toast.on{opacity:1;transform:translate(-50%,0)}
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <!-- Vercel Web Analytics：無 cookie，不需同意視窗 -->
@@ -410,7 +441,7 @@
           <h2>我的自選</h2>
           <span id="fav-count" class="fav-count"></span>
         </div>
-        <div id="fav-body" class="fav-body">讀取中…</div>
+        <div id="fav-body" class="fav-body"><div class="sk" aria-label="讀取中"><i></i><i></i><i></i><i></i></div></div>
         <p class="fav-hint" id="fav-hint">← 表格可左右滑動，右邊還有近 6 月配息</p>
       </section>
 
@@ -473,6 +504,19 @@
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
+  // 把后端丟回來的原始錯誤話成人話，並且要讓人知道下一步做什麼。
+  function hubErrMsg(e){
+    var m = String((e && e.message) || e || '');
+    if (/fetch|network|load failed|NetworkError/i.test(m))
+      return '連不上伺服器。請確認網路連線（或關掉 VPN）後再試一次。';
+    if (/429|too many|rate/i.test(m))
+      return '短時間試太多次了，請過幾分鐘再試。';
+    if (/already|已經/i.test(m))
+      return '這個 Email 已經開通過了，直接再按一次就會讀回你的清單。';
+    if (!m || m === 'undefined') return '開通失敗，請再試一次。';
+    return m;
+  }
+
   var KEY = "fh-session";
 
   // LINE 內建瀏覽器、Safari 無痕與鎖定模式會擋掉 localStorage。
@@ -598,7 +642,7 @@
   
         if (!want.length) {
           if (cnt) cnt.textContent = '';
-          body.innerHTML = '<div class="fav-empty">還沒有自選標的。到任一支工具點基金名稱左邊的星號就會加入，三張保單共用同一份清單。</div>';
+          body.innerHTML = '<div class="fav-empty">還沒有自選標的。到任一支工具點基金名稱左邊的星號就會加入，三張保單共用同一份清單。<div class="acts"><a href="/vcct">打開 VCCT</a><a href="/vbct">打開 VBCT</a><a href="/und">打開 UND</a></div></div>';
           return;
         }
         if (cnt) cnt.textContent = want.length + ' 檔';
@@ -743,9 +787,9 @@
     var err   = $("g-err");
     err.style.display = "none";
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-      err.textContent = "請輸入正確的 Email"; err.style.display = "block"; return;
+      err.textContent = "這個 Email 看起來不完整，請檢查有沒有漏掉 @ 或網域。"; err.style.display = "block"; $("g-email").classList.add("bad"); $("g-email").focus(); return;
     }
-    this.disabled = true; this.textContent = "開通中…";
+    this.disabled = true; this.classList.add("busy"); this.setAttribute("aria-busy","true"); $("g-email").classList.remove("bad");
     try {
       var r = await fetch("/api/lead", {
         method: "POST",
@@ -758,9 +802,9 @@
       ev("signup", { method: "email" });
       paint();
     } catch (e) {
-      err.textContent = String(e.message || e); err.style.display = "block";
+      err.textContent = hubErrMsg(e); err.style.display = "block";
     }
-    this.disabled = false; this.textContent = "開通自選清單";
+    this.disabled = false; this.classList.remove("busy"); this.removeAttribute("aria-busy");
   });
 
   // ── Google 登入 ────────────────────────────────────
@@ -780,7 +824,7 @@
       ev("signup", { method: "google" });
       paint();
     } catch (e) {
-      err.textContent = String(e.message || e); err.style.display = 'block';
+      err.textContent = hubErrMsg(e); err.style.display = 'block';
     }
   };
   function initGoogle() {
@@ -803,6 +847,28 @@
   });
 
   paint();
+})();
+</script>
+
+<script>
+// 開通成功時表單是直接消失的，沒有任何確認。盯著 gate 的顯示狀態補一個回饋。
+(function(){
+  var gate = document.getElementById('gate');
+  if (!gate) return;
+  function toast(msg){
+    var el = document.createElement('div');
+    el.className = 'toast'; el.setAttribute('role','status'); el.textContent = msg;
+    document.body.appendChild(el);
+    requestAnimationFrame(function(){ el.classList.add('on'); });
+    setTimeout(function(){ el.classList.remove('on'); setTimeout(function(){ el.remove(); }, 400); }, 4600);
+  }
+  window.hubToast = toast;
+  var shown = !gate.classList.contains('hide');
+  new MutationObserver(function(){
+    var now = !gate.classList.contains('hide');
+    if (shown && !now) toast('開通完成。到任一支工具點基金名稱左邊的星號，就會存進自選清單。');
+    shown = now;
+  }).observe(gate, { attributes:true, attributeFilter:['class'] });
 })();
 </script>
 </body>
