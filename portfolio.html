@@ -1500,6 +1500,13 @@ table.vbct-tbl td.c { text-align: center; }
   /* 自訂日期兩個輸入框改成等寬同高，跟上方區間按鈕排齊。 */
   .bt-custom-range,.pf-custom-range{display:grid !important;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;width:100%}
   .bt-custom-range input[type="date"],.pf-custom-range input[type="date"]{width:100% !important;min-width:0;min-height:40px;padding:0 10px;font-size:13px;font-family:inherit;color:inherit;border:1.5px solid #e2e8f0;border-radius:var(--r-sm);background:#fff}
+
+  .pf-prin{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:4px 0 8px}
+  .pf-prin > div{background:#f8fafc;border:1px solid #e2e8f0;border-radius:var(--r-sm);padding:10px 12px}
+  .pf-prin b{display:block;font-size:17px;color:#0f2744;letter-spacing:-.2px}
+  .pf-prin span{display:block;font-size:11.5px;color:#64748b;margin-top:2px}
+  .pf-prin-note{font-size:12px;color:#64748b;line-height:1.7}
+  @media(max-width:560px){.pf-prin{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
@@ -3264,18 +3271,40 @@ function renderPfInvestRows(rows) {
 //  該起始日依目前權重重新投入金額；採計的配息期間與上方「全部／1年／
 //  3年…」期間分頁同步，回答「若從這段期間起點投入，這段期間大約已領多少」）
 // ─────────────────────────────────────────────────────────
+// 沒有配息標的時，原本整塊試算會消失，連「本金變成多少」都看不到。
+// 本金的成長跟配息無關，對不配息的股票型基金反而是唯一重點，
+// 所以單獨算一份：各檔依權重分配金額，再用區間首尾淨值換算期末市值。
+function pfPrincipalOnlyHtml(s, a, end) {
+  if (a == null) a = rangeStartIdx(s.dates, s.range);
+  if (end == null) end = s.dates.length - 1;
+  var inp = document.getElementById('pf-invest-amt');
+  var amt = inp ? parseFloat(inp.value) : 100;
+  if (!(amt > 0)) amt = 100;
+  var tot = 0;
+  for (var i = 0; i < s.funds.length; i++) {
+    var f = s.funds[i], p0 = f.filledRaw[a], p1 = f.filledRaw[end];
+    if (p0 > 0) tot += amt * f.wNorm * p1 / p0;
+  }
+  var pct = (tot / amt - 1) * 100;
+  return '<div class="pf-prin">'
+    + '<div><b>' + amt.toFixed(0) + ' 萬</b><span>投入金額</span></div>'
+    + '<div><b>' + tot.toFixed(2) + ' 萬</b><span>期末市值（本金）</span></div>'
+    + '<div><b>' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%</b><span>期間報酬（不含配息）</span></div>'
+    + '</div>'
+    + '<div class="pf-prin-note">此組合沒有配息可試算，只顯示本金（淨值）的變化。區間 ' + s.dates[a] + ' ～ ' + s.dates[end] + '</div>';
+}
 function pfRenderInvestEstimate() {
   var s = _pfState;
   var el = $('pf-invest-result');
   if (!s || !el) return;
-  if (!s.hasAnyDivMonth) { el.innerHTML = '<div class="bt-loading" style="padding:10px 0">本組合所選基金皆無配息，沒有配息金額可試算；下方明細仍可看本金（淨值）的成長。</div>'; return; }
+  if (!s.hasAnyDivMonth) { el.innerHTML = pfPrincipalOnlyHtml(s); return; }
   var amtEl = $('pf-invest-amt');
   var amt = amtEl ? parseFloat(amtEl.value) : NaN;
   if (!amt || amt <= 0) { el.innerHTML = '<div class="bt-loading" style="padding:10px 0">' + ICON.warnSm + ' 請輸入大於 0 的投入金額</div>'; return; }
   var idxR = resolveRangeIndices(s.dates, s.range, s.customStart, s.customEnd);
   var period = pfRecomputePeriod(s, idxR.startIdx, idxR.endIdx);
   var startDate = s.dates[idxR.startIdx], endDate = s.dates[idxR.endIdx];
-  if (!period.divByMonth) { el.innerHTML = '<div class="bt-loading" style="padding:10px 0">所選期間內無配息月份資料可供試算</div>'; return; }
+  if (!period.divByMonth) { el.innerHTML = pfPrincipalOnlyHtml(s, idxR.startIdx, idxR.endIdx); return; }
   var startMonth = startDate.substring(0, 7), endMonth = endDate.substring(0, 7);
   var divStats = computeDivStats(period.divByMonth, startMonth, endMonth);
   if (!divStats.totalCount) { el.innerHTML = '<div class="bt-loading" style="padding:10px 0">所選期間內無配息月份資料可供試算</div>'; return; }
