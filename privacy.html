@@ -5,7 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>隱私權政策 — 基金配息率工具集</title>
 <style>
-  :root{--navy:#0f2744;--blue:#1d4ed8;--bg:#f3f6fb;--border:#e2e8f0;--text:#1f2a37;--muted:#64748b}
+  :root{
+    /* 全站共用的圓角與陰影刻度。要改尺寸只改這裡，別在個別規則裡寫死。 */
+    --r-2xs:4px; --r-xs:6px; --r-sm:10px; --r-md:14px; --r-lg:20px; --r-pill:999px;
+    --sh-0:0 1px 3px rgba(20,45,80,.07);
+    --sh-1:0 1px 4px rgba(20,45,80,.06),0 6px 20px rgba(20,45,80,.07);
+    --sh-2:0 2px 6px rgba(20,45,80,.08),0 16px 36px rgba(20,45,80,.10);
+--navy:#0f2744;--blue:#1d4ed8;--bg:#f3f6fb;--border:#e2e8f0;--text:#1f2a37;--muted:#64748b}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--text);line-height:1.85;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
@@ -14,8 +20,8 @@
   header h1{margin:0 0 6px;font-size:clamp(22px,4vw,30px);letter-spacing:-.4px}
   header p{margin:0;font-size:13.5px;color:#c7d6ea}
   main{margin-top:-26px;padding-bottom:60px}
-  .card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:26px 24px;
-    box-shadow:0 1px 3px rgba(15,39,68,.06),0 8px 24px rgba(15,39,68,.06)}
+  .card{background:#fff;border:1px solid var(--border);border-radius:var(--r-md);padding:26px 24px;
+    box-shadow:var(--sh-0),0 8px 24px rgba(15,39,68,.06)}
   h2{font-size:17px;margin:30px 0 8px;letter-spacing:-.2px;color:var(--navy)}
   h2:first-child{margin-top:0}
   p,li{font-size:14.5px}
@@ -25,7 +31,7 @@
   th,td{text-align:left;padding:9px 10px;border-bottom:1px solid #eef2f7;vertical-align:top}
   th{width:30%;color:var(--muted);font-size:13px;white-space:nowrap}
   a{color:var(--blue)}
-  .note{background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px 16px;
+  .note{background:#fffbeb;border:1px solid #fde68a;border-radius:var(--r-sm);padding:14px 16px;
     font-size:13.5px;color:#8a7a52;margin:16px 0}
   .note b{color:#92400e}
   footer{padding:24px 0 40px;text-align:center;font-size:12px;color:#9aa7b5}
