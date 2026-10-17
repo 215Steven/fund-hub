@@ -1327,14 +1327,10 @@ header { padding-top: max(12px, env(safe-area-inset-top, 12px)); }
   
   /* 手機版：自訂日期的兩個輸入框原本是 105／101px、高度只有 29px，
      擠在一排 44px 高的區間按鈕下面，比例很突兀。改成等寬、同高、佔滿。 */
-  .bt-custom-range{display:grid !important;grid-template-columns:1fr auto 1fr;
-    align-items:center;gap:8px;width:100%}
-  .bt-custom-range input[type="date"]{width:100% !important;min-width:0;min-height:40px;
-    padding:0 10px;font-size:13px;font-family:inherit;color:inherit;
-    border:1.5px solid #e2e8f0;border-radius:var(--r-sm);background:#fff}
+  .bt-custom-range{display:grid !important;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;width:100%}
+  .bt-custom-range input[type="date"]{width:100% !important;min-width:0;min-height:40px;padding:0 10px;font-size:13px;font-family:inherit;color:inherit;border:1.5px solid #e2e8f0;border-radius:var(--r-sm);background:#fff}
   @media(max-width:480px){
-    .bt-mode-toggle button,.bt-range-toggle button{font-size:12px;white-space:nowrap;
-      padding-left:4px;padding-right:4px}
+    .bt-mode-toggle button,.bt-range-toggle button{font-size:12px;white-space:nowrap;padding-left:4px;padding-right:4px}
   }
 </style>
 </head>
@@ -2800,7 +2796,31 @@ function renderWinRate() {
       var SUB = '<div style="font-size:12px;color:#64748b;line-height:1.6;margin:2px 0 10px">'
         + '在這段資料裡，以不同交易日為起點、各持有相同長度後，結果為正的區間數。回顧已發生的資料，不預測未來。'
         + '</div>';
-      var NOTE = '區間以每個交易日為起點逐日取樣，彼此大量重疊——三年資料最多只有三段互不重疊的一年，所以比例接近滿分不代表穩定。樣本少於 10 個的持有期間已隱藏。這裡用「淨值變化＋配息金額」算，不含再投資複利，會略低於上方含息線。'
+      var NOTE = '區間以每個交易日為起點逐日取樣，彼此大量重疊——三年資料最多只有三段互不重疊的一年，所以比例接近滿分不代表穩定。樣本少於 10 個的持有期間已隱藏。這裡用「淨值變化＋配息金額」算，不含再投資複利，會略低於上方含息線。';
+      var EMPTY = '<div class="bt-loading" style="padding:14px 0">資料區間過短，尚無法回顧任何持有期間</div>';
+
+      if (s.divOnIdx) {
+        var slicedDiv = sliceDivOnIdx(s.divOnIdx, startIdx);
+        var divCum = buildDivCum(slicedDiv, rawNavs.length);
+        var winList = computeWinRatesDual(rawNavs, divCum);
+        if (winList.length) {
+          html = '<div class="bt-section-title">' + TITLE + '</div>' + SUB
+            + '<div class="wr-legend"><span><i style="background:#dc2626"></i>淨值（未含息）</span><span><i style="background:#2657a0"></i>加上配息後</span></div>'
+            + winList.map(function (w) {
+                var addSeg = Math.max(0, w.addRate - w.rawRate);
+                var rawZero = w.rawRate <= 0.05;
+                var rawFullCls = addSeg <= 0.05 ? ' wr-seg-full' : '';
+                var addFullCls = (rawZero && addSeg > 0.05) ? ' wr-seg-full' : '';
+                var rawN = Math.round(w.rawRate * w.samples / 100);
+                var addN = Math.round(w.addRate * w.samples / 100);
+                return '<div class="wr-row-dual">'
+                  + '<div class="wr-label">' + w.label + '</div>'
+                  + '<div class="wr-track-dual"><div class="wr-seg-raw' + rawFullCls + '" style="width:' + w.rawRate.toFixed(1) + '%"></div><div class="wr-seg-add' + addFullCls + '" style="left:' + w.rawRate.toFixed(1) + '%;width:' + addSeg.toFixed(1) + '%"></div></div>'
+                  + '<div class="wr-pct-dual" style="white-space:nowrap;font-variant-numeric:tabular-nums">' + w.rawRate.toFixed(1) + '% → ' + w.addRate.toFixed(1) + '% <span style="color:#94a3b8">（' + addN + '／' + w.samples + '）</span></div>'
+                  + '</div>';
+              }).join('')
+            + '<div class="bt-wr-note">' + NOTE
+            + '「加上配息後」採「期末淨值－期初淨值＋期間內配息金額」計算，不含配息再投資之複利效果，與上方含息（再投入）圖表之計算方式不同。'
             + '</div>';
         } else {
           html = '<div class="bt-section-title">' + TITLE + '</div>' + EMPTY;
