@@ -265,6 +265,12 @@
   a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{
     outline:2px solid var(--blue);outline-offset:2px;border-radius:var(--r-xs)}
   html{scroll-behavior:smooth}
+  /* flex 化之後原本的 float 標籤會被拉成整條，改用絕對定位釘在右上角。 */
+  .tile .pill{position:absolute;right:18px;top:17px;float:none;margin:0}
+  .tile{padding:18px 20px 16px}
+  .tile:not(.pf) .code{padding-right:56px}
+  .tile .nm{margin-bottom:0}
+
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <!-- Vercel Web Analytics：無 cookie，不需同意視窗 -->
