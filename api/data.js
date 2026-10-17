@@ -95,9 +95,13 @@ function calcRate(nav, r6) {
   return (avg * 12) / nav * 100;
 }
 
-const { requireUser } = require('./_auth');
+// 回傳內容對所有人完全相同，而且一天只變一次，放給 CDN 共用。
+// 早期這支要驗身分才擋成 no-store，登入要求拿掉之後那個理由就不成立了。
+// stale-while-revalidate：過期後先把舊的丟出去，背景再更新，使用者不用等。
+const CACHE = 'public, s-maxage=43200, stale-while-revalidate=86400';
 
-const SNAP_TTL = 12 * 3600 * 1000;
+// 比排程間隔（24 小時）長，兩次預熱之間不會有人踩到現場重爬。
+const SNAP_TTL = 26 * 3600 * 1000;
 function snapPath(code) { return 'snap/' + code + '.json'; }
 async function readSnap(code) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
@@ -132,17 +136,19 @@ module.exports = async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   // 這道門是為了識別使用者與收名單，不是資料授權；
   // 相同內容在部落格的免費版本上本來就公開。
-  var isCron = process.env.CRON_SECRET && req.headers['x-cron'] === process.env.CRON_SECRET;
+  // 排程預熱時要強制重抓，否則快照永遠不會更新。
+  var secret = process.env.CRON_SECRET;
+  var bearer = String(req.headers.authorization || '').replace(/^Bearer /i, '');
+  var isCron = !!secret && (req.headers['x-cron'] === secret || bearer === secret);
   // 配息率與報酬率本來就是公開資訊，部落格版也一直免費，因此不再要求登入。
   // 需要身分的是「自選清單」(watch) 與「組合試算」，那兩支仍然擋著。
-  void isCron;
   const INSURANCE = String((req.query && req.query.code) || 'VCCT').toUpperCase();
   if (VALID.indexOf(INSURANCE) < 0) return res.status(400).json({ error: 'code' });
 
   // 有效快照就直接回，避免每次重跑一輪
-  const cached = await readSnap(INSURANCE);
+  const cached = isCron ? null : await readSnap(INSURANCE);
   if (cached) {
-    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('Cache-Control', CACHE);
     return res.status(200).json(cached);
   }
 
@@ -220,9 +226,7 @@ module.exports = async function handler(req, res) {
       month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
     });
 
-    // 這支要驗 token，不能進共用 CDN 快取
-    // （否則第一個已登入者的回應會被 CDN 拿去服務未登入者，等於沒鎖）
-    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('Cache-Control', CACHE);
 
     const payload = {
       insurance: INSURANCE,
