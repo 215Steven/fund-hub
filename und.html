@@ -852,7 +852,7 @@ table.und-tbl td.c { text-align: center; }
 .wr-fill { height: 100%; border-radius:var(--r-xs); transition: width 0.3s; }
 .wr-pct { width: 48px; flex-shrink: 0; text-align: right; font-weight: 800; color: var(--text); font-family: 'Courier New',monospace; }
 .bt-wr-note { font-size: 10.5px; color: #b0b8c4; margin-top: 8px; }
-/* 還原(含息)模式切換 */
+/* 含息（淨值＋配息）模式切換 */
 .bt-mode-toggle { display: flex; gap: 6px; margin-bottom: 4px; }
 .bt-mode-btn {
   flex: 1;
@@ -1336,7 +1336,7 @@ table.und-tbl td.c { text-align: center; }
       </li>
       <li>
         <span class="note-num">註4</span>
-        <span>「分析」功能之逐日淨值資料：可取得自基金成立日起算之全部歷史資料（全權委託投資帳戶（D型）不提供分析）。可選擇「全部／3年／4年／5年／自訂」分析區間（自訂可任意指定起訖日期），重新計算對應期間之走勢圖、統計數字與歷史區間回顧。有配息之標的，系統會額外抓取其歷史配息記錄：上方走勢圖與統計數字可切換顯示「淨值（未還原）」或還原為「含息總報酬」序列（假設配息發生於當月最後一個交易日、按當時淨值滾入計算，含再投資複利效果）；下方「歷史區間回顧」則改以單一長條呈現紅（淨值漲跌）與藍（加上配息後）雙色比較，加上配息後之數字採「期末淨值－期初淨值＋期間內配息金額」簡單加總計算，不含配息再投資之複利效果，故與上方還原(含息)圖表之計算方式不同。配息資料僅精確至月份，故上述還原與加總結果與真實除息日可能有些微誤差，僅供參考。歷史區間回顧採滾動視窗計算，樣本不足（少於10個視窗）之持有期間將自動隱藏；夏普比率計算假設無風險利率為 0%，僅供參考，不構成投資建議。</span>
+        <span>「分析」功能之逐日淨值資料：可取得自基金成立日起算之全部歷史資料（全權委託投資帳戶（D型）不提供分析）。可選擇「全部／3年／4年／5年／自訂」分析區間（自訂可任意指定起訖日期），重新計算對應期間之走勢圖、統計數字與歷史區間回顧。有配息之標的，系統會額外抓取其歷史配息記錄：上方走勢圖與統計數字可切換顯示「淨值（未含息）」或還原為「含息總報酬」序列（假設配息發生於當月最後一個交易日、按當時淨值滾入計算，含再投資複利效果）；下方「歷史區間回顧」則改以單一長條呈現紅（淨值漲跌）與藍（加上配息後）雙色比較，加上配息後之數字採「期末淨值－期初淨值＋期間內配息金額」簡單加總計算，不含配息再投資之複利效果，故與上方含息（淨值＋配息）圖表之計算方式不同。配息資料僅精確至月份，故上述還原與加總結果與真實除息日可能有些微誤差，僅供參考。歷史區間回顧採滾動視窗計算，樣本不足（少於10個視窗）之持有期間將自動隱藏；夏普比率計算假設無風險利率為 0%，僅供參考，不構成投資建議。</span>
       </li>
     </ol>
   </div>
@@ -2161,7 +2161,7 @@ function computeWinRates(navs) {
   });
   return out;
 }
-// 歷史區間回顧（單色 vs 雙色）：紅＝淨值（未還原）價格漲跌，藍＝「期末淨值－期初淨值＋期間內配息金額」(不含配息再投資複利效果)
+// 歷史區間回顧（單色 vs 雙色）：紅＝淨值（未含息）價格漲跌，藍＝「期末淨值－期初淨值＋期間內配息金額」(不含配息再投資複利效果)
 // divCum[i] = 截至第 i 個交易日（含）為止之累計配息金額；divCum[end]-divCum[start] = 該持有期間內實際收到之配息總額
 function computeWinRatesDual(navs, divCum) {
   var n = navs.length, out = [];
@@ -2184,7 +2184,7 @@ function buildNavChartSvg(dates, navs, navs2, activeIsSecond) {
       var n = navs.length;
       if (n < 2) return '<div class="bt-loading">資料不足，無法繪製走勢圖</div>';
 
-      // 兩條線畫在同一張圖：紅＝淨值（未還原），藍＝加上配息後，與下方歷史區間回顧同色
+      // 兩條線畫在同一張圖：紅＝淨值（未含息），藍＝加上配息後，與下方歷史區間回顧同色
       var has2 = Array.isArray(navs2) && navs2.length === n && navs2 !== navs;
       var RED = "#dc2626", BLUE = "#2657a0";
 
@@ -2267,7 +2267,7 @@ function buildNavChartSvg(dates, navs, navs2, activeIsSecond) {
 
       var legend = has2
         ? '<rect x="' + padL + '" y="6" width="9" height="2.5" fill="' + RED + '"/>'
-          + '<text x="' + (padL + 13) + '" y="11" font-size="9" fill="#64748b">淨值（未還原）</text>'
+          + '<text x="' + (padL + 13) + '" y="11" font-size="9" fill="#64748b">淨值（未含息）</text>'
           + '<rect x="' + (padL + 108) + '" y="6" width="9" height="2.5" fill="' + BLUE + '"/>'
           + '<text x="' + (padL + 121) + '" y="11" font-size="9" fill="#64748b">加上配息後</text>'
           + (ddNote ? '<rect x="' + (padL + 196) + '" y="6" width="9" height="2.5" fill="rgba(220,38,38,0.35)"/>'
@@ -2335,7 +2335,7 @@ async function fetchDividendHistory(r) {
         return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0);
       });
     }
-// 將配息（月份粒度）對應至該月最後一個交易日，回傳 {索引: 配息金額}，供「還原(含息)」與「歷史區間回顧」共用
+// 將配息（月份粒度）對應至該月最後一個交易日，回傳 {索引: 配息金額}，供「含息（淨值＋配息）」與「歷史區間回顧」共用
 function mapDivToIndex(dates, divs) {
   if (!divs || !divs.length) return null;
   var divByMonth = {};
@@ -2363,15 +2363,20 @@ function mapDivToIndex(dates, divs) {
 // 還原邏輯：adj[最後一日] = 淨值[最後一日]；往回逐日以「(次日淨值+次日配息)/當日淨值」反推，
 // 使任意兩日之間的還原值變化率 = 該期間實際含息報酬率（視為配息發生當日按淨值滾入、含再投資複利效果）
 function buildAdjustedNav(dates, navs, divOnIdx) {
+  // 「含息」＝當日淨值＋累計到當日為止的每單位配息。
+  // 舊做法是「往回折算」：把除息日之前的歷史乘上折扣系數、終點錨在今天的淨值，
+  // 數學上沒錯，但線會畫在淨值下面，跟組合分析那張圖的方向相反，
+  // 看起來像「配息讓績效變差」。改成直接疊加，與下方「歷史區間回顧」同一套口徑。
+  // 除息當天就算領到，所以跨除息日不會出現人為的掉一段。
   if (!divOnIdx) return null;
-  var n = navs.length, adj = new Array(n);
-  adj[n - 1] = navs[n - 1];
-  for (var i = n - 2; i >= 0; i--) {
-    var divNext = divOnIdx[i + 1] || 0;
-    var ratio = navs[i] > 0 ? (navs[i + 1] + divNext) / navs[i] : 1;
-    adj[i] = ratio > 0 ? adj[i + 1] / ratio : adj[i + 1];
+  var out = new Array(navs.length);
+  var cum = 0;
+  for (var i = 0; i < navs.length; i++) {
+    var d = Number(divOnIdx[i]) || 0;
+    cum += d;
+    out[i] = navs[i] + cum;
   }
-  return adj;
+  return out;
 }
 // 將「索引→配息金額」對照表，依切片起點重新編號為相對索引（供切換回測區間時使用）
 function sliceDivOnIdx(divOnIdx, startIdx) {
@@ -2484,7 +2489,7 @@ document.addEventListener('keydown', function(e) {
     if (ov && ov.classList.contains('show')) closeBacktest();
   }
 });
-// 切換主圖／統計區顯示「還原(含息)」或「淨值（未還原）」
+// 切換主圖／統計區顯示「含息（淨值＋配息）」或「淨值（未含息）」
 function setBtMode(mode) {
   if (!_btState || _btState.mode === mode) return;
   _btState.mode = mode;
@@ -2585,7 +2590,7 @@ function renderWinRate() {
         var winList = computeWinRatesDual(rawNavs, divCum);
         if (winList.length) {
           html = '<div class="bt-section-title">' + TITLE + '</div>' + SUB
-            + '<div class="wr-legend"><span><i style="background:#dc2626"></i>淨值（未還原）</span><span><i style="background:#2657a0"></i>加上配息後</span></div>'
+            + '<div class="wr-legend"><span><i style="background:#dc2626"></i>淨值（未含息）</span><span><i style="background:#2657a0"></i>加上配息後</span></div>'
             + winList.map(function (w) {
                 var addSeg = Math.max(0, w.addRate - w.rawRate);
                 var rawZero = w.rawRate <= 0.05;
@@ -2600,7 +2605,7 @@ function renderWinRate() {
                   + '</div>';
               }).join('')
             + '<div class="bt-wr-note">' + NOTE
-            + '「加上配息後」採「期末淨值－期初淨值＋期間內配息金額」計算，不含配息再投資之複利效果，與上方還原(含息)圖表之計算方式不同。'
+            + '「加上配息後」採「期末淨值－期初淨值＋期間內配息金額」計算，不含配息再投資之複利效果，與上方含息（淨值＋配息）圖表之計算方式不同。'
             + '</div>';
         } else {
           html = '<div class="bt-section-title">' + TITLE + '</div>' + EMPTY;
@@ -2636,12 +2641,12 @@ function renderBacktest(series, r, divs) {
     mode: 'raw', range: 3, customStart: null, customEnd: null
   };
   var divNote = adjNavs
-    ? '<div class="bt-div-note">' + ICON.coin + ' 已抓取此標的歷史配息記錄並還原為「含息總報酬」序列（假設配息發生於當月最後一個交易日，並按當時淨值滾入計算，含再投資複利效果，故與真實除息日可能有些微誤差，僅供參考）。可用下方按鈕切換顯示淨值（未還原）或還原(含息)結果。下方「歷史區間回顧」則改用較單純之「淨值變化＋配息金額」方式計算，並以單一雙色長條呈現。</div>'
+    ? '<div class="bt-div-note">' + ICON.coin + ' 已抓取此標的歷史配息記錄，「含息」線＝當日淨值＋累計至當日的每單位配息（假設配息發生於當月最後一個交易日，不含配息再投資的複利效果，故與真實除息日可能有些微誤差，僅供參考）。可用下方按鈕切換顯示淨值（未含息）或含息結果。下方「歷史區間回顧」採同一套「淨值變化＋配息金額」口徑，不再有兩種算法的差異。</div>'
     : '';
   var modeToggle = adjNavs
     ? '<div class="bt-mode-toggle" id="bt-mode-toggle">'
-      + '<button class="bt-mode-btn active" data-mode="raw" onclick="setBtMode(\'raw\')">' + ICON.chart + ' 淨值（未還原）</button>'
-      + '<button class="bt-mode-btn" data-mode="adj" onclick="setBtMode(\'adj\')">' + ICON.coin + ' 還原(含息)</button>'
+      + '<button class="bt-mode-btn active" data-mode="raw" onclick="setBtMode(\'raw\')">' + ICON.chart + ' 淨值（未含息）</button>'
+      + '<button class="bt-mode-btn" data-mode="adj" onclick="setBtMode(\'adj\')">' + ICON.coin + ' 含息（淨值＋配息）</button>'
       + '</div>'
     : '';
   var rangeToggle = '<div class="bt-range-toggle" id="bt-range-toggle">'
