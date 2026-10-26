@@ -1333,6 +1333,24 @@ header { padding-top: max(12px, env(safe-area-inset-top, 12px)); }
     .bt-mode-toggle button,.bt-range-toggle button{font-size:12px;white-space:nowrap;padding-left:4px;padding-right:4px}
   }
 </style>
+<style>
+/* ── 使用體驗修正 ─────────────────────────────────────────
+   歷史區間回顧：百分比欄原本只有 108px，但「6.4% → 100.0%（47／47）」
+   要 152px。溢出會把整個分析視窗撐出橫向捲軸，括號裡的樣本數也被切掉。 */
+.wr-pct-dual{min-width:168px;flex:0 0 auto;white-space:nowrap}
+
+/* 展開其餘月份的「+5」原本是 21×15，低於 24×24 的最小點擊區。 */
+.d-more{min-width:28px;min-height:24px;padding:5px 8px;line-height:1}
+
+@media (max-width:620px){
+  /* 手機改用 .mobile-card 呈現，但原本的儲存格只是被 overflow 裁掉，
+     仍然留在焦點順序裡——整頁有一百多個看不見卻 Tab 得到的控制項。
+     .mobile-card 是 tr 底下的 div，不是 td，所以不受這條影響。 */
+  table tbody tr > td{visibility:hidden}
+  /* 卡片裡的基金連結原本只有 20px 高 */
+  .mobile-card .fund-link{display:inline-block;min-height:24px;line-height:24px}
+}
+</style>
 </head>
 <body>
 <!-- ===== 免責聲明彈窗 (手機/平板) ===== -->
