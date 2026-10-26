@@ -132,6 +132,160 @@ async function saveSnap(code, payload) {
   });
 }
 
+
+/* ─────────────────────────────────────────────────────────────
+   台股 ETF 對照（?src=twse）— 非保單標的
+
+   為什麼塞在這支而不是獨立一個 api/twse.js：
+     Hobby 方案一次部署最多 12 個 Serverless Function，專案已經剛好 12 個，
+     多一個檔案整包就 build 失敗。併進來只是多一個查詢參數，不佔名額。
+
+   這五檔不在富邦投資型保單裡，保單買不到，所以資料分開存、首頁也分開放。
+
+   拿不到的就留空，不要猜：
+     風險等級 RR 是投信自行評等，證交所不公告 → 一律 null。
+     ETF 淨值由投信公告，證交所也沒有 → 改用收盤價。
+
+   年化配息率的算法跟保單那邊「故意不一樣」：
+     保單標的清一色月配，那邊用「近6月月配平均 × 12 ÷ 淨值」。
+     這裡 00919 月配、0056 季配、0050 半年配混在一起，套同一條公式
+     會把季配放大 4 倍、半年配放大 6 倍。改用「近12個月配息合計 ÷ 收盤價」。
+   ───────────────────────────────────────────────────────────── */
+const TWSE_BASE = 'https://www.twse.com.tw';
+const TW_LIST = [
+  { code: '0050',   name: '元大台灣50' },
+  { code: '0056',   name: '元大高股息' },
+  { code: '00878',  name: '國泰永續高股息' },
+  { code: '00919',  name: '群益台灣精選高息' },
+  { code: '006208', name: '富邦台50' }
+];
+
+function twSleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+async function twJson(url) {
+  const r = await fetch(url, {
+    headers: {
+      'Accept': 'application/json',
+      'User-Agent': HEADERS['User-Agent'],
+      'Referer': TWSE_BASE + '/'
+    },
+    signal: AbortSignal.timeout(12000)
+  });
+  if (!r.ok) throw new Error('twse ' + r.status);
+  return r.json();
+}
+
+// 民國 115/10/22 或 115年10月22日 → 2026-10-22
+function rocToIso(s) {
+  const m = String(s || '').match(/(\d{2,3})\D+(\d{1,2})\D+(\d{1,2})/);
+  if (!m) return null;
+  const p = (n) => (n < 10 ? '0' : '') + n;
+  return (parseInt(m[1], 10) + 1911) + '-' + p(parseInt(m[2], 10)) + '-' + p(parseInt(m[3], 10));
+}
+function twNum(s) {
+  const n = parseFloat(String(s == null ? '' : s).replace(/,/g, ''));
+  return isNaN(n) ? null : n;
+}
+function twMonthsAgo(n) { const d = new Date(); d.setMonth(d.getMonth() - n); return d; }
+function twYmd(d) { const p = (n) => (n < 10 ? '0' : '') + n; return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()); }
+function twIso(d) { const p = (n) => (n < 10 ? '0' : '') + n; return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); }
+
+async function twMonthCloses(code, dateObj) {
+  const j = await twJson(TWSE_BASE + '/exchangeReport/STOCK_DAY?response=json&date=' + twYmd(dateObj) + '&stockNo=' + code);
+  if (!j || j.stat !== 'OK' || !Array.isArray(j.data)) return [];
+  const out = [];
+  for (const row of j.data) {
+    const iso = rocToIso(row[0]), c = twNum(row[6]);
+    if (iso && c) out.push({ date: iso, close: c });
+  }
+  return out;
+}
+function twPick(rows, iso) {
+  for (const r of rows) if (r.date >= iso) return r;
+  return rows.length ? rows[rows.length - 1] : null;
+}
+
+// etfDiv 一次只回一個公告年度，近三年各抓一次
+async function twDividends(code) {
+  const nowRoc = new Date().getFullYear() - 1911;
+  const seen = {}, out = [];
+  for (let i = 0; i < 3; i++) {
+    let j = null;
+    try { j = await twJson(TWSE_BASE + '/rwd/zh/ETF/etfDiv?response=json&stkNo=' + code + '&year=' + (nowRoc - i)); }
+    catch (e) { continue; }
+    if (!j || !Array.isArray(j.data)) continue;
+    for (const row of j.data) {
+      const iso = rocToIso(row[2]);      // 除息交易日
+      const amt = twNum(row[5]);         // 每受益權單位配息
+      if (!iso || !amt || amt <= 0 || seen[iso]) continue;
+      seen[iso] = 1;
+      out.push({ date: iso, amount: amt });
+    }
+    await twSleep(120);
+  }
+  out.sort((a, b) => (a.date < b.date ? 1 : -1));
+  return out;
+}
+
+function twFreq(divs) {
+  if (!divs || divs.length < 2) return '無';
+  const ts = divs.slice(0, 5).map((d) => Date.parse(d.date)).filter((t) => !isNaN(t));
+  if (ts.length < 2) return '無';
+  let gap = 0;
+  for (let i = 1; i < ts.length; i++) gap += Math.abs(ts[i - 1] - ts[i]) / 86400000;
+  gap = gap / (ts.length - 1);
+  if (gap < 45) return '月配';
+  if (gap < 135) return '季配';
+  if (gap < 225) return '半年配';
+  return '年配';
+}
+function twSum(divs, fromIso, toIso) {
+  let s = 0;
+  for (const d of divs) if (d.date > fromIso && d.date <= toIso) s += d.amount;
+  return s;
+}
+
+async function twBuildOne(item) {
+  // 只抓需要的那幾個月，不是整段歷史
+  const months = [];
+  for (const back of [0, 6, 12, 36]) {
+    months.push(await twMonthCloses(item.code, twMonthsAgo(back)));
+    await twSleep(120);
+  }
+  if (!months[0].length) throw new Error('無收盤價');
+  const last = months[0][months[0].length - 1];
+  const divs = await twDividends(item.code);
+
+  function ret(idx, back) {
+    const row = twPick(months[idx], twIso(twMonthsAgo(back)));
+    if (!row || !row.close) return null;
+    // 含息＝期間價格變化＋期間配息，不含再投入複利（與站上歷史區間回顧同口徑）
+    return ((last.close + twSum(divs, row.date, last.date) - row.close) / row.close) * 100;
+  }
+
+  const div12 = twSum(divs, twIso(twMonthsAgo(12)), last.date);
+  const half = twIso(twMonthsAgo(6));
+  return {
+    code: item.code, name: item.name,
+    close: last.close, closeDate: last.date,
+    freq: twFreq(divs),
+    rate: last.close > 0 && div12 > 0 ? +((div12 / last.close) * 100).toFixed(2) : null,
+    div12: +div12.toFixed(4),
+    divs6m: divs.filter((d) => d.date > half),
+    ret6m: ret(1, 6), ret1y: ret(2, 12), ret3y: ret(3, 36),
+    rr: null
+  };
+}
+
+async function twBuildAll() {
+  const rows = [], failed = [];
+  for (const item of TW_LIST) {
+    try { rows.push(await twBuildOne(item)); }
+    catch (e) { failed.push(item.code + ': ' + String((e && e.message) || e).slice(0, 60)); }
+  }
+  return { rows: rows, failed: failed };
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   // 這道門是為了識別使用者與收名單，不是資料授權；
@@ -140,6 +294,27 @@ module.exports = async function handler(req, res) {
   var secret = process.env.CRON_SECRET;
   var bearer = String(req.headers.authorization || '').replace(/^Bearer /i, '');
   var isCron = !!secret && (req.headers['x-cron'] === secret || bearer === secret);
+
+  // 台股 ETF 對照：非保單標的，資料另外存一份快照
+  if (String((req.query && req.query.src) || '') === 'twse') {
+    const twCached = isCron ? null : await readSnap('TWSE');
+    if (twCached) { res.setHeader('Cache-Control', CACHE); return res.status(200).json(twCached); }
+    const built = await twBuildAll();
+    if (!built.rows.length) {
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(502).json({ error: '證交所資料全部抓取失敗', failed: built.failed });
+    }
+    const twPayload = {
+      rows: built.rows, failed: built.failed,
+      savedAt: new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
+      fetchedAt: Date.now()
+    };
+    // 全部成功才寫快照，免得把半殘結果固定住 12 小時
+    if (!built.failed.length) saveSnap('TWSE', twPayload).catch(function () {});
+    res.setHeader('Cache-Control', CACHE);
+    return res.status(200).json(twPayload);
+  }
+
   // 配息率與報酬率本來就是公開資訊，部落格版也一直免費，因此不再要求登入。
   // 需要身分的是「自選清單」(watch) 與「組合試算」，那兩支仍然擋著。
   const INSURANCE = String((req.query && req.query.code) || 'VCCT').toUpperCase();
