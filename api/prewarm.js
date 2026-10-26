@@ -64,6 +64,21 @@ module.exports = async function handler(req, res) {
   }));
 
   // 有任何一支沒抓到就回 502，Vercel 的 cron 記錄會標紅，方便事後看得出來
-  const ok = results.every(function (x) { return x.status === 200 && !x.error && x.rated > 0; });
-  return res.status(ok ? 200 : 502).json({ ok: ok, ms: Date.now() - stamp, results: results });
+  // 組合試算的基金清單吃的是同一套快照，一起換新；
+  // 否則每天第一個開組合試算的人，還是得在前台等一輪 getAssets。
+  let assets;
+  try {
+    const ra = await fetch(root + '/api/data?src=assets&prewarm=' + stamp, {
+      headers: { 'x-cron': secret },
+      signal: AbortSignal.timeout(55000)
+    });
+    const ja = await ra.json().catch(function () { return null; });
+    assets = { status: ra.status, count: (ja && ja.count) || 0, error: (ja && ja.error) || null };
+  } catch (e) {
+    assets = { status: 0, count: 0, error: String((e && e.message) || e).slice(0, 120) };
+  }
+
+  const ok = results.every(function (x) { return x.status === 200 && !x.error && x.rated > 0; })
+    && assets.status === 200 && assets.count > 0;
+  return res.status(ok ? 200 : 502).json({ ok: ok, ms: Date.now() - stamp, results: results, assets: assets });
 };
