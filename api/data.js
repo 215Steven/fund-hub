@@ -142,6 +142,29 @@ module.exports = async function handler(req, res) {
   var isCron = !!secret && (req.headers['x-cron'] === secret || bearer === secret);
   // 配息率與報酬率本來就是公開資訊，部落格版也一直免費，因此不再要求登入。
   // 需要身分的是「自選清單」(watch) 與「組合試算」，那兩支仍然擋著。
+  // 組合試算要的是未經加工的 getAssets 原始清單，三個險種共用同一份。
+  // 前端原本直接打 /api/post 現抓，一趟就要十秒；而且三個險種同時發，
+  // 在第一趟回來前各自都看到快取是空的，等於白打三趟。
+  // 這裡沿用下面同一套 Blob 快照 + CDN，回應內容對所有人完全相同。
+  if (String((req.query && req.query.src) || '') === 'assets') {
+    const hitA = isCron ? null : await readSnap('ASSETS');
+    if (hitA) {
+      res.setHeader('Cache-Control', CACHE);
+      return res.status(200).json(hitA);
+    }
+    try {
+      const all = await fbPost('/api/asset/getAssets', {}, 25000);
+      if (!all || !all.length) throw new Error('getAssets 回傳空資料');
+      const payloadA = { data: all, count: all.length, fetchedAt: Date.now() };
+      saveSnap('ASSETS', payloadA).catch(function () {});
+      res.setHeader('Cache-Control', CACHE);
+      return res.status(200).json(payloadA);
+    } catch (e) {
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(502).json({ error: String((e && e.message) || e) });
+    }
+  }
+
   const INSURANCE = String((req.query && req.query.code) || 'VCCT').toUpperCase();
   if (VALID.indexOf(INSURANCE) < 0) return res.status(400).json({ error: 'code' });
 
