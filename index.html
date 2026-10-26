@@ -883,5 +883,45 @@
   }).observe(gate, { attributes:true, attributeFilter:['class'] });
 })();
 </script>
+<style>
+/* ── 使用體驗修正 ─────────────────────────────────────────
+   自選的基金名稱本來想做兩行截斷，但 table.favt td 的 white-space:nowrap
+   特異性比 .fav-nm 高，而且 display:-webkit-box 放在 td 上會被瀏覽器轉成
+   flow-root，所以 line-clamp 從來沒生效過——名稱是直接切在字中間，
+   連省略號都沒有。把截斷移到裡面的 <a>，inline 元素不會被轉型。 */
+table.favt td.fav-nm{white-space:normal}
+table.favt td.fav-nm a{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+</style>
+<script>
+/* 自選清單的兩個小修補。刻意跟渲染流程解耦，用觀察器補在畫好之後：
+   ① 名稱補 title，截斷之後滑過去仍看得到全名。
+   ② 險種標籤帶上代碼，點過去直接定位到那一檔；
+      原本只連到 /vbct，會掉進一兩百檔的全表再找一次。 */
+(function () {
+  function patch() {
+    var tds = document.querySelectorAll('table.favt td.fav-nm');
+    for (var i = 0; i < tds.length; i++) {
+      var td = tds[i], a = td.querySelector('a');
+      var nm = (a || td).textContent.trim();
+      if (nm && td.getAttribute('title') !== nm) td.setAttribute('title', nm);
+      var code = a ? (a.getAttribute('href') || '').split('/').pop() : '';
+      if (!code) continue;
+      var ins = td.parentElement.querySelectorAll(
+        'a[href^="/vcct"], a[href^="/vbct"], a[href^="/und"]');
+      for (var j = 0; j < ins.length; j++) {
+        var h = ins[j].getAttribute('href') || '';
+        if (h && h.indexOf('?') < 0) ins[j].setAttribute('href', h + '?q=' + encodeURIComponent(code));
+      }
+    }
+  }
+  function start() {
+    patch();
+    // 只看 childList，setAttribute 不會再觸發自己，不會打轉。
+    new MutationObserver(patch).observe(document.body, { childList: true, subtree: true });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
+</script>
 </body>
 </html>
