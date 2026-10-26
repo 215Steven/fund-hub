@@ -2381,6 +2381,9 @@ function saveFundCache(list) {
 // 基金清單抓取（同時支援 VBCT／VCCT／UND 三種商品代碼）
 // ─────────────────────────────────────────────────────────
 var _assetsCache = null;
+// 存 promise 而不是存結果：三個險種會同時呼叫這支，
+// 在第一趟回來之前各自都看到 cache 還是 null，就會各打一趟。
+var _assetsPromise = null;
 // 三支工具頁已經把年化配息率算好存在 <code>-v2 快取裡（頁首的預熱區塊會先寫好）。
 // 用同一份數字，既不用重算，也不會和工具頁對不起來。
 function toolCacheMap(product) {
@@ -2396,7 +2399,10 @@ function toolCacheMap(product) {
 }
 async function fetchFundList(product) {
   // 富邦 2026/10 改版：一次 getAssets 拿全部標的，三個險種共用同一份
-  if (!_assetsCache) _assetsCache = await fbPost('/api/asset/getAssets', {});
+  if (!_assetsPromise) _assetsPromise = fetch('/api/data?src=assets')
+    .then(function (r) { return r.json(); })
+    .then(function (j) { return (j && j.data) || []; });
+  if (!_assetsCache) _assetsCache = await _assetsPromise;
   var mine = (_assetsCache || []).filter(function(a) {
     return (a.insurances || []).some(function(x) { return x.code === product; });
   });
