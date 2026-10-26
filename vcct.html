@@ -3407,6 +3407,29 @@ window.addEventListener('DOMContentLoaded', function() {
 </script>
 <script>window.HUB_CODE = "VCCT";</script>
 <script src="/hub.js"></script>
+<script>
+/* 從首頁自選的險種標籤點過來時會帶 ?q=代碼，直接填進搜尋框定位，
+   不用在一兩百檔的全表裡再找一次。
+   資料是非同步載入的，所以重試幾次直到真的篩出東西為止。 */
+(function () {
+  var q = new URLSearchParams(location.search).get('q');
+  if (!q) return;
+  var tries = 0;
+  function fill() {
+    var el = document.getElementById('ffs');
+    if (!el) return false;
+    if (el.value !== q) {
+      el.value = q;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    // 有篩出結果才算成功；表格還沒載完時先讓它繼續重試
+    return document.querySelectorAll('tbody tr').length > 0;
+  }
+  var t = setInterval(function () {
+    if (fill() || ++tries > 40) clearInterval(t);
+  }, 200);
+})();
+</script>
 </body>
 </html>
 
