@@ -143,7 +143,7 @@
       'table[class$=\"-tbl\"] > thead > tr > th.hub-th + th,' +
       'table[class$=\"-tbl\"] > tbody > tr.vr > td.hub-td + td{min-width:120px !important;width:120px !important}' +
       /* 表格儲存格會忽略 max-width，要限在裡面的元素才有用。 */
-      'table[class$=\"-tbl\"]:not(.div-tbl) > tbody > tr.vr > td.hub-td + td > *{max-width:120px}' +
+      'table[class$=\"-tbl\"]:not(.div-tbl) > tbody > tr.vr > td.hub-td + td > *{max-width:200px}' +
     '}' +
     /* ── 頂部統計：五張卡片改成一行輕量標籤 ── */
     'div[class$="-stats"]{display:flex !important;flex-wrap:wrap;gap:6px !important;margin:0 0 10px !important}' +
@@ -159,7 +159,7 @@
         'font-size:11px !important;padding:4px 7px !important}' +
       'table[class$="-tbl"] > thead > tr > th.hub-th + th,' +
       'table[class$="-tbl"] > tbody > tr.vr > td.hub-td + td{min-width:96px !important;width:96px !important}' +
-      'table[class$="-tbl"]:not(.div-tbl) > tbody > tr.vr > td.hub-td + td > *{max-width:96px}' +
+      'table[class$="-tbl"]:not(.div-tbl) > tbody > tr.vr > td.hub-td + td > *{max-width:170px}' +
     '}' +
     'tr.vr.hub-off{display:none !important}' +
     '.hub-chip.warn{background:#fdf0e3;color:#a35b12;border-color:#f0d8bb}' + '.hub-chip{font-size:12px;font-weight:700;padding:7px 11px;border-radius:999px}' +
