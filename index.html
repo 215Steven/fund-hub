@@ -1090,39 +1090,5 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
   else start();
 })();
 </script>
-<style>
-/* ── 自選表格欄位分層 ───────────────────────────────────
-   13 欄合計 1130px，但 .fav-scroll 的容器最寬只有 919px，
-   所以不管螢幕多大都要左右滑，連 1400px 桌機也一樣。
-   依寬度收欄位，讓每一段都真的塞得下，不留橫向捲軸。
-   欄序：1名稱 2險種 3代碼 4幣別 5淨值 6年化配息率
-         7六個月 8一年 9三年 10近6月配息 11頻率 12風險 13類型 */
-
-/* 桌機：拿掉幣別、頻率、類型（這三欄工具頁都查得到），
-   名稱與險種再各收一點，1130 → 約 916，剛好進 919。 */
-table.favt th:nth-child(4),table.favt td:nth-child(4),
-table.favt th:nth-child(11),table.favt td:nth-child(11),
-table.favt th:nth-child(13),table.favt td:nth-child(13){display:none}
-table.favt th:nth-child(1),table.favt td:nth-child(1){width:210px;max-width:210px}
-table.favt th:nth-child(2),table.favt td:nth-child(2){max-width:118px}
-/* 每一段都塞得下之後，這行提示就沒有意義了 */
-.fav-hint{display:none !important}
-
-@media (max-width:1023px){
-  /* 平板：名稱、代碼、年化配息率、一年、三年 */
-  table.favt th:not(:nth-child(1)):not(:nth-child(3)):not(:nth-child(6)):not(:nth-child(8)):not(:nth-child(9)),
-  table.favt td:not(:nth-child(1)):not(:nth-child(3)):not(:nth-child(6)):not(:nth-child(8)):not(:nth-child(9)){display:none}
-  table.favt th:nth-child(1),table.favt td:nth-child(1){width:auto;max-width:none}
-  .fav-scroll{overflow-x:visible}
-  .fav-wrap{overflow-x:visible}
-}
-
-@media (max-width:620px){
-  /* 手機以代號為主：代碼、年化配息率、三年 */
-  table.favt th:nth-child(1),table.favt td:nth-child(1),
-  table.favt th:nth-child(8),table.favt td:nth-child(8){display:none}
-  table.favt th,table.favt td{padding:9px 7px}
-}
-</style>
 </body>
 </html>
