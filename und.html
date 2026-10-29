@@ -470,8 +470,8 @@ table.und-tbl td.c { text-align: center; }
 .d-date  { color: #94a3b8; padding-right: 4px; }
 .d-amt   { text-align: right; min-width: 52px; padding: 1px 4px; border-radius:var(--r-2xs); }
 .d-first { color: #1d4ed8; font-weight: 700; }
-.d-up    { background: #fef2f2; color: #dc2626; font-weight: 700; } /* 較前月增≥10% */
-.d-down  { background: #f0fdf4; color: #16a34a; font-weight: 700; } /* 較前月減≥10% */
+.d-up    { background: #fef2f2; color: #dc2626; font-weight: 700; } /* 較前月增≥5% */
+.d-down  { background: #f0fdf4; color: #16a34a; font-weight: 700; } /* 較前月減≥5% */
 .trend   { font-size: 10px; margin-left: 2px; display: inline-block; vertical-align: top; margin-top: 1px; }
 .t-up    { color: #dc2626; }
 .t-down  { color: #16a34a; }
@@ -1339,9 +1339,9 @@ table.und-tbl td.c { text-align: center; }
     </div>
     <div class="anm-note">
       近6月配息欄異常標示：
-      <span class="anm-chip" style="background:#fef2f2;color:#dc2626">紅底</span> = 較前月增加 10% 以上（警示）
+      <span class="anm-chip" style="background:#fef2f2;color:#dc2626">紅底</span> = 較前月增加 5% 以上（警示）
       &nbsp;
-      <span class="anm-chip" style="background:#f0fdf4;color:#16a34a">綠底</span> = 較前月減少 10% 以上（注意）
+      <span class="anm-chip" style="background:#f0fdf4;color:#16a34a">綠底</span> = 較前月減少 5% 以上（注意）
       &nbsp;｜&nbsp; <svg class="i i-sm" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> 符號 = 配息率 ≥ 8%，請特別留意是否配息來源為本金
     </div>
     <hr class="und-notices-divider">
@@ -1544,8 +1544,8 @@ function renderDivDetail(divs) {
         var anomaly = '';
         if (prev > 0) {
           var chg = (x.amount - prev) / prev;
-          if (chg >= 0.10) anomaly = ' d-up';
-          else if (chg <= -0.10) anomaly = ' d-down';
+          if (chg >= 0.05) anomaly = ' d-up';
+          else if (chg <= -0.05) anomaly = ' d-down';
         }
         return '<tr><td class="d-date">' + ym(x) + '</td><td class="d-amt' + anomaly + '">' + x.amount.toFixed(4) + '</td></tr>';
       }).join('');
