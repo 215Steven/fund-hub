@@ -259,7 +259,7 @@
     if (!chip) return;
     if (plan === 'student') {
       chip.className = 'hub-chip stu';
-      chip.textContent = '學員・永久開通';
+      chip.textContent = '會員・永久開通';
       if (cta) cta.innerHTML = '';
     } else if (!active) {
       chip.className = 'hub-chip end';
