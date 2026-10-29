@@ -943,12 +943,24 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
 /* 自選那張表的代碼欄是 #94a3b8，對白底只有 2.6:1，看起來像停用的字。
    這裡改用 #475569（約 7.5:1），一樣是次要資訊但讀得到。 */
 .dv-code{color:#475569;font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.dv-code a{color:#1e3a66;text-decoration:none;border-bottom:1px dotted #a9bedd}
+.dv-code a:hover{border-bottom-color:#2657a0}
 .dv-up{color:#c0392b;font-weight:700}
 .dv-dn{color:#1e8449;font-weight:700}
 .dv-empty{color:#64748b;font-size:13px;padding:6px 0}
 @media (max-width:620px){
-  .dv-nm{width:auto;max-width:none}
-  table.dvt th,table.dvt td{padding:6px 7px;font-size:12px}
+  /* 手機以代號為主。七欄塞進 346px 的結果是：名稱被壓成 97px、直式堆疊成八九行，
+     而最重要的「變動」被擠到畫面外 145px，要往右滑才看得到，一滑又看不到是誰。
+     所以這裡只留代號、月份、變動三欄，名稱／險種／前次／最新收起來。 */
+  .dv-scroll{overflow-x:visible}
+  table.dvt{table-layout:auto}
+  table.dvt thead th:nth-child(1),table.dvt tbody td:nth-child(1),
+  table.dvt thead th:nth-child(2),table.dvt tbody td:nth-child(2),
+  table.dvt thead th:nth-child(5),table.dvt tbody td:nth-child(5),
+  table.dvt thead th:nth-child(6),table.dvt tbody td:nth-child(6){display:none}
+  table.dvt th,table.dvt td{padding:9px 7px;font-size:12.5px}
+  .dv-code{font-size:14px;font-weight:700}
+  .dv-mo{font-size:12.5px}
 }
 </style>
 <script>
@@ -967,6 +979,13 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) {
     return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
   function fmt(n) { return (Math.round(n * 10000) / 10000).toFixed(4); }
+  // 手機只留代號、月份、變動三欄，險種欄被收起來後那一列就沒有連結了，
+  // 所以代號自己要能點：跳到該檔所屬的第一個險種工具頁並直接定位。
+  function codeLink(o) {
+    var ins = (o.ins && o.ins[0]) ? o.ins[0].toLowerCase() : '';
+    if (!ins) return esc(o.code);
+    return '<a href="/' + ins + '?q=' + encodeURIComponent(o.code) + '">' + esc(o.code) + '</a>';
+  }
 
   function build(lists) {
     var seen = {}, rows = [];
@@ -1014,7 +1033,7 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
           (o.url ? '<a href="' + esc(o.url) + '" target="_blank" rel="noopener">' + esc(o.nm) + '</a>'
                  : esc(o.nm)) + '</td>' +
         '<td>' + ins + '</td>' +
-        '<td class="dv-code">' + esc(o.code) + '</td>' +
+        '<td class="dv-code">' + codeLink(o) + '</td>' +
         '<td class="dv-mo">' + o.m1.substring(2) + ' → ' + o.m0.substring(2) + '</td>' +
         '<td class="r">' + fmt(o.v1) + '</td>' +
         '<td class="r">' + fmt(o.v0) + '</td>' +
