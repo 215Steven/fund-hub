@@ -62,7 +62,7 @@
 
   <div id="owrap" class="card hide">
     <h2>待確認贊助 <span id="ocount" class="tag tri"></span></h2>
-    <p class="hint">對完帳按「確認」，系統會自動把這個信箱加進學員名單，對方重新整理就開通。</p>
+    <p class="hint">對完帳按「確認」，系統會自動把這個信箱加進會員名單，對方重新整理就開通。</p>
     <table><thead><tr>
       <th>Email</th><th>金額</th><th>末 5 碼</th><th>備註</th><th>回報時間</th><th></th>
     </tr></thead><tbody id="ob"></tbody></table>
@@ -76,7 +76,7 @@
     </div>
     <div class="stat">
       <div>帳號數<b id="t">—</b></div>
-      <div>學員<b id="s">—</b></div>
+      <div>會員<b id="s">—</b></div>
       <div>可寄送<b id="c">—</b></div>
     </div>
     <table><thead><tr>
@@ -85,12 +85,12 @@
   </div>
 
   <div id="swrap" class="card mt hide">
-    <h2>學員名單</h2>
+    <h2>會員名單</h2>
     <p class="hint">一行一個 Email，或用逗號分隔。這份清單會整份覆寫，貼上後請確認是完整名單而不是增量。
       清單裡的人登入後永久開通；其他人為 <span id="td">14</span> 天體驗期。</p>
     <textarea id="sl" placeholder="student1@gmail.com&#10;student2@gmail.com"></textarea>
     <div class="row" style="margin-top:10px">
-      <button class="p" id="ssave">儲存學員名單</button>
+      <button class="p" id="ssave">儲存會員名單</button>
       <span id="smsg" class="hint" style="margin:0"></span>
     </div>
   </div>
@@ -137,7 +137,7 @@
     return "<span class=\"tag "+(r.consent?"yes":"no")+"\">"+(r.consent?"是":"否")+"</span>";
   }
   function planTag(r){
-    if(r.plan==="student") return "<span class=\"tag stu\">學員</span>";
+    if(r.plan==="student") return "<span class=\"tag stu\">會員</span>";
     if(!r.active) return "<span class=\"tag exp\">已到期</span>";
     return "<span class=\"tag tri\">體驗 "+(r.daysLeft==null?"":r.daysLeft+" 天")+"</span>";
   }
@@ -171,8 +171,8 @@
         "<td>"+consentTag(r)+"</td>"+
         "<td>"+esc(fmt(r.at))+"</td>"+
         "<td>"+(r.plan==="student"
-          ? "<button data-un=\""+esc(r.email)+"\">取消學員</button>"
-          : "<button data-up=\""+esc(r.email)+"\">設為學員</button>")+
+          ? "<button data-un=\""+esc(r.email)+"\">取消會員</button>"
+          : "<button data-up=\""+esc(r.email)+"\">設為會員</button>")+
         " <button class=\"d\" data-del=\""+esc(r.email)+"\">刪除</button></td></tr>";
     }).join("");
   }
@@ -213,7 +213,7 @@
     try{
       var arr=await saveStudents(splitEmails($("sl").value));
       $("sl").value=arr.join("\n");
-      $("smsg").textContent="已儲存 "+arr.length+" 位學員";
+      $("smsg").textContent="已儲存 "+arr.length+" 位會員";
       await load();
     }catch(err){ $("smsg").textContent="失敗："+err.message; }
     btn.disabled=false;
