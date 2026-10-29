@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>找不到這個頁面 — 基金小工具</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/favicon.svg">
+<style>
+  :root{
+    --navy:#1a3a5c; --blue:#2657a0; --ink:#0f172a; --mut:#64748b;
+    --line:#e2e8f0; --bg:#f6f8fc;
+    --r-sm:10px; --r-md:14px; --r-lg:20px;
+    --sh-1:0 1px 4px rgba(20,45,80,.06),0 6px 20px rgba(20,45,80,.07);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+    display:flex;flex-direction:column;min-height:100vh}
+  header{background:var(--navy);color:#fff;padding:18px 20px}
+  header a{color:#fff;text-decoration:none;font-weight:700;font-size:16px;letter-spacing:.3px}
+  main{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 20px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);
+    box-shadow:var(--sh-1);padding:36px 30px;max-width:520px;width:100%}
+  .code{font-size:13px;letter-spacing:2px;color:var(--mut);font-weight:700}
+  h1{font-size:clamp(21px,4.4vw,27px);margin:10px 0 12px;line-height:1.35}
+  p{color:var(--mut);line-height:1.75;margin:0 0 22px;font-size:14.5px}
+  .links{display:flex;flex-wrap:wrap;gap:9px}
+  .links a{display:inline-block;padding:9px 15px;border-radius:var(--r-sm);
+    border:1px solid #c7d7ee;color:var(--blue);text-decoration:none;font-size:14px;
+    min-height:24px;transition:background .15s,border-color .15s}
+  .links a:hover{background:#eef4fd;border-color:var(--blue)}
+  .links a.main{background:var(--blue);border-color:var(--blue);color:#fff}
+  .links a.main:hover{background:#1e4681}
+  footer{padding:18px 20px;text-align:center;color:var(--mut);font-size:12.5px}
+  @media (max-width:620px){ .card{padding:28px 20px} main{padding:26px 14px} }
+</style>
+</head>
+<body>
+  <header><a href="/">基金小工具</a></header>
+  <main>
+    <div class="card">
+      <div class="code">404</div>
+      <h1>找不到這個頁面</h1>
+      <p>網址可能打錯了，或這個頁面已經搬走。下面是站上現有的幾個入口。</p>
+      <div class="links">
+        <a class="main" href="/">回首頁</a>
+        <a href="/vcct">VCCT 配息率</a>
+        <a href="/vbct">VBCT 配息率</a>
+        <a href="/und">UND 配息率</a>
+        <a href="/portfolio">組合試算</a>
+      </div>
+    </div>
+  </main>
+  <footer>OO SAY HI · 資料整理自富邦投資型保險專區（非官方）</footer>
+</body>
+</html>
