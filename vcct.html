@@ -3497,6 +3497,57 @@ window.addEventListener('DOMContentLoaded', function() {
   }
 })();
 </script>
+<script>
+/* fh-bt-default：分析視窗的兩項預設修正。
+
+   ① 有配息的標的，統計卡預設用「含息（再投入）」。
+      表格的六個月／一年／三年是含息口徑，但視窗預設停在淨值，
+      同一檔基金會在表格顯示 -0.86%、在這裡顯示 -13.49%，差十幾個百分點，
+      使用者只會以為壞掉。而且圖上兩條線一直都在，大字卻跟著走勢相反的那條。
+      只在開窗時套一次；使用者自己切回淨值之後就不再干涉。
+
+   ② 資料長度不足的區間鈕不顯示。
+      資料只有 2.3 年時，3年／4年／5年 按下去跟「全部」結果完全一樣，
+      標籤卻讓人以為真的是三年。拿兩檔基金對照時，老基金的「3年」是真三年、
+      這檔的「3年」是 2.3 年，兩個數字不能並排比。
+
+   用 setBtMode／setBtRange 這兩個既有入口，不去點 DOM——直接點按鈕會跟頁面
+   自己的重繪互相打架。判斷長度要用 _btState.dates（完整序列），不能用畫面上的
+   「資料區間」，那一行已經被目前選取的範圍裁過了。 */
+(function () {
+  var seen = null;      // 上次處理的 dates 參考，用來辨識新開的視窗
+  var modeDone = false; // 本次開窗是否已自動切過一次含息
+
+  function apply() {
+    var m = document.querySelector('.bt-modal');
+    if (!m || m.offsetParent === null) return;
+    var st = window._btState;
+    if (!st || !st.dates || st.dates.length < 2) return;
+
+    if (st.dates !== seen) { seen = st.dates; modeDone = false; }
+
+    var yrs = (Date.parse(st.dates[st.dates.length - 1]) - Date.parse(st.dates[0])) / (365.25 * 86400000);
+    var needReset = false;
+    [].slice.call(m.querySelectorAll('.bt-range-btn')).forEach(function (b) {
+      var n = Number((b.textContent.trim().match(/^(\d+)年$/) || [])[1]);
+      if (!n || n <= yrs + 0.02) return;
+      if (b.style.display !== 'none') {
+        b.style.display = 'none';
+        if (b.classList.contains('active')) needReset = true;
+      }
+    });
+    if (needReset && typeof setBtRange === 'function') setBtRange(null);
+
+    if (!modeDone && st.adjNavs && st.mode === 'raw' && typeof setBtMode === 'function') {
+      modeDone = true;
+      setBtMode('adj');
+    }
+  }
+  // 用輪詢而不是只靠 MutationObserver：資料載入完成時不一定還有 DOM 變動，
+  // 只掛觀察器會錯過最後一次狀態更新。整段是冪等的，重複跑沒有副作用。
+  setInterval(apply, 400);
+})();
+</script>
 </body>
 </html>
 
