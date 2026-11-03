@@ -9,8 +9,9 @@
  *   原本每個訪客各自跑一輪（一百多檔、每檔約 0.5 秒），首次開啟要等幾十秒；
  *   改成所有人共用 CDN 快取，每天只打富邦一次，對方負載也小很多。
  *
- * CDN 快取：s-maxage=43200（12 小時）+ stale-while-revalidate=86400
- * 排程：vercel.json 的 cron 每天 UTC 04:00（台灣 12:00）預熱
+ * CDN 快取：s-maxage=600（10 分鐘）+ stale-while-revalidate=86400
+ * 排程：vercel.json 的 cron 每天 UTC 06:00（台灣 14:00）預熱。
+ *       排在下午是因為多數基金早上才公告當日淨值，中午跑會抓到前一天的。
  */
 
 const FUBON_BASE = 'https://invest.fubonlife.com.tw';
@@ -98,7 +99,17 @@ function calcRate(nav, r6) {
 // 回傳內容對所有人完全相同，而且一天只變一次，放給 CDN 共用。
 // 早期這支要驗身分才擋成 no-store，登入要求拿掉之後那個理由就不成立了。
 // stale-while-revalidate：過期後先把舊的丟出去，背景再更新，使用者不用等。
-const CACHE = 'public, s-maxage=43200, stale-while-revalidate=86400';
+// s-maxage 原本是 43200（12 小時）。那會讓「排程或手動更新完」之後，
+// CDN 上的舊副本最長還要再送 12 小時，等於更新了使用者也看不到。
+// 縮到 10 分鐘，配合 stale-while-revalidate：使用者永遠拿到即時回應，
+// 背景去換新，所以更新最多十分鐘就會擴散出去。
+const CACHE = 'public, s-maxage=600, stale-while-revalidate=86400';
+
+// 手動更新：前端按「載入配息資料」會帶 force=1。
+// 沒有 CRON_SECRET 也能用，所以一定要設年齡下限，否則外部可以連續觸發重爬。
+// 快照還很新就忽略 force（維持秒回），夠舊才真的回源重抓；
+// 重抓的結果寫進共用快照，所以一個人更新，大家都拿到新的。
+const MIN_FORCE_AGE = 30 * 60 * 1000;
 
 // 比排程間隔（24 小時）長，兩次預熱之間不會有人踩到現場重爬。
 const SNAP_TTL = 26 * 3600 * 1000;
@@ -169,7 +180,13 @@ module.exports = async function handler(req, res) {
   if (VALID.indexOf(INSURANCE) < 0) return res.status(400).json({ error: 'code' });
 
   // 有效快照就直接回，避免每次重跑一輪
-  const cached = isCron ? null : await readSnap(INSURANCE);
+  const wantForce = isCron || String((req.query && req.query.force) || '') === '1';
+  let cached = await readSnap(INSURANCE);
+  // 帶 secret 的排程無條件重抓；一般人的手動更新要隔 MIN_FORCE_AGE 才算數
+  if (cached && wantForce &&
+      (isCron || Date.now() - (Number(cached.fetchedAt) || 0) > MIN_FORCE_AGE)) {
+    cached = null;
+  }
   if (cached) {
     res.setHeader('Cache-Control', CACHE);
     return res.status(200).json(cached);
