@@ -3444,6 +3444,59 @@ window.addEventListener('DOMContentLoaded', function() {
   }, 200);
 })();
 </script>
+<script>
+/* 手動更新：回富邦重抓一次，結果寫進共用快照，所以一個人按、所有人都拿到新的。
+
+   為什麼另外做一顆、不直接改原本的「載入配息資料」：
+   那顆走的是初次載入同一條路徑，加上 force 會害隨機進站的訪客等十幾秒。
+   更新應該是明確的動作，不是副作用。
+
+   /api/data 那邊對 force 設了 30 分鐘下限。剛更新過就按，不會重抓，
+   這時回傳的快照年齡會明顯大於 0，用這點判斷要不要重新整理頁面。 */
+(function () {
+  var CODE = 'VCCT';
+  function mount() {
+    if (document.getElementById('fh-refresh')) return true;
+    var box = [].slice.call(document.querySelectorAll('div[class$="-stat"]'))
+      .filter(function (e) { return /最後更新/.test(e.textContent); })[0];
+    if (!box) return false;
+    var b = document.createElement('button');
+    b.id = 'fh-refresh';
+    b.type = 'button';
+    b.textContent = '立即更新';
+    b.title = '回富邦重抓一次。更新後所有人都會看到新資料。';
+    b.style.cssText = 'margin-left:8px;min-height:24px;padding:4px 10px;border-radius:8px;' +
+      'border:1px solid #c7d7ee;background:#fff;color:#2657a0;font-size:12px;cursor:pointer';
+    b.addEventListener('click', function () {
+      if (b.disabled) return;
+      var old = b.textContent;
+      b.disabled = true;
+      b.textContent = '更新中…';
+      fetch('/api/data?code=' + CODE + '&force=1&t=' + Date.now())
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          var ageMin = (Date.now() - (Number(j && j.fetchedAt) || 0)) / 60000;
+          if (ageMin > 2) {
+            // 沒有真的重抓：剛剛才有人更新過
+            b.textContent = '已是最新';
+            setTimeout(function () { b.textContent = old; b.disabled = false; }, 2500);
+          } else {
+            location.reload();
+          }
+        })
+        .catch(function () {
+          b.textContent = '更新失敗';
+          setTimeout(function () { b.textContent = old; b.disabled = false; }, 2500);
+        });
+    });
+    box.appendChild(b);
+    return true;
+  }
+  if (!mount()) {
+    var n = 0, t = setInterval(function () { if (mount() || ++n > 40) clearInterval(t); }, 250);
+  }
+})();
+</script>
 </body>
 </html>
 
