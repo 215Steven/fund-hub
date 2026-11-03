@@ -3816,4 +3816,105 @@ window.addEventListener('DOMContentLoaded', function() {
    整頁因此多出 34px 的橫向捲動。 */
 .wr-pct-dual{min-width:168px;flex:0 0 auto;white-space:nowrap}
 </style>
+<script>
+/* fh-ratios：在夏普旁邊補上索提諾與 Calmar。
+
+   三個比率回答不同問題：
+     夏普    每承擔一單位「總波動」換到多少報酬
+     索提諾  每承擔一單位「下跌波動」換到多少（上漲不罰）
+     Calmar  每承擔一單位「最深的那次跌幅」換到多少
+   Calmar 的分母只來自單一事件，換個區間可能差很多，別拿它單獨下結論。
+
+   口徑刻意跟站上現有的夏普完全一致：分子用同一個幾何年化報酬，
+   分母用日報酬年化。這樣三個數字可以並排比較，也跟畫面上的夏普對得起來。
+
+   MAR（索提諾的門檻）設 0，因為站上夏普的無風險利率也是 0，
+   兩者才站在同一條基準線。注意 MAR=0 且 rf=0 時索提諾必定大於夏普，
+   那是數學必然，不代表這檔特別好。
+
+   會跟著含息／淨值切換走。配息型標的用淨值序列算，索提諾會嚴重失真
+   （每月除息製造假下跌，而索提諾只罰下跌），所以預設已經是含息。
+   組合這邊沒有 modal，統計卡直接在頁面上，所以 scope 退回 document。 */
+(function () {
+  function series() {
+    var scope = document.querySelector('.bt-modal') || document.body;
+    var txt = scope.textContent.replace(/\s+/g, ' ');
+    var rg = txt.match(/資料區間[：:]\s*([\d-]+)\s*[～~]\s*([\d-]+)/);
+    if (!rg) return null;
+    var bs = window._btState, ps = window._pfState;
+    if (bs && bs.dates && bs.rawNavs) {
+      var a = bs.dates.indexOf(rg[1]), b = bs.dates.indexOf(rg[2]);
+      if (a < 0 || b <= a) return null;
+      var s = (bs.mode === 'adj' && bs.adjNavs) ? bs.adjNavs : bs.rawNavs;
+      return s.slice(a, b + 1);
+    }
+    if (ps && ps.dates && ps.funds && ps.funds.length) {
+      var a2 = ps.dates.indexOf(rg[1]), b2 = ps.dates.indexOf(rg[2]);
+      if (a2 < 0 || b2 <= a2) return null;
+      var out = [];
+      for (var i = a2; i <= b2; i++) {
+        var v = 0, ok = true;
+        for (var j = 0; j < ps.funds.length; j++) {
+          var fd = ps.funds[j];
+          var sj = (ps.mode === 'adj' && fd.filledAdj) ? fd.filledAdj : fd.filledRaw;
+          if (!(sj[a2] > 0) || !(sj[i] > 0)) { ok = false; break; }
+          v += fd.wNorm * (sj[i] / sj[a2]);
+        }
+        if (!ok) return null;
+        out.push(v);
+      }
+      return out;
+    }
+    return null;
+  }
+  function mk(id, label, note) {
+    var c = document.createElement('div');
+    c.className = 'bt-stat'; c.setAttribute('data-fh', id);
+    c.innerHTML = '<div class="bt-stat-label">' + label +
+      '</div><div class="bt-stat-val"></div>' +
+      '<div style="margin-top:3px;font-size:10.5px;line-height:1.45;color:#64748b">' + note + '</div>';
+    return c;
+  }
+  function apply() {
+    var scope = document.querySelector('.bt-modal') || document;
+    var sharpe = null, grid = null, cs = scope.querySelectorAll('.bt-stat');
+    for (var i = 0; i < cs.length; i++) {
+      var l = cs[i].querySelector('.bt-stat-label');
+      if (l && /夏普比率/.test(l.textContent)) { sharpe = cs[i]; grid = cs[i].parentElement; break; }
+    }
+    if (!sharpe || !grid) return;
+    var txt = scope.textContent.replace(/\s+/g, ' ');
+    var num = function (lab) {
+      var x = txt.match(new RegExp(lab + '\\s*([+\\-]?[\\d.]+)'));
+      return x ? parseFloat(x[1]) : null;
+    };
+    var ann = num('年化報酬'), dd = num('最大回撤');
+    if (ann == null || dd == null) return;
+    dd = Math.abs(dd);
+    var s = series();
+    if (!s || s.length < 30) return;
+    var sum = 0, n = 0;
+    for (var k = 1; k < s.length; k++) {
+      if (!(s[k - 1] > 0) || !(s[k] > 0)) continue;
+      var r = s[k] / s[k - 1] - 1;
+      if (r < 0) sum += r * r;   // MAR = 0：只累計虧損的期間
+      n++;
+    }
+    if (!n) return;
+    var dsd = Math.sqrt(sum / n) * Math.sqrt(252) * 100;
+    var c1 = grid.querySelector('[data-fh=sortino]');
+    if (!c1) { c1 = mk('sortino', '索提諾比率', 'MAR 0%'); sharpe.insertAdjacentElement('afterend', c1); }
+    var c2 = grid.querySelector('[data-fh=calmar]');
+    if (!c2) { c2 = mk('calmar', 'Calmar 比率', '年化 ÷ 最大回撤'); c1.insertAdjacentElement('afterend', c2); }
+    var set = function (card, v) {
+      var el = card.querySelector('.bt-stat-val');
+      var s2 = (v == null || !isFinite(v)) ? '—' : v.toFixed(2);
+      if (el.textContent !== s2) el.textContent = s2;
+    };
+    set(c1, dsd > 0 ? ann / dsd : null);
+    set(c2, dd > 0 ? ann / dd : null);
+  }
+  setInterval(apply, 400);
+})();
+</script>
 </html>
