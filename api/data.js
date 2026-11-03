@@ -120,7 +120,12 @@ async function readSnap(code) {
     const { head } = require('@vercel/blob');
     const info = await head(snapPath(code));
     if (!info) return null;
-    const url = info.downloadUrl || info.url;
+    // Blob 覆寫後網址不變，邊緣節點可能還端舊的內容出來，光靠 cache:'no-store'
+    // 擋不住（_plan.js 早就踩過這個坑）。加一個每次都不同的參數強制繞過，
+    // 否則剛寫完馬上讀會拿到舊快照，force 的 30 分鐘下限就形同虛設。
+    const raw = info.downloadUrl || info.url;
+    const url = raw + (raw.indexOf('?') >= 0 ? '&' : '?') +
+      '_cb=' + Date.now() + Math.random().toString(36).slice(2, 6);
     const r = await fetch(url, {
       cache: 'no-store',
       headers: { Authorization: 'Bearer ' + process.env.BLOB_READ_WRITE_TOKEN }
@@ -167,7 +172,7 @@ module.exports = async function handler(req, res) {
       const all = await fbPost('/api/asset/getAssets', {}, 25000);
       if (!all || !all.length) throw new Error('getAssets 回傳空資料');
       const payloadA = { data: all, count: all.length, fetchedAt: Date.now() };
-      saveSnap('ASSETS', payloadA).catch(function () {});
+      try { await saveSnap('ASSETS', payloadA); } catch (e) {}
       res.setHeader('Cache-Control', CACHE);
       return res.status(200).json(payloadA);
     } catch (e) {
@@ -278,7 +283,10 @@ module.exports = async function handler(req, res) {
       fetchedAt: Date.now()
     };
     // 寫回 Blob，下一個請求就不用重算（失敗不影響本次回應）
-    if (rated >= 10) { saveSnap(INSURANCE, payload).catch(function () {}); }
+    // 一定要等寫完才回應。serverless 送出回應後行程可能被凍結，
+    // fire-and-forget 的寫入會悄悄掉；而「一個人更新、大家拿到新的」
+    // 完全靠這個寫入成立，掉了就沒意義。
+    if (rated >= 10) { try { await saveSnap(INSURANCE, payload); } catch (e) {} }
     return res.status(200).json(payload);
   } catch (e) {
     res.setHeader('Cache-Control', 'no-store');
