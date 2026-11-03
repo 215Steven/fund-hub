@@ -3559,6 +3559,75 @@ window.addEventListener('DOMContentLoaded', function() {
   setInterval(apply, 400);
 })();
 </script>
+<script>
+/* fh-dd-detail：最大回撤補上「跌多久、多久回本、哪一段」。
+
+   原本這些資訊只出現在走勢圖圖例的小字裡（「最大回撤：下跌 75 天，回本 80 天」），
+   統計卡上只有 -21.73% 這個深度。但對要抱著的人來說，
+   跌多久、會不會回得來，比跌多深更需要先看到。
+
+   自己從 _btState 重算而不是去剖析圖例文字：圖例沒有日期，只有天數。
+   重算的深度與天數已逐一比對過圖例，三種情境（含息已回本／淨值未回本／
+   一年區間未回本）都完全一致。
+
+   用畫面上的「資料區間」定位索引，因為那一行已經反映目前選取的範圍；
+   模式切換時 adjNavs/rawNavs 也會跟著換，所以每次輪詢都重算。 */
+(function () {
+  function sh(s) { return s.slice(2); }   // 2025-01-23 → 25-01-23
+  function apply() {
+    var m = document.querySelector('.bt-modal');
+    if (!m || m.offsetParent === null) return;
+    var st = window._btState;
+    if (!st || !st.dates || !st.dates.length) return;
+    var all = st.mode === 'adj' ? st.adjNavs : st.rawNavs;
+    if (!all || all.length !== st.dates.length) return;
+
+    var txt = m.textContent.replace(/\s+/g, ' ');
+    var r = txt.match(/資料區間：([\d-]+) ～ ([\d-]+)/);
+    if (!r) return;
+    var a = st.dates.indexOf(r[1]), b = st.dates.indexOf(r[2]);
+    if (a < 0 || b <= a) return;
+
+    var navs = all.slice(a, b + 1), ds = st.dates.slice(a, b + 1);
+    var peak = navs[0], pi = 0, bd = 0, bpi = 0, bti = 0;
+    for (var i = 0; i < navs.length; i++) {
+      if (navs[i] > peak) { peak = navs[i]; pi = i; }
+      var dd = (navs[i] - peak) / peak;
+      if (dd < bd) { bd = dd; bpi = pi; bti = i; }
+    }
+    if (!(bd < 0)) return;
+
+    var ri = -1;
+    for (var k = bti; k < navs.length; k++) { if (navs[k] >= navs[bpi]) { ri = k; break; } }
+    var day = function (x, y) { return Math.round((Date.parse(y) - Date.parse(x)) / 86400000); };
+    var l1 = ri >= 0
+      ? '跌 ' + day(ds[bpi], ds[bti]) + ' 天 · 回本 ' + day(ds[bti], ds[ri]) + ' 天'
+      : '跌 ' + day(ds[bpi], ds[bti]) + ' 天 · 尚未回本';
+    var l2 = ri >= 0
+      ? sh(ds[bpi]) + ' → ' + sh(ds[ri])
+      : sh(ds[bpi]) + ' → 低點 ' + sh(ds[bti]);
+
+    var card = null, cs = m.querySelectorAll('.bt-stat');
+    for (var j = 0; j < cs.length; j++) {
+      var lab = cs[j].querySelector('.bt-stat-label');
+      if (lab && /最大回撤/.test(lab.textContent)) { card = cs[j]; break; }
+    }
+    if (!card) return;
+
+    var sub = card.querySelector('.fh-dd');
+    if (!sub) {
+      sub = document.createElement('div');
+      sub.className = 'fh-dd';
+      sub.style.cssText = 'margin-top:3px;font-size:10.5px;line-height:1.45;' +
+        'color:#64748b;white-space:nowrap';
+      card.appendChild(sub);
+    }
+    var h = l1 + '<br>' + l2;
+    if (sub.innerHTML !== h) sub.innerHTML = h;
+  }
+  setInterval(apply, 400);
+})();
+</script>
 </body>
 </html>
 
