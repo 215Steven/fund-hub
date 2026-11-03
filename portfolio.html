@@ -3697,4 +3697,117 @@ window.addEventListener('DOMContentLoaded', function() {
 </script>
 <script>window.HUB_CODE = "PF";</script>
 <script src="/hub.js"></script>
+<script>
+/* fh-pf-align：讓組合試算跟三支工具頁的分析一致。
+   原本三項都不同步：預設停在淨值、區間鈕不管資料長度、
+   回撤只給「高點～低點」的日期，沒有天數也沒有回本。
+
+   組合有自己的 _pfState 與 setPfMode／setPfRange，入口跟工具頁一一對應。
+
+   一個組合特有的坑：_pfState.dates 是所有成分基金的日期聯集，
+   但實際可用的歷史受最短的那一檔限制。判斷區間鈕要用「所有基金都有資料」
+   的共同區間，不是聯集長度。這個算法已跟 app 自己的「全部」比對過，一致。 */
+(function () {
+  var seen = null, modeDone = false;
+
+  function usable(ps) {
+    var first = -1, last = -1;
+    for (var i = 0; i < ps.dates.length; i++) {
+      var ok = true;
+      for (var j = 0; j < ps.funds.length; j++) {
+        var fd = ps.funds[j];
+        var s = (ps.mode === 'adj' && fd.filledAdj) ? fd.filledAdj : fd.filledRaw;
+        if (!(s && s[i] > 0)) { ok = false; break; }
+      }
+      if (ok) { if (first < 0) first = i; last = i; }
+    }
+    return [first, last];
+  }
+  function sh(s) { return s.slice(2); }
+
+  function apply() {
+    var ps = window._pfState;
+    if (!ps || !ps.dates || !ps.funds || !ps.funds.length) return;
+    if (!document.querySelector('.bt-stat')) return;   // 分析還沒建出來
+    if (ps.dates !== seen) { seen = ps.dates; modeDone = false; }
+
+    // ① 資料長度不足的區間鈕拿掉
+    var uv = usable(ps);
+    if (uv[0] < 0 || uv[1] <= uv[0]) return;
+    var yrs = (Date.parse(ps.dates[uv[1]]) - Date.parse(ps.dates[uv[0]])) / (365.25 * 86400000);
+    var needReset = false;
+    [].slice.call(document.querySelectorAll('.bt-range-btn')).forEach(function (b) {
+      var n = Number((b.textContent.trim().match(/^(\d+)年$/) || [])[1]);
+      if (!n || n <= yrs + 0.02) return;
+      if (b.style.display !== 'none') {
+        b.style.display = 'none';
+        if (b.classList.contains('active')) needReset = true;
+      }
+    });
+    if (needReset && typeof setPfRange === 'function') setPfRange(null);
+
+    // ② 組合裡只要有配息，預設就用含息
+    if (!modeDone && ps.hasAnyDiv && ps.mode === 'raw' &&
+        ps.funds.some(function (fd) { return !!fd.filledAdj; }) &&
+        typeof setPfMode === 'function') {
+      modeDone = true; setPfMode('adj'); return;
+    }
+
+    // ③ 最大回撤補上天數與回本，格式與工具頁一致
+    var txt = document.body.innerText.replace(/\s+/g, ' ');
+    var rg = txt.match(/資料區間[：:]\s*([\d-]+)\s*[～~]\s*([\d-]+)/);
+    if (!rg) return;
+    var a = ps.dates.indexOf(rg[1]), b2 = ps.dates.indexOf(rg[2]);
+    if (a < 0 || b2 <= a) return;
+
+    var idx = [], ds = ps.dates.slice(a, b2 + 1);
+    for (var i = a; i <= b2; i++) {
+      var v = 0, ok = true;
+      for (var j = 0; j < ps.funds.length; j++) {
+        var fd = ps.funds[j];
+        var s = (ps.mode === 'adj' && fd.filledAdj) ? fd.filledAdj : fd.filledRaw;
+        if (!(s[a] > 0) || !(s[i] > 0)) { ok = false; break; }
+        v += fd.wNorm * (s[i] / s[a]);
+      }
+      idx.push(ok ? v : null);
+    }
+    var peak = idx[0], pi = 0, bd = 0, bpi = 0, bti = 0;
+    for (var k = 0; k < idx.length; k++) {
+      if (idx[k] == null) continue;
+      if (idx[k] > peak) { peak = idx[k]; pi = k; }
+      var dd = (idx[k] - peak) / peak;
+      if (dd < bd) { bd = dd; bpi = pi; bti = k; }
+    }
+    if (!(bd < 0)) return;
+    var ri = -1;
+    for (var q = bti; q < idx.length; q++) { if (idx[q] != null && idx[q] >= idx[bpi]) { ri = q; break; } }
+    var day = function (x, y) { return Math.round((Date.parse(y) - Date.parse(x)) / 86400000); };
+    var l1 = ri >= 0
+      ? '跌 ' + day(ds[bpi], ds[bti]) + ' 天 · 回本 ' + day(ds[bti], ds[ri]) + ' 天'
+      : '跌 ' + day(ds[bpi], ds[bti]) + ' 天 · 尚未回本';
+    var l2 = ri >= 0 ? sh(ds[bpi]) + ' → ' + sh(ds[ri]) : sh(ds[bpi]) + ' → 低點 ' + sh(ds[bti]);
+
+    var card = null, cs = document.querySelectorAll('.bt-stat');
+    for (var c = 0; c < cs.length; c++) {
+      var lab = cs[c].querySelector('.bt-stat-label');
+      if (lab && /最大回撤/.test(lab.textContent)) { card = cs[c]; break; }
+    }
+    if (!card) return;
+    // 原本的「高點～低點」註記收起來，避免跟下面兩行重複
+    var old = card.querySelector('.bt-stat-inline-note');
+    if (old && old.style.display !== 'none') old.style.display = 'none';
+    var sub = card.querySelector('.fh-dd');
+    if (!sub) {
+      sub = document.createElement('div');
+      sub.className = 'fh-dd';
+      sub.style.cssText = 'margin-top:3px;font-size:10.5px;line-height:1.45;' +
+        'color:#64748b;white-space:nowrap';
+      card.appendChild(sub);
+    }
+    var h = l1 + '<br>' + l2;
+    if (sub.innerHTML !== h) sub.innerHTML = h;
+  }
+  setInterval(apply, 400);
+})();
+</script>
 </html>
