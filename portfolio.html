@@ -3810,4 +3810,10 @@ window.addEventListener('DOMContentLoaded', function() {
   setInterval(apply, 400);
 })();
 </script>
+<style>
+/* 歷史區間回顧的百分比欄：工具頁早就修過，組合這邊漏掉了。
+   108px 裝不下「58.6% → 93.0%（482／486）」，樣本數會衝出畫面，
+   整頁因此多出 34px 的橫向捲動。 */
+.wr-pct-dual{min-width:168px;flex:0 0 auto;white-space:nowrap}
+</style>
 </html>
