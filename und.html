@@ -3381,6 +3381,104 @@ window.addEventListener('DOMContentLoaded', function() {
   setInterval(apply, 400);
 })();
 </script>
+
+<script>
+(function () {
+  /* fh-refresh-fix：讓「立即更新」真的看得出有沒有更新。
+
+     原本的問題：按鈕確實叫伺服器重抓了（快照時間會變新），
+     但頁面自己在 localStorage 存了一份快取，到期時間是「下一個台灣中午 12 點」。
+     所以 location.reload() 之後又讀回同一份舊資料，畫面上的「最後更新」完全沒動，
+     使用者只看到按鈕轉一下就恢復原狀，根本不知道成功了沒有。
+
+     修法兩件事：
+       1. 重抓成功後先清掉這一頁自己的 localStorage 快取，再重載，畫面才會換成新的。
+          順便會把舊版本的 key（例如 -v2）一起清掉。
+       2. 重載後顯示一行結果（已更新到幾點／失敗），六秒後淡出。
+          訊息靠 sessionStorage 傳遞，因為中間隔了一次 reload。
+  */
+  var CODE = (location.pathname.match(/(vcct|vbct|und)/i) || [])[1];
+  if (!CODE) return;
+  CODE = CODE.toUpperCase();
+  var PRE = CODE.toLowerCase() + '-v';
+  var FLAG = 'fh-refresh-result';
+
+  function chip() {
+    var all = [].slice.call(document.querySelectorAll('div[class$="-stat"]'));
+    for (var i = 0; i < all.length; i++) if (/最後更新/.test(all[i].textContent)) return all[i];
+    return null;
+  }
+
+  /* 訊息做成浮動的 toast，不放進統計卡裡面。
+     放進卡裡會把那一列撐寬，手機版量到 121px 的橫向溢出。
+     fixed + max-width 以 vw 為準，寬度不可能影響版面。 */
+  function msg(text, color) {
+    var old = document.querySelector('[data-fh-msg]'); if (old) old.parentNode.removeChild(old);
+    var s = document.createElement('div');
+    s.setAttribute('data-fh-msg', '1');
+    s.textContent = text;
+    s.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);' +
+      'max-width:calc(100vw - 28px);box-sizing:border-box;z-index:99999;' +
+      'padding:9px 15px;border-radius:10px;background:#fff;border:1px solid #d8e3f2;' +
+      'box-shadow:0 2px 10px rgba(20,45,80,.14);font-size:13px;line-height:1.5;' +
+      'text-align:center;transition:opacity .6s;color:' + color;
+    document.body.appendChild(s);
+    setTimeout(function () { s.style.opacity = '0'; }, 6000);
+    setTimeout(function () { if (s.parentNode) s.parentNode.removeChild(s); }, 6800);
+  }
+  function clearLocal() {
+    try {
+      var kill = [], i, k;
+      for (i = 0; i < localStorage.length; i++) { k = localStorage.key(i); if (k && k.indexOf(PRE) === 0) kill.push(k); }
+      for (i = 0; i < kill.length; i++) localStorage.removeItem(kill[i]);
+      return kill;
+    } catch (e) { return []; }
+  }
+
+  /* reload 之後把結果講出來 */
+  try {
+    var done = sessionStorage.getItem(FLAG);
+    if (done !== null) {
+      sessionStorage.removeItem(FLAG);
+      if (done.indexOf('!') === 0) msg('更新失敗：' + done.slice(1), '#c0392b');
+      else msg('已更新 · 資料時間 ' + done, '#1e8449');
+    }
+  } catch (e) {}
+
+  /* 換掉按鈕的 click handler（clone 會丟掉舊的 listener） */
+  function hijack() {
+    var box = chip(); if (!box) return false;
+    var b = box.querySelector('button');
+    if (!b || b.getAttribute('data-fh-fixed')) return !!b;
+    var nb = b.cloneNode(true);
+    nb.setAttribute('data-fh-fixed', '1');
+    nb.disabled = false;
+    nb.textContent = '立即更新';
+    b.parentNode.replaceChild(nb, b);
+    nb.addEventListener('click', function () {
+      if (nb.disabled) return;
+      nb.disabled = true; nb.textContent = '更新中…';
+      msg('正在重新抓取，約需十幾秒…', '#5b6b7f');
+      fetch('/api/data?code=' + CODE + '&force=1&_cb=' + Date.now(), { cache: 'no-store' })
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function (j) {
+          var at = j && j.savedAt ? String(j.savedAt) : '';
+          clearLocal();
+          try { sessionStorage.setItem(FLAG, at); } catch (e) {}
+          location.reload();
+        })
+        .catch(function (e) {
+          nb.disabled = false; nb.textContent = '立即更新';
+          msg('更新失敗，請稍後再試（' + (e && e.message ? e.message : '連線問題') + '）', '#c0392b');
+        });
+    });
+    return true;
+  }
+  var tries = 0;
+  var iv = setInterval(function () { if (hijack() || ++tries > 40) clearInterval(iv); }, 300);
+  hijack();
+})();
+</script>
 </body>
 </html>
 
