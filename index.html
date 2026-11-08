@@ -1138,5 +1138,124 @@ table.favt th:nth-child(1),table.favt td:nth-child(1){width:200px;max-width:200p
   table.favt th,table.favt td{padding:9px 6px}
 }
 </style>
+
+<script>
+(function () {
+  /* fh-home-order：首頁區塊順序、配息變動收合、被彈回首頁時的說明。
+
+     main.wrap 是 flex container，靠 CSS order 排版。
+     #dv-sect 當初加進來時沒給 order，吃到預設值 0，
+     結果 1200px 高的配息變動表排到所有東西前面，
+     未登入的人第一眼看到的是它，Email 開通區被推到 2845px。
+
+     新順序（未登入）：Hero → 開通 → 入口卡 → 說明數字 → 方案 → FAQ → 配息變動
+     新順序（已登入）：身分列 → 入口卡 → 自選 → 配息變動
+  */
+  var main = document.querySelector('main.wrap') || document.querySelector('main');
+  if (!main) return;
+
+  var st = document.createElement('style');
+  st.textContent =
+    'main.wrap > .fh-need{order:-2}'
+  + '#hello{order:-1}'
+  + '.heroimg{order:1}'
+  + '#gate{order:2}'
+  + '.grid{order:3}'
+  + '#sec-nums{order:4}'
+  + '.tiers{order:5}'
+  + '.so.faq{order:6}'
+  + '#fav{order:7}'
+  + '#dv-sect{order:8}'
+  + '.disc{order:9}'
+  /* 配息變動：預設只留 3 列 */
+  + '#dv-sect.dv-collapsed tbody tr:nth-child(n+4){display:none}'
+  + '.dv-more{display:block;width:100%;margin-top:12px;padding:10px 12px;'
+  + 'border:1px solid #c7d7ee;border-radius:9px;background:#f7f9fc;color:#2657a0;'
+  + 'font-size:13.5px;font-weight:600;font-family:inherit;cursor:pointer}'
+  + '.dv-more:hover{background:#eef4fd}'
+  /* 從工具頁被彈回來時的說明 */
+  + '.fh-need{margin:0 0 14px;padding:13px 16px;border:1px solid #fde68a;'
+  + 'border-left:3px solid #b7791f;border-radius:10px;background:#fffbeb;'
+  + 'font-size:14px;line-height:1.7;color:#7c6420}'
+  + '.fh-need b{color:#7a5c12}';
+  document.head.appendChild(st);
+
+  /* ── 配息變動收合 ── */
+  function ensureDv() {
+    var dv = document.getElementById('dv-sect');
+    if (!dv) return;
+    var n = dv.querySelectorAll('tbody tr').length;
+    if (!n) return;
+    var b = dv.querySelector('.dv-more');
+    if (n <= 3) { dv.classList.remove('dv-collapsed'); if (b) b.parentNode.removeChild(b); return; }
+    if (!b) {
+      dv.classList.add('dv-collapsed');
+      b = document.createElement('button');
+      b.type = 'button'; b.className = 'dv-more';
+      b.addEventListener('click', function () { dv.classList.toggle('dv-collapsed'); label(); });
+      var box = dv.querySelector('.dv-scroll') || dv;
+      box.parentNode.insertBefore(b, box.nextSibling);
+    }
+    function label() {
+      var c = dv.querySelectorAll('tbody tr').length;
+      b.textContent = dv.classList.contains('dv-collapsed')
+        ? '顯示全部 ' + c + ' 檔 ▾' : '只看前 3 檔 ▴';
+    }
+    label();
+  }
+  setInterval(ensureDv, 600);
+  ensureDv();
+
+  /* ── 被彈回首頁的說明與回程 ── */
+  var NAME = { VCCT: 'VCCT 真豐利變額年金', VBCT: 'VBCT 真有利變額年金',
+               UND: 'UND 年年吉祥變額萬能壽險', PF: '組合試算' };
+  var DEST = { VCCT: '/vcct', VBCT: '/vbct', UND: '/und', PF: '/portfolio' };
+  function logged() { return /(?:^|;\s*)fh=/.test(document.cookie || ''); }
+  var need = '';
+  try { need = (new URLSearchParams(location.search).get('need') || '').toUpperCase(); } catch (e) {}
+  var pending = '';
+  try { pending = sessionStorage.getItem('fh-need') || ''; } catch (e) {}
+
+  /* 剛開通完（或本來就登入而還留著回程）→ 直接帶過去。
+     先清掉 fh-need 再跳，萬一 token 失效被彈回來也不會變成無限迴圈。 */
+  if (pending && logged() && DEST[pending]) {
+    try { sessionStorage.removeItem('fh-need'); } catch (e) {}
+    location.replace(DEST[pending]);
+    return;
+  }
+
+  if (need) {
+    var msg;
+    if (logged()) {
+      msg = '<b>登入狀態好像過期了。</b>請在下面重新開通一次，就能回到 '
+          + (NAME[need] || need) + '。';
+    } else {
+      try { sessionStorage.setItem('fh-need', need); } catch (e) {}
+      pending = need;
+      msg = '<b>' + (NAME[need] || need) + ' 的工具頁需要先開通。</b>'
+          + '留一個 Email 就好，下面就是開通區；開通完會直接把你帶回去。';
+    }
+    var box = document.createElement('div');
+    box.className = 'fh-need';
+    box.innerHTML = msg;
+    main.insertBefore(box, main.firstChild);
+    var g = document.getElementById('gate');
+    if (g) setTimeout(function () {
+      try { g.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { g.scrollIntoView(); }
+    }, 600);
+  }
+
+  /* 開通不一定會重載頁面，所以也盯著登入狀態的變化 */
+  var was = logged();
+  setInterval(function () {
+    var now = logged();
+    if (!was && now && pending && DEST[pending]) {
+      try { sessionStorage.removeItem('fh-need'); } catch (e) {}
+      location.replace(DEST[pending]);
+    }
+    was = now;
+  }, 800);
+})();
+</script>
 </body>
 </html>
