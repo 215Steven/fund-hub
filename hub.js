@@ -44,7 +44,9 @@
     return;
   }
 
-  if (!s || !s.token) { location.replace('/'); return; }
+  // 彈回首頁時把來源帶上，首頁才有辦法說明「你是從哪一支工具被退回來的」，
+  // 並在開通完直接把人帶回去。不帶的話使用者只會莫名其妙落在首頁。
+  if (!s || !s.token) { location.replace('/?need=' + encodeURIComponent(CODE)); return; }
 
   // 內嵌版頁尾的升級提示：說明無廣告版多了什麼
   function embedBar() {
