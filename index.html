@@ -408,8 +408,9 @@
           <li><b>年化配息率</b>：近 6 個月月配平均 × 12 ÷ 當日淨值</li>
           <li><b>含息報酬</b>：六個月、一年、三年三個區間</li>
           <li><b>淨值與含息走勢</b>：畫在同一張圖上對照</li>
-          <li><b>最大回撚</b>：跌了多久、花幾天回到原高點</li>
+          <li><b>最大回撤</b>：跌了多久、花幾天回到原高點</li>
           <li><b>近 6 月配息</b>：每期金額與升降變化</li>
+          <li><b>夏普／索提諾／Calmar</b>：三種角度看報酬值不值得那個風險</li>
           <li><b>風險等級</b>：RR1〜RR5、幣別與配息頻率</li>
         </ul>
 
@@ -439,7 +440,7 @@
                 <polyline fill="none" stroke="#dc2626" stroke-width="1.8" points="0,62 30,56 60,48 96,44 126,70 156,86 174,80 206,62 236,52 268,50 300,47"/>
                 <polyline fill="none" stroke="#2657a0" stroke-width="1.8" points="0,62 30,54 60,43 96,36 126,60 156,74 174,66 206,44 236,30 268,24 300,18"/>
               </svg>
-              <p class="m-note">紅色是淨值，藍色是把配息加回去。淺紅區塊是最大回撚的下跌段，淺綠是回到原高點的路。</p>
+              <p class="m-note">紅色是淨值，藍色是把配息加回去。淺紅區塊是最大回撤的下跌段，淺綠是回到原高點的路。</p>
             </div>
           </div>
         </div>
@@ -1236,7 +1237,7 @@ table.favt th:nth-child(1),table.favt td:nth-child(1){width:200px;max-width:200p
     } else {
       try { sessionStorage.setItem('fh-need', need); } catch (e) {}
       pending = need;
-      msg = '<b>' + (NAME[need] || need) + ' 的工具頁需要先開通。</b>'
+      msg = '<b>' + (NAME[need] || need) + (need === 'PF' ? ' 需要先開通。' : ' 的工具頁需要先開通。') + '</b>'
           + '留一個 Email 就好，下面就是開通區；開通完會直接把你帶回去。';
     }
     /* 用錨點連結而不是自動捲動：自動捲會跟使用者自己的滑動打架，
