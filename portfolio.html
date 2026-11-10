@@ -3965,7 +3965,18 @@ window.addEventListener('DOMContentLoaded', function() {
   var LABEL = { '新臺幣': '台幣', '新台幣': '台幣' };
 
   function dataRows() {
-    if (Array.isArray(window._fundUniverse) && window._fundUniverse.length) return window._fundUniverse;
+    var u = window._fundUniverse;
+    if (Array.isArray(u) && u.length) {
+      /* _fundUniverse 是三張保單的總和，但畫面只列目前這張（?ins=）。
+         不先篩的話，選單會長出該保單根本沒有的幣別（VBCT 沒有紐幣）。 */
+      var ins = '';
+      try { ins = (new URLSearchParams(location.search).get('ins') || '').toUpperCase(); } catch (e) {}
+      if (ins) {
+        var sub = u.filter(function (x) { return x && String(x.source || '').toUpperCase() === ins; });
+        if (sub.length) return sub;
+      }
+      return u;
+    }
     for (var k in window) {
       try {
         var v = window[k];
