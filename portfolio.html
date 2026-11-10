@@ -26,7 +26,7 @@
     // 已經有沒過期的快取就別浪費流量
     try {
       var cur = JSON.parse(localStorage.getItem(key) || "null");
-      if (cur && cur.expiry > Date.now() && cur.report && cur.report.length) return;
+      if (cur && cur.expiry > Date.now() && cur.expiry - Date.now() <= 15 * 60000 && cur.report && cur.report.length) return;
     } catch (e) {}
 
     fetch("/api/data?code=" + code, { headers: { Authorization: "Bearer " + token } })
@@ -2389,6 +2389,10 @@ function loadFundCache() {
     if (!raw) return null;
     var obj = JSON.parse(raw);
     if (!obj || !obj.expiry || Date.now() > obj.expiry) return null;
+    /* 舊格式的到期時間是「下一個台灣中午」，可能還有一兩天才到。
+       新規則是 15 分鐘，剩餘時間超過 15 分鐘的就是舊的那一份，一律當過期，
+       否則已經躺在使用者瀏覽器裡的舊快取會繼續被抱著不放。 */
+    if (obj.expiry - Date.now() > 15 * 60000) return null;
     return obj;
   } catch(e) { return null; }
 }
