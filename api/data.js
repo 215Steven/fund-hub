@@ -111,8 +111,13 @@ const CACHE = 'public, s-maxage=600, stale-while-revalidate=86400';
 // 重抓的結果寫進共用快照，所以一個人更新，大家都拿到新的。
 const MIN_FORCE_AGE = 30 * 60 * 1000;
 
-// 比排程間隔（24 小時）長，兩次預熱之間不會有人踩到現場重爬。
-const SNAP_TTL = 26 * 3600 * 1000;
+// 比排程間隔長，兩次預熱之間才不會有人踩到現場重爬（要等十幾秒）。
+// 26 小時不夠：Vercel 的 cron 有 ±1 小時的彈性窗，
+// 前一次跑在 13:05、下一次跑在 15:43 的話間隔就是 26.6 小時，剛好穿過去。
+// 2026-11-10 早上就是這樣，UND 與 VBCT 的快照過期，當天第一個訪客現場重爬。
+// 改 30 小時留 4 小時緩衝。代價是極端情況下資料可能舊到 30 小時，
+// 但畫面上有「最後更新」時間，想要當下最新的人可以按「立即更新」。
+const SNAP_TTL = 30 * 3600 * 1000;
 function snapPath(code) { return 'snap/' + code + '.json'; }
 async function readSnap(code) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
