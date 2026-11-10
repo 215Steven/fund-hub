@@ -38,7 +38,12 @@
           totalFunds: j.totalFunds,
           monthlyCount: j.monthlyCount,
           savedAt: j.savedAt,
-          expiry: nextNoonTW()
+          /* 本機快取只留 15 分鐘（這頁有兩份快取：基金清單與保單資料，兩個都改）。
+             原本是「下一個台灣中午」，下午存下來的話會抱到隔天中午，
+             最久快兩天都讀不到新的伺服器快照 —— 2026-11-10 晚上實測，
+             工具頁顯示 11/09 下午的資料，伺服器上其實已經是 11/10 晚上的。
+             伺服器讀取本來就只要半秒（Blob 快照 + CDN），不值得為此犧牲新鮮度。 */
+          expiry: (Date.now() + 15 * 60000)
         }));
       })
       .catch(function () {});
@@ -2389,7 +2394,7 @@ function loadFundCache() {
 }
 function saveFundCache(list) {
   try {
-    localStorage.setItem(FUND_CACHE_KEY, JSON.stringify({ list: list, expiry: nextNoonTW() }));
+    localStorage.setItem(FUND_CACHE_KEY, JSON.stringify({ list: list, expiry: (Date.now() + 15 * 60000) }));
   } catch(e) { /* 容量不足時靜默失敗 */ }
 }
 // ─────────────────────────────────────────────────────────
