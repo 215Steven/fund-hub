@@ -11,6 +11,29 @@
    段落順序跟原本一樣：fh-refresh 先把「立即更新」按鈕放上去，
    fh-refresh-fix 才能接手它的點擊行為。 */
 
+/* ════════ 共用計時器 ════════
+   fh-bt-default、fh-dd-detail、fh-ratios 原本各自 setInterval(apply, 400) 永久輪詢，
+   分析視窗沒打開也一直在跑：每秒 7.5 次，三段各自查一次 DOM。
+   改成一個共用的 400ms 計時器，分析視窗沒顯示時只做一次 querySelector 就返回。
+
+   為什麼可以這樣擋：三段的 apply 本來就只在視窗顯示時才做事
+   （bt-default、dd-detail 開頭都是 offsetParent === null 就 return），
+   它們的「換了一檔要重來」是靠 _btState.dates 換了新陣列來判斷，
+   不是靠「看到視窗關掉」，所以關著的時候不跑不會漏掉任何重置。
+
+   三段仍各自保留 try/catch，其中一段出錯不會讓另外兩段停擺。 */
+var FH_TICK = (function () {
+  var fns = [];
+  setInterval(function () {
+    var m = document.querySelector('.bt-modal');
+    if (!m || m.offsetParent === null) return;
+    for (var i = 0; i < fns.length; i++) {
+      try { fns[i](); } catch (e) { if (window.console) console.error('[fh-common] tick', e); }
+    }
+  }, 400);
+  return { add: function (fn) { fns.push(fn); } };
+})();
+
 /* ════════ fh-refresh ════════ */
 try {
 /* 手動更新：回富邦重抓一次，結果寫進共用快照，所以一個人按、所有人都拿到新的。
@@ -116,7 +139,7 @@ try {
   }
   // 用輪詢而不是只靠 MutationObserver：資料載入完成時不一定還有 DOM 變動，
   // 只掛觀察器會錯過最後一次狀態更新。整段是冪等的，重複跑沒有副作用。
-  setInterval(apply, 400);
+  if (window.FH_TICK) FH_TICK.add(apply); else setInterval(apply, 400);
 })();
 } catch (e) { if (window.console) console.error('[fh-common] fh-bt-default', e); }
 
@@ -187,7 +210,7 @@ try {
     var h = l1 + '<br>' + l2;
     if (sub.innerHTML !== h) sub.innerHTML = h;
   }
-  setInterval(apply, 400);
+  if (window.FH_TICK) FH_TICK.add(apply); else setInterval(apply, 400);
 })();
 } catch (e) { if (window.console) console.error('[fh-common] fh-dd-detail', e); }
 
@@ -289,7 +312,7 @@ try {
     set(c1, dsd > 0 ? ann / dsd : null);
     set(c2, dd > 0 ? ann / dd : null);
   }
-  setInterval(apply, 400);
+  if (window.FH_TICK) FH_TICK.add(apply); else setInterval(apply, 400);
 })();
 } catch (e) { if (window.console) console.error('[fh-common] fh-ratios', e); }
 
