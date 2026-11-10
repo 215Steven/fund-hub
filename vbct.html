@@ -3826,6 +3826,85 @@ window.addEventListener('DOMContentLoaded', function() {
   hijack();
 })();
 </script>
+
+<script>
+(function () {
+  /* fh-cur-fix：幣別選「台幣」永遠 0 筆。
+
+     資料裡的字串是「新臺幣」（臺），下拉選單的 value 卻寫「台幣」（台），
+     比對是精確相等，所以永遠對不上 —— 而三張保單各有 50 檔左右是新臺幣計價，
+     等於有五十幾檔用幣別篩不出來。美元、澳幣、日圓都沒事，就差這一個字。
+
+     順便：選單是寫死的，裡面有些幣別該保單根本沒有（VCCT 沒有南非幣），
+     選了就是 0 筆的死選項；組合試算那邊則反過來，只有台幣與美元兩個選項，
+     澳幣、歐元、日圓、紐幣根本選不到。改成照實際資料重建，有什麼才列什麼。
+
+     做法：option 的 value 用資料裡的原字串，顯示文字用口語的「台幣」。
+     這樣原本的精確比對不用動，只是餵給它對的值。
+  */
+  var LABEL = { '新臺幣': '台幣', '新台幣': '台幣' };
+
+  function dataRows() {
+    if (Array.isArray(window._fundUniverse) && window._fundUniverse.length) return window._fundUniverse;
+    for (var k in window) {
+      try {
+        var v = window[k];
+        if (/_ROWS$/.test(k) && Array.isArray(v) && v.length && v[0] && ('cur' in v[0])) return v;
+      } catch (e) {}
+    }
+    return null;
+  }
+
+  function fix(sel) {
+    if (!sel || sel.getAttribute('data-fh-cur')) return;
+    var data = dataRows();
+    if (!data || !data.length) return;
+    var seen = [], i, c;
+    for (i = 0; i < data.length; i++) {
+      c = data[i] && data[i].cur;
+      if (c && seen.indexOf(c) < 0) seen.push(c);
+    }
+    if (!seen.length) return;
+
+    var ntd = [], usd = [], rest = [];
+    seen.forEach(function (x) {
+      if ((LABEL[x] || x) === '台幣') ntd.push(x);
+      else if (x === '美元') usd.push(x);
+      else rest.push(x);
+    });
+    var list = ntd.concat(usd, rest);
+
+    /* 第一個選項的字各頁不一樣（工具頁是「全部」，組合試算是「不限」），照抄原本的 */
+    var keepText = sel.options.length ? sel.options[0].textContent : '全部';
+    var old = sel.value;
+    sel.innerHTML = '';
+    var o0 = document.createElement('option');
+    o0.value = ''; o0.textContent = keepText;
+    sel.appendChild(o0);
+    list.forEach(function (x) {
+      var o = document.createElement('option');
+      o.value = x; o.textContent = LABEL[x] || x;
+      sel.appendChild(o);
+    });
+
+    if (old) {
+      var want = (old === '台幣' || old === '新台幣') ? (ntd[0] || '') : old;
+      if (list.indexOf(want) >= 0) {
+        sel.value = want;
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+    sel.setAttribute('data-fh-cur', '1');
+  }
+
+  var tries = 0;
+  var iv = setInterval(function () {
+    fix(document.getElementById('ffc'));
+    fix(document.getElementById('pf-f-cur'));
+    if (++tries > 60) clearInterval(iv);
+  }, 500);
+})();
+</script>
 </body>
 </html>
 
