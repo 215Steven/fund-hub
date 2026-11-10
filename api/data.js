@@ -9,7 +9,7 @@
  *   原本每個訪客各自跑一輪（一百多檔、每檔約 0.5 秒），首次開啟要等幾十秒；
  *   改成所有人共用 CDN 快取，每天只打富邦一次，對方負載也小很多。
  *
- * CDN 快取：s-maxage=600（10 分鐘）+ stale-while-revalidate=86400
+ * CDN 快取：s-maxage=30（30 秒）+ stale-while-revalidate=86400
  * 排程：vercel.json 的 cron 每天 UTC 06:00（台灣 14:00）預熱。
  *       排在下午是因為多數基金早上才公告當日淨值，中午跑會抓到前一天的。
  */
@@ -103,7 +103,12 @@ function calcRate(nav, r6) {
 // CDN 上的舊副本最長還要再送 12 小時，等於更新了使用者也看不到。
 // 縮到 10 分鐘，配合 stale-while-revalidate：使用者永遠拿到即時回應，
 // 背景去換新，所以更新最多十分鐘就會擴散出去。
-const CACHE = 'public, s-maxage=600, stale-while-revalidate=86400';
+// s-maxage 原本 600。問題是：有人按「立即更新」把快照換新之後，
+// 邊緣節點還留著舊的那份，之後十分鐘內讀到的都是舊資料，
+// 畫面上的「最後更新」也不會動 —— 看起來就像更新沒有效果。
+// 2026-11-10 實測：force 後快照是 22:01，不帶 cache-buster 讀回來還是 11:50（x-vercel-cache: HIT）。
+// 壓到 30 秒。這層快取本來就只是擋瞬間尖峰，不是拿來省重爬的（重爬有 Blob 快照擋著）。
+const CACHE = 'public, s-maxage=30, stale-while-revalidate=86400';
 
 // 手動更新：前端按「載入配息資料」會帶 force=1。
 // 沒有 CRON_SECRET 也能用，所以一定要設年齡下限，否則外部可以連續觸發重爬。
