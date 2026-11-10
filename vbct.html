@@ -3915,6 +3915,17 @@ window.addEventListener('DOMContentLoaded', function() {
   }, 500);
 })();
 </script>
+
+<style>
+/* fh-star-hit：手機上自選的星號只有 15x15px，手指很難按中。
+   用 padding 把感應區撐到 39x39，再用等量負 margin 把版面推回去，
+   所以星號看起來一樣大、卡片高度也不變，只是比較好按。
+   實測過：不會蓋掉下面基金名稱的點擊（名稱在 DOM 後面，疊上去的是它），
+   頁面橫向溢出維持原本的 2px，沒有變多。 */
+@media (max-width:620px){
+  .hub-star{display:inline-block;padding:12px;margin:-12px;line-height:1}
+}
+</style>
 </body>
 </html>
 
