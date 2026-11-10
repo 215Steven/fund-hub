@@ -2103,7 +2103,13 @@ function loadCache() {
 }
 function saveCache(data) {
   try {
-    data.expiry = nextNoonTW();
+    /* 本機快取只留 15 分鐘。
+       原本是「下一個台灣中午」，下午存下來的話會抱到隔天中午，
+       最久快兩天都讀不到新的伺服器快照 —— 2026-11-10 晚上實測，
+       畫面顯示 11/09 下午的資料，伺服器上其實已經是 11/10 晚上的，
+       使用者不按「立即更新」就永遠看不到。
+       伺服器讀取本來就只要半秒（Blob 快照 + CDN），不值得為此犧牲新鮮度。 */
+    data.expiry = (Date.now() + 15 * 60000);
     localStorage.setItem(CACHE_KEY, JSON.stringify(data));
   } catch(e) { /* 容量不足時靜默失敗 */ }
 }
