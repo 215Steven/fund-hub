@@ -345,7 +345,7 @@
     </div>
     <aside class="hero-facts">
       <div><b>年化配息率</b><span>近 6 個月月配平均 × 12 ÷ 當日淨值，三張保單同一套算法</span></div>
-      <div><b>一年與三年報酬率</b><span>配息之外的實際績效，和配息率攑在同一列比較</span></div>
+      <div><b>一年與三年報酬率</b><span>配息之外的實際績效，和配息率擺在同一列比較</span></div>
       <div><b>風險等級與配息頻率</b><span>RR1–RR5、月配／季配／半年配，一眼分辨</span></div>
     </aside>
   </div>
@@ -1179,6 +1179,16 @@ table.favt th:nth-child(1),table.favt td:nth-child(1){width:200px;max-width:200p
   + 'border-left:3px solid #b7791f;border-radius:10px;background:#fffbeb;'
   + 'font-size:14px;line-height:1.7;color:#7c6420}'
   + '.fh-need b{color:#7a5c12}'
+  /* fh-mobile：手機版的兩個小毛病。
+     一是銷售頁的「清單畫面」示意表，六欄 330px 塞在 285px 容器裡，
+     右邊「三年」「風險」被切斷，看起來像壞掉。那是示意用的假資料，
+     重點是「配息率最高的不一定六個月報酬最好」，藏掉後兩欄不影響訊息。
+     二是配息變動的代碼連結與頁尾連結，點擊區只有十幾 px 高，手指難按。 */
+  + '@media (max-width:620px){'
+  +   'table.mini th:nth-child(n+5),table.mini td:nth-child(n+5){display:none}'
+  +   '#dv-sect tbody a{display:inline-block;padding:7px 5px;margin:-7px -5px}'
+  +   'footer a{display:inline-block;padding:8px 3px;margin:-8px -3px}'
+  + '}'
   + '.fh-need-go{display:inline-block;margin-top:9px;padding:7px 14px;border-radius:8px;'
   + 'background:#b7791f;color:#fff;text-decoration:none;font-size:13.5px;font-weight:700}'
   + '.fh-need-go:hover{background:#9c6616}'
