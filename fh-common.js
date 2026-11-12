@@ -34,6 +34,29 @@ var FH_TICK = (function () {
   return { add: function (fn) { fns.push(fn); } };
 })();
 
+/* ════════ 原地更新表格 ════════
+   直接呼叫頁面自己的 startLoad(true) 重讀伺服器快照、重畫表格，不重載整頁。
+   之前「立即更新」是重載頁面，結果重載那一步讀到瀏覽器存的舊回應，按完時間沒跳。
+   _quietRefresh 設成 true：不閃進度條；萬一快照讀不到改走逐檔抓取，也不會先清空畫面。
+   startLoad 結尾會把排序重設成「配息率由高到低」，這裡把使用者原本的排序放回去。 */
+window.FH_APPLY = function () {
+  if (typeof window.startLoad !== 'function') return Promise.reject(new Error('no startLoad'));
+  var col = window._sortCol, dir = window._sortDir;
+  var mc = document.getElementById('ms-col'), md = document.getElementById('ms-dir');
+  var mcv = mc ? mc.value : null, mdv = md ? md.value : null;
+  var q = window._quietRefresh;
+  window._quietRefresh = true;
+  return Promise.resolve(window.startLoad(true)).then(function () {
+    window._quietRefresh = q;
+    if (typeof col === 'number' && col >= 0 && typeof window.sortBy === 'function' &&
+        (col !== window._sortCol || dir !== window._sortDir)) {
+      window.sortBy(col, dir);
+    }
+    if (mc && mcv !== null) mc.value = mcv;
+    if (md && mdv !== null) md.value = mdv;
+  }, function (e) { window._quietRefresh = q; throw e; });
+};
+
 /* ════════ fh-refresh ════════ */
 try {
 /* 手動更新：回富邦重抓一次，結果寫進共用快照，所以一個人按、所有人都拿到新的。
@@ -398,9 +421,19 @@ try {
         .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(function (j) {
           var at = j && j.savedAt ? String(j.savedAt) : '';
-          clearLocal();
-          try { sessionStorage.setItem(FLAG, at); } catch (e) {}
-          location.reload();
+          // 原地重畫，按完畫面立刻是新的時間；不行才退回舊做法（清快取＋重載）
+          var shownEl = document.getElementById('st4');
+          var same = !!(at && shownEl && shownEl.textContent.indexOf(at) >= 0);
+          var fallback = function () {
+            clearLocal();
+            try { sessionStorage.setItem(FLAG, at); } catch (e) {}
+            location.reload();
+          };
+          if (typeof window.FH_APPLY !== 'function') return fallback();
+          window.FH_APPLY().then(function () {
+            nb.disabled = false; nb.textContent = '立即更新';
+            msg(same ? '目前已是最新資料 · 資料時間 ' + at : '已更新 · 資料時間 ' + at, '#1e8449');
+          }, fallback);
         })
         .catch(function (e) {
           nb.disabled = false; nb.textContent = '立即更新';
@@ -498,14 +531,14 @@ try {
 /* ════════ fh-pm-refresh ════════ */
 try {
 (function () {
-  /* 下午背景補抓的前端配合。
-     伺服器（api/data.js 的 maybeBgRefresh）在台灣 12:30～21:00 發現快照是今天 12:30 以前
-     抓的、或已超過 2 小時，會先回舊快照、背景再重抓（約 15 秒）。
-     觸發的那位訪客畫面上還是舊的，所以這裡過一下再問一次，有新的就跳提示讓他一鍵換新；
-     不自動重載，避免打斷正在看表格的人。判斷規則要跟伺服器那邊保持一致。 */
+  /* 自動更新：頁面開著時自己去問伺服器有沒有更新的快照，有就原地換上，不用按。
+     ・載入 2.5 秒後問一次，之後每 10 分鐘、以及切回這個分頁時再問。
+     ・伺服器在 12:30～21:00 發現快照太舊，會先回舊的、背景重抓（約 15 秒）；
+       這段期間「最後更新」後面顯示「・更新中…」，每 8 秒問一次，新的一到就自動換上。
+     ・分析視窗開著時先不換，等關掉再換，避免看到一半後面的表格在動。
+     判斷「太舊」的規則要跟 api/data.js 的 afternoonStale 一致。 */
   var CODE = ((location.pathname.match(/(vcct|vbct|und)/i) || [])[1] || '').toUpperCase();
   if (!CODE) return;
-  var PRE = CODE.toLowerCase() + '-v';
   function stale(fa, now) {
     var tw = new Date(now + 8 * 3600000);
     var mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
@@ -513,52 +546,73 @@ try {
     var cut = Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate(), 12, 30) - 8 * 3600000;
     return fa < cut || now - fa > 2 * 3600000;
   }
-  function clearLocal() {
-    try {
-      var kill = [], i, k;
-      for (i = 0; i < localStorage.length; i++) { k = localStorage.key(i); if (k && k.indexOf(PRE) === 0) kill.push(k); }
-      for (i = 0; i < kill.length; i++) localStorage.removeItem(kill[i]);
-    } catch (e) {}
-  }
-  function offer(savedAt) {
-    var old = document.querySelector('[data-fh-pm]'); if (old) old.parentNode.removeChild(old);
-    var box = document.createElement('div');
-    box.setAttribute('data-fh-pm', '1');
-    box.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);' +
-      'max-width:calc(100vw - 28px);box-sizing:border-box;z-index:99999;display:flex;align-items:center;gap:12px;' +
-      'padding:10px 12px 10px 16px;border-radius:12px;background:#fff;border:1px solid #d8e3f2;' +
-      'box-shadow:0 2px 12px rgba(20,45,80,.16);font-size:13.5px;line-height:1.5;color:#0f172a';
-    var t = document.createElement('span');
-    t.textContent = '有更新的淨值' + (savedAt ? '（' + savedAt + '）' : '');
-    var b = document.createElement('button');
-    b.type = 'button';
-    b.textContent = '重新整理';
-    b.style.cssText = 'flex:0 0 auto;padding:7px 14px;border:0;border-radius:8px;background:#2657a0;color:#fff;' +
-      'font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;min-height:34px';
-    b.addEventListener('click', function () {
-      clearLocal();
-      try { sessionStorage.setItem('fh-refresh-result', String(savedAt || '')); } catch (e) {}
-      location.reload();
-    });
-    box.appendChild(t); box.appendChild(b);
-    document.body.appendChild(box);
-  }
   function ask() {
     return fetch('/api/data?code=' + CODE + '&_cb=' + Date.now(), { cache: 'no-store' })
       .then(function (r) { return r.json(); });
   }
-  setTimeout(function () {
+  function st4() { return document.getElementById('st4'); }
+  function ready() {
+    var e = st4();
+    return !!(e && /\d{1,2}\/\d{1,2}/.test(e.textContent) && e.textContent.indexOf('更新中') < 0);
+  }
+  function shownHas(s) { var e = st4(); return !!(e && s && e.textContent.indexOf(s) >= 0); }
+  function setBusy(on) {
+    var e = st4(); if (!e) return;
+    var s = e.querySelector('[data-fh-busy]');
+    if (on && !s) {
+      s = document.createElement('span');
+      s.setAttribute('data-fh-busy', '1');
+      s.textContent = '・更新中…';
+      s.style.cssText = 'color:#b7791f;margin-left:2px';
+      e.appendChild(s);
+    }
+    if (!on && s) s.parentNode.removeChild(s);
+  }
+  function modalOpen() { var m = document.querySelector('.bt-modal'); return !!(m && m.offsetParent !== null); }
+  function toast(text) {
+    var old = document.querySelector('[data-fh-msg]'); if (old) old.parentNode.removeChild(old);
+    var s = document.createElement('div');
+    s.setAttribute('data-fh-msg', '1');
+    s.textContent = text;
+    s.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);' +
+      'max-width:calc(100vw - 28px);box-sizing:border-box;z-index:99999;' +
+      'padding:9px 15px;border-radius:10px;background:#fff;border:1px solid #d8e3f2;' +
+      'box-shadow:0 2px 10px rgba(20,45,80,.14);font-size:13px;line-height:1.5;' +
+      'text-align:center;transition:opacity .6s;color:#1e8449';
+    document.body.appendChild(s);
+    setTimeout(function () { s.style.opacity = '0'; }, 5000);
+    setTimeout(function () { if (s.parentNode) s.parentNode.removeChild(s); }, 5800);
+  }
+  var busy = false;
+  function apply(savedAt) {
+    if (modalOpen() || !ready()) { setTimeout(function () { apply(savedAt); }, 2000); return; }
+    if (typeof window.FH_APPLY !== 'function') return;
+    window.FH_APPLY().then(function () {
+      toast('已自動更新為最新淨值 · 資料時間 ' + savedAt);
+    }, function () {});
+  }
+  function check() {
+    if (busy) return;
+    if (!ready()) { setTimeout(check, 2000); return; }
     ask().then(function (j) {
-      var t0 = Number(j && j.fetchedAt) || 0;
-      if (!t0 || !stale(t0, Date.now())) return;
+      if (!j || !j.savedAt) return;
+      if (!shownHas(j.savedAt)) { apply(j.savedAt); return; }
+      var fa = Number(j.fetchedAt) || 0;
+      if (!fa || !stale(fa, Date.now())) return;
+      busy = true; setBusy(true);
       var n = 0;
       var iv = setInterval(function () {
-        if (++n > 8) { clearInterval(iv); return; }
+        if (++n > 8) { clearInterval(iv); busy = false; setBusy(false); return; }
         ask().then(function (k) {
-          if (Number(k && k.fetchedAt) > t0) { clearInterval(iv); offer(k.savedAt); }
+          if (k && k.savedAt && Number(k.fetchedAt) > fa) {
+            clearInterval(iv); busy = false; setBusy(false); apply(k.savedAt);
+          }
         }).catch(function () {});
       }, 8000);
     }).catch(function () {});
-  }, 2500);
+  }
+  setTimeout(check, 2500);
+  setInterval(function () { if (document.visibilityState !== 'hidden') check(); }, 10 * 60000);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') check(); });
 })();
 } catch (e) { if (window.console) console.error('[fh-common] fh-pm-refresh', e); }
