@@ -135,6 +135,42 @@ const MIN_FORCE_AGE = 30 * 60 * 1000;
 // 改 30 小時留 4 小時緩衝。代價是極端情況下資料可能舊到 30 小時，
 // 但畫面上有「最後更新」時間，想要當下最新的人可以按「立即更新」。
 const SNAP_TTL = 30 * 3600 * 1000;
+
+// ── 下午背景補抓 ──────────────────────────────────────────
+// 境外基金多半在台灣中午 12 點後才更新淨值，早上抓的快照到了下午就舊了。
+// 原本靠下午兩點的排程重抓，但 2026-11-12 排程沒跑，UND 與 VBCT 到下午四點多
+// 都還是早上 10:21 的資料（同一段時間外幣計價 134 檔裡有 104 檔淨值已經變了）。
+// 改成「有人來看就順手在背景補抓」，不靠排程：
+//   台灣時間 12:30～21:00 之間，快照是今天 12:30 以前抓的、或已經超過 BG_MAX_AGE，
+//   就照常先回舊快照（使用者不用等），再用 waitUntil 在背景打一次 force=1。
+// 背景那次走的是跟「立即更新」完全一樣的路徑，所以 30 分鐘門檻一樣有效。
+let waitUntil = null;
+try { waitUntil = require('@vercel/functions').waitUntil; } catch (e) {}
+const BG_MAX_AGE = 20 * 60 * 1000;
+const BG_LAST = {};
+function afternoonStale(fetchedAt, now) {
+  const tw = new Date(now + 8 * 3600000);
+  const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
+  if (mins < 12 * 60 + 30 || mins >= 21 * 60) return false;
+  const cut = Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate(), 12, 30) - 8 * 3600000;
+  return fetchedAt < cut || now - fetchedAt > BG_MAX_AGE;
+}
+function maybeBgRefresh(req, code, cached) {
+  try {
+    const now = Date.now();
+    const fa = Number(cached && cached.fetchedAt) || 0;
+    if (!fa || !afternoonStale(fa, now)) return;
+    // 同一個執行個體 10 分鐘內同一張保單只觸發一次，避免同時湧進來的請求各打一次
+    if (BG_LAST[code] && now - BG_LAST[code] < 10 * 60000) return;
+    BG_LAST[code] = now;
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    if (!host) return;
+    const url = 'https://' + host + '/api/data?code=' + encodeURIComponent(code) + '&force=1&bg=1&_cb=' + now;
+    const p = fetch(url, { headers: { 'x-bg-refresh': '1' } }).then(function (r) { return r.text(); }).catch(function () {});
+    if (waitUntil) waitUntil(p);
+  } catch (e) {}
+}
+
 function snapPath(code) { return 'snap/' + code + '.json'; }
 async function readSnap(code) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
@@ -215,6 +251,7 @@ module.exports = async function handler(req, res) {
     cached = null;
   }
   if (cached) {
+    if (!wantForce) maybeBgRefresh(req, INSURANCE, cached);
     setCacheHeaders(res);
     return res.status(200).json(cached);
   }
