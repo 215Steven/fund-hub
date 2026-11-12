@@ -85,6 +85,10 @@
         init = init || {};
         var h = new Headers(init.headers || (typeof input !== 'string' ? input.headers : null) || {});
         if (!h.has('Authorization')) h.set('Authorization', 'Bearer ' + s.token);
+        // /api/ 一律不用瀏覽器快取。舊的回應帶 stale-while-revalidate=86400，
+        // 瀏覽器會先拿上次的舊資料出來用，按完「立即更新」重載後畫面還是舊的。
+        // 伺服器端已改成 no-store，這行是讓「已經存在瀏覽器裡的舊快取」也立刻失效。
+        if (init && !init.cache) init.cache = 'no-store';
         init.headers = h;
       }
     } catch (e) {}
