@@ -146,7 +146,9 @@ const SNAP_TTL = 30 * 3600 * 1000;
 // 背景那次走的是跟「立即更新」完全一樣的路徑，所以 30 分鐘門檻一樣有效。
 let waitUntil = null;
 try { waitUntil = require('@vercel/functions').waitUntil; } catch (e) {}
-const BG_MAX_AGE = 20 * 60 * 1000;
+// 2 小時：下午到晚上最多補抓幾次，境外基金陸續更新、晚上台幣基金公布淨值都接得到。
+// （2026-11-12 上線前用 20 分鐘實測：回應維持 0.6～1.5 秒，背景約 15 秒後換成新快照。）
+const BG_MAX_AGE = 2 * 3600 * 1000;
 const BG_LAST = {};
 function afternoonStale(fetchedAt, now) {
   const tw = new Date(now + 8 * 3600000);
