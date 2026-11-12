@@ -39,7 +39,10 @@ var FH_TICK = (function () {
    之前「立即更新」是重載頁面，結果重載那一步讀到瀏覽器存的舊回應，按完時間沒跳。
    _quietRefresh 設成 true：不閃進度條；萬一快照讀不到改走逐檔抓取，也不會先清空畫面。
    startLoad 結尾會把排序重設成「配息率由高到低」，這裡把使用者原本的排序放回去。 */
-window.FH_APPLY = function () {
+/* expect：伺服器回報的資料時間。剛強制重抓完的幾秒內，儲存端可能還回舊的快照，
+   畫面沒換到 expect 就每 3 秒再讀一次，最多 6 次。 */
+window.FH_APPLY = function (expect, tries) {
+  tries = tries || 0;
   if (typeof window.startLoad !== 'function') return Promise.reject(new Error('no startLoad'));
   var col = window._sortCol, dir = window._sortDir;
   var mc = document.getElementById('ms-col'), md = document.getElementById('ms-dir');
@@ -54,7 +57,13 @@ window.FH_APPLY = function () {
     }
     if (mc && mcv !== null) mc.value = mcv;
     if (md && mdv !== null) md.value = mdv;
-  }, function (e) { window._quietRefresh = q; throw e; });
+  }, function (e) { window._quietRefresh = q; throw e; }).then(function () {
+    var s = document.getElementById('st4');
+    if (expect && tries < 6 && !(s && s.textContent.indexOf(expect) >= 0)) {
+      return new Promise(function (r) { setTimeout(r, 3000); })
+        .then(function () { return window.FH_APPLY(expect, tries + 1); });
+    }
+  });
 };
 
 /* ════════ fh-refresh ════════ */
@@ -430,7 +439,7 @@ try {
             location.reload();
           };
           if (typeof window.FH_APPLY !== 'function') return fallback();
-          window.FH_APPLY().then(function () {
+          window.FH_APPLY(at).then(function () {
             nb.disabled = false; nb.textContent = '立即更新';
             msg(same ? '目前已是最新資料 · 資料時間 ' + at : '已更新 · 資料時間 ' + at, '#1e8449');
           }, fallback);
@@ -587,7 +596,7 @@ try {
   function apply(savedAt) {
     if (modalOpen() || !ready()) { setTimeout(function () { apply(savedAt); }, 2000); return; }
     if (typeof window.FH_APPLY !== 'function') return;
-    window.FH_APPLY().then(function () {
+    window.FH_APPLY(savedAt).then(function () {
       toast('已自動更新為最新淨值 · 資料時間 ' + savedAt);
     }, function () {});
   }
