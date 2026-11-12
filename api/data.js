@@ -9,7 +9,7 @@
  *   原本每個訪客各自跑一輪（一百多檔、每檔約 0.5 秒），首次開啟要等幾十秒；
  *   改成所有人共用 CDN 快取，每天只打富邦一次，對方負載也小很多。
  *
- * CDN 快取：s-maxage=30（30 秒）+ stale-while-revalidate=86400
+ * 瀏覽器：no-store。邊緣節點：Vercel-CDN-Cache-Control max-age=30, stale-while-revalidate=60
  * 排程：vercel.json 的 cron 每天 UTC 06:00（台灣 14:00）預熱。
  *       排在下午是因為多數基金早上才公告當日淨值，中午跑會抓到前一天的。
  */
@@ -110,6 +110,18 @@ function calcRate(nav, r6) {
 // 壓到 30 秒。這層快取本來就只是擋瞬間尖峰，不是拿來省重爬的（重爬有 Blob 快照擋著）。
 const CACHE = 'public, s-maxage=30, stale-while-revalidate=86400';
 
+// 瀏覽器一律不准快取，邊緣節點另外用 Vercel-CDN-Cache-Control 控制。
+// 原本 Cache-Control 帶 stale-while-revalidate=86400，瀏覽器也會照做：
+// 把上一次拿到的舊資料直接拿出來用、背景再去更新，要到「下一次」載入才看得到新的。
+// 2026-11-12 實測：按「立即更新」，伺服器已經重抓到 16:41，重載後頁面讀的那筆
+// 是瀏覽器快取（傳輸 0 位元組），畫面還停在 16:10——這就是「按了也沒更新」。
+// Vercel-CDN-Cache-Control 只給 Vercel 自己的邊緣節點看，不會傳到瀏覽器。
+// 帶 Authorization 的請求（已登入的工具頁）邊緣本來就不快取（BYPASS）。
+function setCacheHeaders(res) {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Vercel-CDN-Cache-Control', 'max-age=30, stale-while-revalidate=60');
+}
+
 // 手動更新：前端按「載入配息資料」會帶 force=1。
 // 沒有 CRON_SECRET 也能用，所以一定要設年齡下限，否則外部可以連續觸發重爬。
 // 快照還很新就忽略 force（維持秒回），夠舊才真的回源重抓；
@@ -175,7 +187,7 @@ module.exports = async function handler(req, res) {
   if (String((req.query && req.query.src) || '') === 'assets') {
     const hitA = isCron ? null : await readSnap('ASSETS');
     if (hitA) {
-      res.setHeader('Cache-Control', CACHE);
+      setCacheHeaders(res);
       return res.status(200).json(hitA);
     }
     try {
@@ -183,7 +195,7 @@ module.exports = async function handler(req, res) {
       if (!all || !all.length) throw new Error('getAssets 回傳空資料');
       const payloadA = { data: all, count: all.length, fetchedAt: Date.now() };
       try { await saveSnap('ASSETS', payloadA); } catch (e) {}
-      res.setHeader('Cache-Control', CACHE);
+      setCacheHeaders(res);
       return res.status(200).json(payloadA);
     } catch (e) {
       res.setHeader('Cache-Control', 'no-store');
@@ -203,7 +215,7 @@ module.exports = async function handler(req, res) {
     cached = null;
   }
   if (cached) {
-    res.setHeader('Cache-Control', CACHE);
+    setCacheHeaders(res);
     return res.status(200).json(cached);
   }
 
@@ -281,7 +293,7 @@ module.exports = async function handler(req, res) {
       month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
     });
 
-    res.setHeader('Cache-Control', CACHE);
+    setCacheHeaders(res);
 
     const payload = {
       insurance: INSURANCE,
