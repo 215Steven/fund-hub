@@ -494,3 +494,71 @@ try {
   }, 500);
 })();
 } catch (e) { if (window.console) console.error('[fh-common] fh-cur-fix', e); }
+
+/* ════════ fh-pm-refresh ════════ */
+try {
+(function () {
+  /* 下午背景補抓的前端配合。
+     伺服器（api/data.js 的 maybeBgRefresh）在台灣 12:30～21:00 發現快照是今天 12:30 以前
+     抓的、或已超過 2 小時，會先回舊快照、背景再重抓（約 15 秒）。
+     觸發的那位訪客畫面上還是舊的，所以這裡過一下再問一次，有新的就跳提示讓他一鍵換新；
+     不自動重載，避免打斷正在看表格的人。判斷規則要跟伺服器那邊保持一致。 */
+  var CODE = ((location.pathname.match(/(vcct|vbct|und)/i) || [])[1] || '').toUpperCase();
+  if (!CODE) return;
+  var PRE = CODE.toLowerCase() + '-v';
+  function stale(fa, now) {
+    var tw = new Date(now + 8 * 3600000);
+    var mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
+    if (mins < 12 * 60 + 30 || mins >= 21 * 60) return false;
+    var cut = Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate(), 12, 30) - 8 * 3600000;
+    return fa < cut || now - fa > 2 * 3600000;
+  }
+  function clearLocal() {
+    try {
+      var kill = [], i, k;
+      for (i = 0; i < localStorage.length; i++) { k = localStorage.key(i); if (k && k.indexOf(PRE) === 0) kill.push(k); }
+      for (i = 0; i < kill.length; i++) localStorage.removeItem(kill[i]);
+    } catch (e) {}
+  }
+  function offer(savedAt) {
+    var old = document.querySelector('[data-fh-pm]'); if (old) old.parentNode.removeChild(old);
+    var box = document.createElement('div');
+    box.setAttribute('data-fh-pm', '1');
+    box.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);' +
+      'max-width:calc(100vw - 28px);box-sizing:border-box;z-index:99999;display:flex;align-items:center;gap:12px;' +
+      'padding:10px 12px 10px 16px;border-radius:12px;background:#fff;border:1px solid #d8e3f2;' +
+      'box-shadow:0 2px 12px rgba(20,45,80,.16);font-size:13.5px;line-height:1.5;color:#0f172a';
+    var t = document.createElement('span');
+    t.textContent = '有更新的淨值' + (savedAt ? '（' + savedAt + '）' : '');
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = '重新整理';
+    b.style.cssText = 'flex:0 0 auto;padding:7px 14px;border:0;border-radius:8px;background:#2657a0;color:#fff;' +
+      'font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;min-height:34px';
+    b.addEventListener('click', function () {
+      clearLocal();
+      try { sessionStorage.setItem('fh-refresh-result', String(savedAt || '')); } catch (e) {}
+      location.reload();
+    });
+    box.appendChild(t); box.appendChild(b);
+    document.body.appendChild(box);
+  }
+  function ask() {
+    return fetch('/api/data?code=' + CODE + '&_cb=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { return r.json(); });
+  }
+  setTimeout(function () {
+    ask().then(function (j) {
+      var t0 = Number(j && j.fetchedAt) || 0;
+      if (!t0 || !stale(t0, Date.now())) return;
+      var n = 0;
+      var iv = setInterval(function () {
+        if (++n > 8) { clearInterval(iv); return; }
+        ask().then(function (k) {
+          if (Number(k && k.fetchedAt) > t0) { clearInterval(iv); offer(k.savedAt); }
+        }).catch(function () {});
+      }, 8000);
+    }).catch(function () {});
+  }, 2500);
+})();
+} catch (e) { if (window.console) console.error('[fh-common] fh-pm-refresh', e); }
