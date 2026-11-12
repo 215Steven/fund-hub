@@ -2120,7 +2120,7 @@ async function startLoad(forceRefresh) {
         var cacheReport = cached.report;
         var cacheRated = cacheReport.filter(function(r) { return r.rate; }).length;
         $('st2').textContent = cacheRated;
-        $('st4').innerHTML = cached.savedAt + ' ' + ICON.zap + '快取';
+        $('st4').innerHTML = cached.savedAt + ' ' + ICON.zap + '每日快照';
         setProgress(ICON.zap + ' 讀取快取資料...', 95);
         window.VCCT_ROWS = cacheReport;
         $('vcct-tbody').innerHTML = cacheReport.map(function(r,i){ return renderRow(r,i); }).join('');
@@ -2130,7 +2130,7 @@ async function startLoad(forceRefresh) {
         applyFilter();
         if (cached._stale) {
           var _was = cached.savedAt;
-          $('st4').innerHTML = _was + ' ' + ICON.zap + '快取（更新中）';
+          $('st4').innerHTML = _was + ' ' + ICON.zap + '每日快照・更新中…';
           _quietRefresh = true;
           setTimeout(function() {
             Promise.resolve(startLoad(true)).catch(function(){}).then(function(){
@@ -2138,7 +2138,7 @@ async function startLoad(forceRefresh) {
               var fresh = loadCache();
               if (!fresh || fresh.savedAt === _was) {
                 // 來源 API 挂掉時不要讓使用者以為資料是新的
-                $('st4').innerHTML = _was + ' ' + ICON.zap + '快取（來源更新失敗）';
+                $('st4').innerHTML = _was + ' ' + ICON.zap + '每日快照';
                 $('vcct-err').style.display = 'none';
               }
             });
