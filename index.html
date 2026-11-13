@@ -993,6 +993,8 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
   function mi(s) { var p = String(s).split('-'); return (+p[0]) * 12 + (+p[1]); }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) {
     return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+  // 有除息日就顯示 MM/DD，沒有就退回 YY-MM
+  function dvd(e, m) { return e ? e.substring(5).replace('-', '/') : String(m).substring(2); }
   function fmt(n) { return (Math.round(n * 10000) / 10000).toFixed(4); }
   // 手機只留代號、月份、變動三欄，險種欄被收起來後那一列就沒有連結了，
   // 所以代號自己要能點：跳到該檔所屬的第一個險種工具頁並直接定位。
@@ -1011,12 +1013,17 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
         if (!r.divs || r.divs.length < 2) return;
         var a = r.divs[0], b = r.divs[1];
         if (!a || !b || !(b.amount > 0)) return;
-        if (mi(a.date) - mi(b.date) !== 1) return;   // 只比相鄰月份
+        if (a.ex && b.ex) {
+          // 用除息日判斷是不是相鄰的一期：相隔 20～45 天。
+          // 月初、月底除息的基金（例如 10/01 與 10/30）用月份比會被誤判成斷月或同月。
+          var gap = (Date.parse(a.ex) - Date.parse(b.ex)) / 86400000;
+          if (!(gap >= 20 && gap <= 45)) return;
+        } else if (mi(a.date) - mi(b.date) !== 1) return;   // 舊快照沒有除息日，退回比月份   // 只比相鄰月份
         var pct = (a.amount - b.amount) / b.amount * 100;
         if (Math.abs(pct) < TH) return;
         var k = r.v40 || r.code;
         if (seen[k]) { if (seen[k].ins.indexOf(ins) < 0) seen[k].ins.push(ins); return; }
-        seen[k] = { nm: r.name, code: k, url: r.url, m0: a.date, m1: b.date,
+        seen[k] = { nm: r.name, code: k, url: r.url, m0: a.date, m1: b.date, e0: a.ex || '', e1: b.ex || '',
                     v0: a.amount, v1: b.amount, pct: pct, ins: [ins] };
         rows.push(seen[k]);
       });
@@ -1033,7 +1040,7 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
       return;
     }
     var h = '<div class="dv-scroll"><table class="dvt"><thead><tr>' +
-      '<th>基金名稱</th><th>險種</th><th>代碼</th><th>比較月份</th>' +
+      '<th>基金名稱</th><th>險種</th><th>代碼</th><th>除息日</th>' +
       '<th class="r">前次</th><th class="r">最新</th><th class="r">變動</th>' +
       '</tr></thead><tbody>';
     for (var i = 0; i < rows.length; i++) {
@@ -1049,7 +1056,7 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
                  : esc(o.nm)) + '</td>' +
         '<td>' + ins + '</td>' +
         '<td class="dv-code">' + codeLink(o) + '</td>' +
-        '<td class="dv-mo">' + o.m1.substring(2) + ' → ' + o.m0.substring(2) + '</td>' +
+        '<td class="dv-mo">' + dvd(o.e1, o.m1) + ' → ' + dvd(o.e0, o.m0) + '</td>' +
         '<td class="r">' + fmt(o.v1) + '</td>' +
         '<td class="r">' + fmt(o.v0) + '</td>' +
         '<td class="r ' + cls + '">' + sign + o.pct.toFixed(1) + '%</td>' +
@@ -1071,8 +1078,8 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
       '<div class="fav-head"><h2>配息變動 <span id="dv-cnt" class="muted"></span></h2></div>' +
       '<p class="dv-note">最近兩次配息相差 5% 以上的標的，增加與減少都列出。' +
       '配息變多不代表賺得多，可能是配到本金，兩個方向都只是提醒你去看一下。' +
-      '各檔公告進度不同，所以比較的月份不一定相同，每列都已標明；' +
-      '中間有斷月的不列入比較。</p>' +
+      '各檔除息日不同，每列都標出前後兩次的除息日；' +
+      '兩次相隔超過 45 天（中間漏了一期）的不列入比較。</p>' +
       '<div id="dv-body"><div class="dv-empty">載入中…</div></div>';
     fav.insertAdjacentElement('afterend', sec);
     return true;
