@@ -1104,7 +1104,9 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
     }
     load();
   }
+  var lastLoad = 0;
   function load() {
+    lastLoad = Date.now();
     Promise.all(CODES.map(function (c) {
       return fetch('/api/data?code=' + c).then(function (r) { return r.json(); })
         .catch(function () { return null; });
@@ -1115,8 +1117,24 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
         return;
       }
       render(build(lists));
+      // 標題旁顯示資料時間（取三份快照裡最新的），看得出是不是舊畫面
+      var nw = null;
+      lists.forEach(function (x) { if (x && x.savedAt && (!nw || (x.fetchedAt || 0) > (nw.fetchedAt || 0))) nw = x; });
+      var cnt = document.getElementById('dv-cnt');
+      if (cnt && nw) cnt.textContent += ' · 資料時間 ' + nw.savedAt;
     });
   }
+  // 首頁開著不關、或手機切回來時瀏覽器直接還原舊畫面，配息變動會一直停在舊資料。
+  // 切回分頁時超過 10 分鐘沒讀就重讀；開著不動則每 30 分鐘重讀一次。
+  function reloadIfOld(min) {
+    if (!lastLoad || !document.getElementById('dv-body')) return;
+    if (Date.now() - lastLoad >= min * 60000) load();
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') reloadIfOld(10);
+  });
+  window.addEventListener('pageshow', function (e) { if (e.persisted) reloadIfOld(0); });
+  setInterval(function () { if (document.visibilityState !== 'hidden') reloadIfOld(30); }, 5 * 60000);
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();
 })();
