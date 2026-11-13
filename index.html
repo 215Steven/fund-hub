@@ -1005,28 +1005,37 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
   }
 
   function build(lists) {
-    var seen = {}, rows = [];
+    // 同一檔常同時在兩、三個險種，各險種快照更新時間不一定相同。
+    // 每檔只取「最新一次除息日」最新的那份來判斷；否則較舊快照裡的上一期調整
+    // （例如 8→9 月）會蓋過已經進來、但變動沒超過 5% 的新一期，舊調整就一直掛著。
+    var best = {}, order = [];
     lists.forEach(function (j, ix) {
       if (!j || !Array.isArray(j.report)) return;
       var ins = CODES[ix];
       j.report.forEach(function (r) {
-        if (!r.divs || r.divs.length < 2) return;
-        var a = r.divs[0], b = r.divs[1];
-        if (!a || !b || !(b.amount > 0)) return;
-        if (a.ex && b.ex) {
-          // 用除息日判斷是不是相鄰的一期：相隔 20～45 天。
-          // 月初、月底除息的基金（例如 10/01 與 10/30）用月份比會被誤判成斷月或同月。
-          var gap = (Date.parse(a.ex) - Date.parse(b.ex)) / 86400000;
-          if (!(gap >= 20 && gap <= 45)) return;
-        } else if (mi(a.date) - mi(b.date) !== 1) return;   // 舊快照沒有除息日，退回比月份   // 只比相鄰月份
-        var pct = (a.amount - b.amount) / b.amount * 100;
-        if (Math.abs(pct) < TH) return;
+        if (!r.divs || !r.divs.length) return;
         var k = r.v40 || r.code;
-        if (seen[k]) { if (seen[k].ins.indexOf(ins) < 0) seen[k].ins.push(ins); return; }
-        seen[k] = { nm: r.name, code: k, url: r.url, m0: a.date, m1: b.date, e0: a.ex || '', e1: b.ex || '',
-                    v0: a.amount, v1: b.amount, pct: pct, ins: [ins] };
-        rows.push(seen[k]);
+        var key0 = String(r.divs[0].ex || r.divs[0].date || '');
+        var b = best[k];
+        if (!b) { best[k] = { r: r, key: key0, ins: [ins] }; order.push(k); return; }
+        if (b.ins.indexOf(ins) < 0) b.ins.push(ins);
+        if (key0 > b.key) { b.r = r; b.key = key0; }
       });
+    });
+    var rows = [];
+    order.forEach(function (k) {
+      var r = best[k].r, a = r.divs[0], b = r.divs[1];
+      if (!a || !b || !(b.amount > 0)) return;
+      if (a.ex && b.ex) {
+        // 用除息日判斷是不是相鄰的一期：相隔 20～45 天
+        var gap = (Date.parse(a.ex) - Date.parse(b.ex)) / 86400000;
+        if (!(gap >= 20 && gap <= 45)) return;
+      } else if (mi(a.date) - mi(b.date) !== 1) return;   // 舊快照沒有除息日，退回比月份
+      var pct = (a.amount - b.amount) / b.amount * 100;
+      if (Math.abs(pct) < TH) return;
+      rows.push({ nm: r.name, code: k, url: r.url, m0: a.date, m1: b.date,
+                  e0: a.ex || '', e1: b.ex || '',
+                  v0: a.amount, v1: b.amount, pct: pct, ins: best[k].ins });
     });
     rows.sort(function (x, y) { return Math.abs(y.pct) - Math.abs(x.pct); });
     return rows;
