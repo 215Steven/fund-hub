@@ -84,7 +84,8 @@ function get6MonthDivs(divs, isETF) {
   if (isETF) return divs.slice(0, 6);
   const seen = {}, r = [];
   for (let i = 0; i < divs.length; i++) {
-    const key = divs[i].date.substring(0, 7);
+    // 有除息日就用除息日去重：同一個月除息兩次（月初、月底）兩筆都要留
+    const key = divs[i].ex || divs[i].date.substring(0, 7);
     if (!seen[key]) { seen[key] = true; r.push(divs[i]); }
     if (r.length >= 6) break;
   }
@@ -307,7 +308,9 @@ module.exports = async function handler(req, res) {
             const ds = x.recordDate || x.dividendDate || x.date || '';
             const am = parseFloat(x.dividendPerUnit);
             if (!ds || isNaN(am) || am <= 0) return null;
-            return { date: String(ds).replace(/\//g, '-').substring(0, 7), amount: am };
+            // ex：除息日（基準日）完整日期，首頁配息變動用它判斷前後兩次是不是相鄰的一期
+            var ex = String(x.recordDate || ds).replace(/\//g, '-').substring(0, 10);
+            return { date: String(ds).replace(/\//g, '-').substring(0, 7), amount: am, ex: ex };
           }).filter(Boolean);
           const row = byCode[a.assetFbCode];
           if (!row) continue;
