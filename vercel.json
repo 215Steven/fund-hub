@@ -14,16 +14,18 @@
       "maxDuration": 60
     }
   },
-  "crons": [
-    {
-      "path": "/api/prewarm",
-      "schedule": "0 6 * * *"
-    },
-    {
+  "schedules": {
+    "trial-reminder": {
+      "schedule": "0 1 * * *",
       "path": "/api/cron-notify",
-      "schedule": "0 1 * * *"
+      "requestMethod": "GET"
+    },
+    "prewarm": {
+      "schedule": "0 6 * * *",
+      "path": "/api/prewarm",
+      "requestMethod": "GET"
     }
-  ],
+  },
   "rewrites": [
     {
       "source": "/embed/:code",
