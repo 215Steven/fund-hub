@@ -31,10 +31,12 @@ function allowed(req) {
   return /vercel-cron/i.test(req.headers['user-agent'] || '');
 }
 
+// 固定走正式網域，不要用進來的 host。
+// Vercel 的排程是打部署專屬網址（fund-xxxx.vercel.app），那個網址有存取保護，
+// 用它回頭抓 /api/data 會被擋下來，整支就回 502——排程一直「有跑但都失敗」就是這個原因。
+const SITE_ROOT = 'https://' + (process.env.SITE_HOST || 'fund.oosayhi.com');
 function baseUrl(req) {
-  const host = req.headers['x-forwarded-host'] || req.headers.host;
-  const proto = req.headers['x-forwarded-proto'] || 'https';
-  return proto + '://' + host;
+  return SITE_ROOT;
 }
 
 // prewarm 參數每次都不同，否則只會拿到 CDN 邊緣節點的舊副本，function 根本不會被喚醒
