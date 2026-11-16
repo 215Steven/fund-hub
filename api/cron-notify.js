@@ -48,8 +48,23 @@ function cta() {
 module.exports = async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
-  if (!allowed(req)) return res.status(401).json({ error: 'unauthorized' });
+  const authed = allowed(req);
+  // 備援觸發：Vercel 的排程沒跑時，由 GitHub Actions 每天打一次 ?backup=1。
+  // 這條路不帶密鑰，所以有兩道限制：20 小時內跑過就直接跳過（不管是誰跑的）；
+  // 回應不帶任何名單統計。信本身寄過就有記錄，重複觸發也不會重寄。
+  const backup = !authed && /[?&]backup=1(&|$)/.test(req.url || '');
+  if (!authed && !backup) return res.status(401).json({ error: 'unauthorized' });
   if (!process.env.BLOB_READ_WRITE_TOKEN) return res.status(500).json({ error: 'blob not configured' });
+
+  const META = 'meta/cron-notify.json';
+  if (backup) {
+    const last = await readJson(META);
+    if (last && Date.now() - (last.at || 0) < 20 * 3600 * 1000) {
+      return res.status(200).json({ ok: true, skipped: 'recent', by: last.by || null });
+    }
+  }
+  // 先記下這一輪，兩邊同時打進來時後到的那個會被上面擋掉
+  try { await writeJson(META, { at: Date.now(), by: backup ? 'backup' : 'cron' }); } catch (e) {}
 
   const { list } = require('@vercel/blob');
   const out = {
@@ -109,6 +124,7 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    if (backup) return res.status(200).json({ ok: true, ran: true });
     return res.status(200).json(Object.assign({ ok: true, trialDays: TRIAL_DAYS }, out));
   } catch (e) {
     console.error('cron-notify failed:', e && e.message);
