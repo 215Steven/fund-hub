@@ -1,0 +1,40 @@
+# 備援排程：Vercel 自己的排程沒有在跑，所以由 GitHub 每天觸發一次。
+# 兩支都不需要密鑰：
+#   到期提醒  /api/cron-notify?backup=1  伺服器端有 20 小時下限，寄過的信不會重寄
+#   資料更新  /api/data?...&force=1      伺服器端有 30 分鐘下限
+# Vercel 的排程哪天恢復了也不衝突，後到的那個會被下限擋掉。
+# 注意：repo 連續 60 天沒有任何 commit，GitHub 會自動停用排程，到 Actions 頁面重新啟用即可。
+name: backup-schedule
+
+on:
+  schedule:
+    - cron: '30 1 * * *'   # 台灣 09:30　體驗期到期提醒
+    - cron: '10 6 * * *'   # 台灣 14:10　更新三個險種與組合試算的資料
+  workflow_dispatch:        # 手動執行只跑資料更新，不寄信
+
+permissions: {}
+
+jobs:
+  notify:
+    if: github.event.schedule == '30 1 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 到期提醒
+        run: curl -fsS --max-time 90 "https://fund.oosayhi.com/api/cron-notify?backup=1"
+
+  refresh:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '10 6 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 更新資料
+        run: |
+          fail=0
+          for q in code=VCCT code=VBCT code=UND src=assets; do
+            code=$(curl -sS --max-time 90 -o /dev/null -w "%{http_code}" "https://fund.oosayhi.com/api/data?$q&force=1&gha=$(date +%s)" || echo 000)
+            echo "$q -> $code"
+            [ "$code" = "200" ] || fail=1
+            sleep 3
+          done
+          exit $fail
