@@ -29,3 +29,8 @@
 @media (max-width:620px){
   .hub-star{display:inline-block;padding:12px;margin:-12px;line-height:1}
 }
+
+/* 右上角「載入配息資料」拿掉：它只是把伺服器現有的資料再讀一次，
+   頁面本來就會自動換上最新資料，按了畫面不會變，容易被誤會成更新壞了。
+   真正會重抓的是「最後更新」旁邊的「立即更新」。 */
+button[onclick="startLoad(true)"]{display:none!important}
