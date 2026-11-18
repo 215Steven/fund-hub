@@ -1011,6 +1011,8 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
         同樣要超過平常變動的 2 倍；平常變動只看這兩期以前，免得被這兩期本身的調整墊高。
      ③ 固定配息調整：前 3 期配息都一樣、這次才調整，而且調整 TH% 以上。
         不套用①的「平常變動 2 倍」，所以先前調過一階的穩定配息基金（如 MLE24）也會列。
+     ④ 連續 3 期：三期都沒有反向（中間可以持平）、這次也有動，合計 TH% 以上。
+        一路小幅調整本身就是訊號，不套用 2 倍過濾。
      相鄰的一期用除息日判斷（相隔 20～45 天），中間漏一期就不往前比。 */
   function verdict(d) {
     if (!d || d.length < 2) return null;
@@ -1041,6 +1043,14 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
       var m2 = 0, p2 = ch.slice(2).map(Math.abs).sort(function (a, b) { return a - b; });
       if (p2.length >= 2) m2 = p2[Math.floor(p2.length / 2)];
       if (Math.abs(c2) >= Math.max(TH, 2 * m2)) return { kind: 'trend', pct: c2, to: d[0], from: d[2] };
+    }
+    // ④ 連續 3 期同方向（中間可以持平）、這次也有動，跟三期前比合計 TH% 以上
+    if (ch.length >= 3 && c0 !== 0) {
+      var up = ch[0] >= 0 && ch[1] >= 0 && ch[2] >= 0, dn = ch[0] <= 0 && ch[1] <= 0 && ch[2] <= 0;
+      if (up || dn) {
+        var c3 = pc(d[0], d[3]);
+        if (Math.abs(c3) >= TH) return { kind: 'trend3', pct: c3, to: d[0], from: d[3] };
+      }
     }
     return null;
   }
@@ -1102,7 +1112,7 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
         '<td class="r">' + fmt(o.v1) + '</td>' +
         '<td class="r">' + fmt(o.v0) + '</td>' +
         '<td class="r ' + cls + '">' + sign + o.pct.toFixed(1) + '%' +
-          (o.kind === 'trend' ? '<small class="dv-why" style="display:block;font-size:11px;font-weight:500;color:#7a869a;white-space:nowrap">連續 2 期</small>' :
+          (o.kind === 'trend' || o.kind === 'trend3' ? '<small class="dv-why" style="display:block;font-size:11px;font-weight:500;color:#7a869a;white-space:nowrap">' + (o.kind === 'trend3' ? '連續 3 期' : '連續 2 期') + '</small>' :
            o.kind === 'fixed' ? '<small class="dv-why" style="display:block;font-size:11px;font-weight:500;color:#7a869a;white-space:nowrap">固定配息調整</small>' : '') + '</td>' +
       '</tr>';
     }
@@ -1120,7 +1130,7 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
     sec.id = 'dv-sect';
     sec.innerHTML =
       '<div class="fav-head"><h2>配息變動 · 門檻 ' + TH + '% <span id="dv-cnt" class="muted"></span></h2></div>' +
-      '<p class="dv-note">列出兩種情況：最近一次增減 ' + TH + '% 以上（配息本來就忽高忽低的基金，要超過平常變動的 2 倍才列）；連續兩期同方向調整、合計 ' + TH + '% 以上（例如上期大降、這期又小降，同樣看平常變動）。前 3 期配息都一樣、這次才調整的，標「固定配息調整」。' +
+      '<p class="dv-note">列出三種情況：最近一次增減 ' + TH + '% 以上（配息本來就忽高忽低的基金，要超過平常變動的 2 倍才列）；連續兩期同方向調整、合計 ' + TH + '% 以上（例如上期大降、這期又小降，同樣看平常變動）；連續三期一路往同方向調整、合計 ' + TH + '% 以上。前 3 期配息都一樣、這次才調整的，標「固定配息調整」。' +
       '配息變多不代表賺得多，可能是配到本金，兩個方向都只是提醒你去看一下。' +
       '各檔除息日不同，每列都標出前後兩次的除息日；' +
       '兩次相隔超過 45 天（中間漏了一期）的不列入比較。</p>' +
