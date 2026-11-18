@@ -1004,10 +1004,46 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
     return '<a href="/' + ins + '?q=' + encodeURIComponent(o.code) + '">' + esc(o.code) + '</a>';
   }
 
+  /* 判斷一檔基金要不要列出（三個工具頁的 fh-common.js 用同一套，改這裡要一起改）
+     ① 單次變動：最近一次增減 TH% 以上。配息本來就忽高忽低的基金，
+        門檻提高到「平常變動幅度的 2 倍」，免得每個月都上榜、把真正的調整淹沒。
+     ② 連續小幅調整：連兩期同方向、每次都不到 TH%，但跟兩期前比合計 TH% 以上。
+     ③ 固定配息有調整：前幾期金額完全沒變，這次動了（0.5% 以上就算）。
+     相鄰的一期用除息日判斷（相隔 20～45 天），中間漏一期就不往前比。 */
+  function verdict(d) {
+    if (!d || d.length < 2) return null;
+    function adj(a, b) {
+      if (a.ex && b.ex) { var g = (Date.parse(a.ex) - Date.parse(b.ex)) / 86400000; return g >= 20 && g <= 45; }
+      return mi(a.date) - mi(b.date) === 1;
+    }
+    function pc(a, b) { return (a.amount - b.amount) / b.amount * 100; }
+    var ch = [];
+    for (var i = 0; i < d.length - 1; i++) {
+      if (!adj(d[i], d[i + 1]) || !(d[i + 1].amount > 0)) break;
+      ch.push(pc(d[i], d[i + 1]));
+    }
+    if (!ch.length) return null;
+    var prev = ch.slice(1);
+    var flat = prev.length >= 2 && prev.every(function (x) { return Math.abs(x) < 0.01; });
+    var med = 0;
+    if (prev.length >= 2) {
+      var s = prev.map(Math.abs).sort(function (a, b) { return a - b; });
+      med = s[Math.floor(s.length / 2)];
+    }
+    var c0 = ch[0];
+    if (Math.abs(c0) >= Math.max(TH, 2 * med)) return { kind: 'jump', pct: c0, to: d[0], from: d[1] };
+    if (flat && Math.abs(c0) >= 0.5) return { kind: 'fixed', pct: c0, to: d[0], from: d[1] };
+    if (ch.length >= 2 && c0 !== 0 && Math.abs(c0) < TH && Math.abs(ch[1]) < TH &&
+        (c0 > 0) === (ch[1] > 0)) {
+      var c2 = pc(d[0], d[2]);
+      if (Math.abs(c2) >= TH) return { kind: 'trend', pct: c2, to: d[0], from: d[2] };
+    }
+    return null;
+  }
+
   function build(lists) {
     // 同一檔常同時在兩、三個險種，各險種快照更新時間不一定相同。
-    // 每檔只取「最新一次除息日」最新的那份來判斷；否則較舊快照裡的上一期調整
-    // （例如 8→9 月）會蓋過已經進來、但變動沒超過 5% 的新一期，舊調整就一直掛著。
+    // 每檔只取「最新一次除息日」最新的那份來判斷。
     var best = {}, order = [];
     lists.forEach(function (j, ix) {
       if (!j || !Array.isArray(j.report)) return;
@@ -1024,18 +1060,11 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
     });
     var rows = [];
     order.forEach(function (k) {
-      var r = best[k].r, a = r.divs[0], b = r.divs[1];
-      if (!a || !b || !(b.amount > 0)) return;
-      if (a.ex && b.ex) {
-        // 用除息日判斷是不是相鄰的一期：相隔 20～45 天
-        var gap = (Date.parse(a.ex) - Date.parse(b.ex)) / 86400000;
-        if (!(gap >= 20 && gap <= 45)) return;
-      } else if (mi(a.date) - mi(b.date) !== 1) return;   // 舊快照沒有除息日，退回比月份
-      var pct = (a.amount - b.amount) / b.amount * 100;
-      if (Math.abs(pct) < TH) return;
-      rows.push({ nm: r.name, code: k, url: r.url, m0: a.date, m1: b.date,
-                  e0: a.ex || '', e1: b.ex || '',
-                  v0: a.amount, v1: b.amount, pct: pct, ins: best[k].ins });
+      var r = best[k].r, v = verdict(r.divs);
+      if (!v) return;
+      rows.push({ nm: r.name, code: k, url: r.url, kind: v.kind,
+                  m0: v.to.date, m1: v.from.date, e0: v.to.ex || '', e1: v.from.ex || '',
+                  v0: v.to.amount, v1: v.from.amount, pct: v.pct, ins: best[k].ins });
     });
     rows.sort(function (x, y) { return Math.abs(y.pct) - Math.abs(x.pct); });
     return rows;
@@ -1068,7 +1097,9 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
         '<td class="dv-mo">' + dvd(o.e1, o.m1) + ' → ' + dvd(o.e0, o.m0) + '</td>' +
         '<td class="r">' + fmt(o.v1) + '</td>' +
         '<td class="r">' + fmt(o.v0) + '</td>' +
-        '<td class="r ' + cls + '">' + sign + o.pct.toFixed(1) + '%</td>' +
+        '<td class="r ' + cls + '">' + sign + o.pct.toFixed(1) + '%' +
+          (o.kind === 'trend' ? '<small class="dv-why" style="display:block;font-size:11px;font-weight:500;color:#7a869a;white-space:nowrap">連續 2 期</small>' :
+           o.kind === 'fixed' ? '<small class="dv-why" style="display:block;font-size:11px;font-weight:500;color:#7a869a;white-space:nowrap">固定配息調整</small>' : '') + '</td>' +
       '</tr>';
     }
     h += '</tbody></table></div>';
@@ -1084,8 +1115,8 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
     sec.className = 'card dv-sect';
     sec.id = 'dv-sect';
     sec.innerHTML =
-      '<div class="fav-head"><h2>配息增減 ' + TH + '% 以上 <span id="dv-cnt" class="muted"></span></h2></div>' +
-      '<p class="dv-note">最近兩次配息相差 5% 以上的標的，增加與減少都列出。' +
+      '<div class="fav-head"><h2>配息變動 · 門檻 ' + TH + '% <span id="dv-cnt" class="muted"></span></h2></div>' +
+      '<p class="dv-note">列出三種情況：最近一次增減 ' + TH + '% 以上（配息本來就忽高忽低的基金，要超過平常變動的 2 倍才列）；連續兩期同方向調整、合計 ' + TH + '% 以上；固定配息的基金有任何調整。' +
       '配息變多不代表賺得多，可能是配到本金，兩個方向都只是提醒你去看一下。' +
       '各檔除息日不同，每列都標出前後兩次的除息日；' +
       '兩次相隔超過 45 天（中間漏了一期）的不列入比較。</p>' +
