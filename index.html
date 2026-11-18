@@ -978,6 +978,7 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
   .dv-mo{font-size:12.5px}
 }
 </style>
+<script src="/fh-divrule.js"></script>
 <script>
 /* 配息變動：把最近兩次配息相差 5% 以上的標的集中列出。
    口徑刻意跟三支工具頁的紅綠底一致（同樣 5%、同樣兩個方向），
@@ -1004,56 +1005,8 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
     return '<a href="/' + ins + '?q=' + encodeURIComponent(o.code) + '">' + esc(o.code) + '</a>';
   }
 
-  /* 判斷一檔基金要不要列出（三個工具頁的 fh-common.js 用同一套，改這裡要一起改）
-     ① 單次變動：最近一次增減 TH% 以上。配息本來就忽高忽低的基金，
-        門檻提高到「平常變動幅度的 2 倍」，免得每個月都上榜、把真正的調整淹沒。
-     ② 連續兩期同方向：這次不到 TH%，但跟兩期前比合計 TH% 以上（例如上期大降、這期又小降）。
-        同樣要超過平常變動的 2 倍；平常變動只看這兩期以前，免得被這兩期本身的調整墊高。
-     ③ 固定配息調整：前 3 期配息都一樣、這次才調整，而且調整 TH% 以上。
-        不套用①的「平常變動 2 倍」，所以先前調過一階的穩定配息基金（如 MLE24）也會列。
-     ④ 連續 3 期：三期都沒有反向（中間可以持平）、這次也有動，合計 TH% 以上。
-        一路小幅調整本身就是訊號，不套用 2 倍過濾。
-     相鄰的一期用除息日判斷（相隔 20～45 天），中間漏一期就不往前比。 */
-  function verdict(d) {
-    if (!d || d.length < 2) return null;
-    function adj(a, b) {
-      if (a.ex && b.ex) { var g = (Date.parse(a.ex) - Date.parse(b.ex)) / 86400000; return g >= 20 && g <= 45; }
-      return mi(a.date) - mi(b.date) === 1;
-    }
-    function pc(a, b) { return (a.amount - b.amount) / b.amount * 100; }
-    var ch = [];
-    for (var i = 0; i < d.length - 1; i++) {
-      if (!adj(d[i], d[i + 1]) || !(d[i + 1].amount > 0)) break;
-      ch.push(pc(d[i], d[i + 1]));
-    }
-    if (!ch.length) return null;
-    var prev = ch.slice(1);
-    var flat = prev.length >= 2 && Math.abs(prev[0]) < 0.01 && Math.abs(prev[1]) < 0.01;
-    var med = 0;
-    if (prev.length >= 2) {
-      var s = prev.map(Math.abs).sort(function (a, b) { return a - b; });
-      med = s[Math.floor(s.length / 2)];
-    }
-    var c0 = ch[0];
-    if (flat && Math.abs(c0) >= TH) return { kind: 'fixed', pct: c0, to: d[0], from: d[1] };
-    if (Math.abs(c0) >= Math.max(TH, 2 * med)) return { kind: 'jump', pct: c0, to: d[0], from: d[1] };
-    if (ch.length >= 2 && c0 !== 0 && Math.abs(c0) < TH &&
-        (c0 > 0) === (ch[1] > 0)) {
-      var c2 = pc(d[0], d[2]);
-      var m2 = 0, p2 = ch.slice(2).map(Math.abs).sort(function (a, b) { return a - b; });
-      if (p2.length >= 2) m2 = p2[Math.floor(p2.length / 2)];
-      if (Math.abs(c2) >= Math.max(TH, 2 * m2)) return { kind: 'trend', pct: c2, to: d[0], from: d[2] };
-    }
-    // ④ 連續 3 期同方向（中間可以持平）、這次也有動，跟三期前比合計 TH% 以上
-    if (ch.length >= 3 && c0 !== 0) {
-      var up = ch[0] >= 0 && ch[1] >= 0 && ch[2] >= 0, dn = ch[0] <= 0 && ch[1] <= 0 && ch[2] <= 0;
-      if (up || dn) {
-        var c3 = pc(d[0], d[3]);
-        if (Math.abs(c3) >= TH) return { kind: 'trend3', pct: c3, to: d[0], from: d[3] };
-      }
-    }
-    return null;
-  }
+  /* 判斷規則在 /fh-divrule.js，跟三個工具頁共用同一份；改規則只改那裡 */
+  function verdict(d) { return window.FH_DIV ? window.FH_DIV.verdict(d, TH) : null; }
 
   function build(lists) {
     // 同一檔常同時在兩、三個險種，各險種快照更新時間不一定相同。
@@ -1130,10 +1083,16 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
     sec.id = 'dv-sect';
     sec.innerHTML =
       '<div class="fav-head"><h2>配息變動 · 門檻 ' + TH + '% <span id="dv-cnt" class="muted"></span></h2></div>' +
-      '<p class="dv-note">列出三種情況：最近一次增減 ' + TH + '% 以上（配息本來就忽高忽低的基金，要超過平常變動的 2 倍才列）；連續兩期同方向調整、合計 ' + TH + '% 以上（例如上期大降、這期又小降，同樣看平常變動）；連續三期一路往同方向調整、合計 ' + TH + '% 以上。前 3 期配息都一樣、這次才調整的，標「固定配息調整」。' +
-      '配息變多不代表賺得多，可能是配到本金，兩個方向都只是提醒你去看一下。' +
-      '各檔除息日不同，每列都標出前後兩次的除息日；' +
-      '兩次相隔超過 45 天（中間漏了一期）的不列入比較。</p>' +
+      '<p class="dv-note">列出配息調整幅度較大、或連續往同一個方向調整的標的。配息變多不代表賺得多，可能是配到本金，兩個方向都只是提醒你去看一下。</p>' +
+      '<details class="dv-rule" style="margin:-2px 0 12px;font-size:13px;line-height:1.7;color:#5b6b82">' +
+      '<summary style="cursor:pointer;color:#2657a0;font-weight:600">判斷方式</summary>' +
+      '<ul style="margin:6px 0 0;padding-left:18px">' +
+      '<li><b>單次變動</b>：這次增減 ' + TH + '% 以上。配息本來就忽高忽低的基金，要超過它平常變動的 2 倍才列。</li>' +
+      '<li><b>固定配息調整</b>：前 3 期配息都一樣，這次調整 ' + TH + '% 以上。</li>' +
+      '<li><b>連續 2 期</b>：兩期同方向、合計 ' + TH + '% 以上，例如上期大降、這期又小降。</li>' +
+      '<li><b>連續 3 期</b>：三期一路往同方向調整、合計 ' + TH + '% 以上。</li>' +
+      '<li>比較的是前後兩次除息日；兩次相隔超過 45 天（中間漏了一期）就不比較。</li>' +
+      '</ul></details>' +
       '<div id="dv-body"><div class="dv-empty">載入中…</div></div>';
     fav.insertAdjacentElement('afterend', sec);
     return true;
