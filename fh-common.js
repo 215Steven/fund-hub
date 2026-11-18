@@ -625,3 +625,85 @@ try {
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') check(); });
 })();
 } catch (e) { if (window.console) console.error('[fh-common] fh-pm-refresh', e); }
+
+/* ════════ fh-div-flag ════════ */
+try {
+(function () {
+  /* 配息欄「最新一筆」的紅綠底：跟首頁「配息變動」用同一套規則（index.html 的 verdict），
+     首頁有列的，這裡才上色；滑上去看是哪一種、跟哪一期比。
+       ① 單次變動 5% 以上；配息本來就忽高忽低的，要超過平常變動的 2 倍
+       ② 連續兩期同方向、合計 5% 以上
+       ③ 固定配息有調整（0.5% 以上）
+     展開後的歷史月份維持原本的逐月 5% 標色。 */
+  var CODE = ((location.pathname.match(/(vcct|vbct|und)/i) || [])[1] || '').toUpperCase();
+  if (!CODE) return;
+  var TH = 5;
+  function mi(s) { var p = String(s).split('-'); return (+p[0]) * 12 + (+p[1]); }
+  function verdict(d) {
+    if (!d || d.length < 2) return null;
+    function adj(a, b) {
+      if (a.ex && b.ex) { var g = (Date.parse(a.ex) - Date.parse(b.ex)) / 86400000; return g >= 20 && g <= 45; }
+      return mi(a.date) - mi(b.date) === 1;
+    }
+    function pc(a, b) { return (a.amount - b.amount) / b.amount * 100; }
+    var ch = [];
+    for (var i = 0; i < d.length - 1; i++) {
+      if (!adj(d[i], d[i + 1]) || !(d[i + 1].amount > 0)) break;
+      ch.push(pc(d[i], d[i + 1]));
+    }
+    if (!ch.length) return null;
+    var prev = ch.slice(1);
+    var flat = prev.length >= 2 && prev.every(function (x) { return Math.abs(x) < 0.01; });
+    var med = 0;
+    if (prev.length >= 2) {
+      var s = prev.map(Math.abs).sort(function (a, b) { return a - b; });
+      med = s[Math.floor(s.length / 2)];
+    }
+    var c0 = ch[0];
+    if (Math.abs(c0) >= Math.max(TH, 2 * med)) return { kind: 'jump', pct: c0, from: d[1] };
+    if (flat && Math.abs(c0) >= 0.5) return { kind: 'fixed', pct: c0, from: d[1] };
+    if (ch.length >= 2 && c0 !== 0 && Math.abs(c0) < TH && Math.abs(ch[1]) < TH && (c0 > 0) === (ch[1] > 0)) {
+      var c2 = pc(d[0], d[2]);
+      if (Math.abs(c2) >= TH) return { kind: 'trend', pct: c2, from: d[2] };
+    }
+    return null;
+  }
+  var KIND = { jump: '', trend: '（連續 2 期）', fixed: '（固定配息調整）' };
+  var src = null, map = null, codes = null;
+  function build() {
+    var rows = window[CODE + '_ROWS'];
+    if (!rows || !rows.length) return false;
+    if (rows === src) return true;
+    src = rows; map = {}; codes = {};
+    rows.forEach(function (r) { codes[r.code] = 1; var v = verdict(r.divs); if (v) map[r.code] = v; });
+    return true;
+  }
+  function label(x) { return x.ex ? x.ex.substring(5).replace('-', '/') : String(x.date).substring(2); }
+  var queued = false;
+  function apply() {
+    queued = false;
+    if (!build()) return;
+    var cells = document.querySelectorAll('.div-cell:not([data-fh-dv])');
+    for (var i = 0; i < cells.length; i++) {
+      var cell = cells[i];
+      cell.setAttribute('data-fh-dv', '1');
+      var first = cell.querySelector('.d-first');
+      var tr = cell.closest('tr');
+      if (!first || !tr) continue;
+      var code = '';
+      for (var j = 0; j < tr.cells.length; j++) {
+        var t = tr.cells[j].textContent.trim();
+        if (codes[t]) { code = t; break; }
+      }
+      var v = code && map[code];
+      first.classList.remove('d-up', 'd-down');
+      if (!v) continue;
+      first.classList.add(v.pct > 0 ? 'd-up' : 'd-down');
+      first.title = '較 ' + label(v.from) + ' ' + (v.pct > 0 ? '+' : '') + v.pct.toFixed(1) + '%' + KIND[v.kind];
+    }
+  }
+  function queue() { if (!queued) { queued = true; requestAnimationFrame(apply); } }
+  new MutationObserver(queue).observe(document.body, { childList: true, subtree: true });
+  queue();
+})();
+} catch (e) { if (window.console) console.error('[fh-common] fh-div-flag', e); }
