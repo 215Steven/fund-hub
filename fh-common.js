@@ -635,7 +635,7 @@ try {
        ② 連續兩期同方向、合計 5% 以上
        ③ 前 3 期配息都一樣、這次調整 5% 以上（固定配息調整，不套用①的 2 倍）
      工具頁只看「這期 vs 上期」：紅綠底與 ▲▼ 只給①③（單次變動）；
-     ② 連續 2 期是跟兩期前比，只在首頁列，這裡不上色、不出箭頭。
+     ②④ 連續 2 期、連續 3 期是跟更早的期數比，只在首頁列，這裡不上色、不出箭頭。
      沒達標的就不顯示箭頭，免得小數點的變動也出現 ▲▼。
      展開後的歷史月份維持原本的逐月 5% 標色。 */
   var CODE = ((location.pathname.match(/(vcct|vbct|und)/i) || [])[1] || '').toUpperCase();
@@ -671,9 +671,16 @@ try {
       if (p2.length >= 2) m2 = p2[Math.floor(p2.length / 2)];
       if (Math.abs(c2) >= Math.max(TH, 2 * m2)) return { kind: 'trend', pct: c2, from: d[2] };
     }
+    if (ch.length >= 3 && c0 !== 0) {
+      var up = ch[0] >= 0 && ch[1] >= 0 && ch[2] >= 0, dn = ch[0] <= 0 && ch[1] <= 0 && ch[2] <= 0;
+      if (up || dn) {
+        var c3 = pc(d[0], d[3]);
+        if (Math.abs(c3) >= TH) return { kind: 'trend3', pct: c3, from: d[3] };
+      }
+    }
     return null;
   }
-  var KIND = { jump: '', trend: '（連續 2 期）', fixed: '（固定配息調整）' };
+  var KIND = { jump: '', trend: '（連續 2 期）', trend3: '（連續 3 期）', fixed: '（固定配息調整）' };
   var src = null, map = null, codes = null;
   function build() {
     var rows = window[CODE + '_ROWS'];
@@ -701,7 +708,7 @@ try {
         if (codes[t]) { code = t; break; }
       }
       var v = code && map[code];
-      if (v && v.kind === 'trend') v = null;
+      if (v && (v.kind === 'trend' || v.kind === 'trend3')) v = null;
       var arrow = cell.querySelector('.d-trend');
       first.classList.remove('d-up', 'd-down');
       if (!v) {
