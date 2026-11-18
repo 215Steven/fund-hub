@@ -633,7 +633,7 @@ try {
      首頁有列的，這裡才上色；滑上去看是哪一種、跟哪一期比。
        ① 單次變動 5% 以上；配息本來就忽高忽低的，要超過平常變動的 2 倍
        ② 連續兩期同方向、合計 5% 以上
-       ③ 固定配息有調整（0.5% 以上）
+       ③ 前 3 期配息都一樣、這次調整 5% 以上（固定配息調整，不套用①的 2 倍）
      展開後的歷史月份維持原本的逐月 5% 標色。 */
   var CODE = ((location.pathname.match(/(vcct|vbct|und)/i) || [])[1] || '').toUpperCase();
   if (!CODE) return;
@@ -653,15 +653,15 @@ try {
     }
     if (!ch.length) return null;
     var prev = ch.slice(1);
-    var flat = prev.length >= 2 && prev.every(function (x) { return Math.abs(x) < 0.01; });
+    var flat = prev.length >= 2 && Math.abs(prev[0]) < 0.01 && Math.abs(prev[1]) < 0.01;
     var med = 0;
     if (prev.length >= 2) {
       var s = prev.map(Math.abs).sort(function (a, b) { return a - b; });
       med = s[Math.floor(s.length / 2)];
     }
     var c0 = ch[0];
+    if (flat && Math.abs(c0) >= TH) return { kind: 'fixed', pct: c0, from: d[1] };
     if (Math.abs(c0) >= Math.max(TH, 2 * med)) return { kind: 'jump', pct: c0, from: d[1] };
-    if (flat && Math.abs(c0) >= 0.5) return { kind: 'fixed', pct: c0, from: d[1] };
     if (ch.length >= 2 && c0 !== 0 && Math.abs(c0) < TH && Math.abs(ch[1]) < TH && (c0 > 0) === (ch[1] > 0)) {
       var c2 = pc(d[0], d[2]);
       if (Math.abs(c2) >= TH) return { kind: 'trend', pct: c2, from: d[2] };
