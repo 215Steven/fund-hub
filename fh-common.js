@@ -634,6 +634,9 @@ try {
        ① 單次變動 5% 以上；配息本來就忽高忽低的，要超過平常變動的 2 倍
        ② 連續兩期同方向、合計 5% 以上
        ③ 前 3 期配息都一樣、這次調整 5% 以上（固定配息調整，不套用①的 2 倍）
+     工具頁只看「這期 vs 上期」：紅綠底與 ▲▼ 只給①③（單次變動）；
+     ② 連續 2 期是跟兩期前比，只在首頁列，這裡不上色、不出箭頭。
+     沒達標的就不顯示箭頭，免得小數點的變動也出現 ▲▼。
      展開後的歷史月份維持原本的逐月 5% 標色。 */
   var CODE = ((location.pathname.match(/(vcct|vbct|und)/i) || [])[1] || '').toUpperCase();
   if (!CODE) return;
@@ -662,9 +665,11 @@ try {
     var c0 = ch[0];
     if (flat && Math.abs(c0) >= TH) return { kind: 'fixed', pct: c0, from: d[1] };
     if (Math.abs(c0) >= Math.max(TH, 2 * med)) return { kind: 'jump', pct: c0, from: d[1] };
-    if (ch.length >= 2 && c0 !== 0 && Math.abs(c0) < TH && Math.abs(ch[1]) < TH && (c0 > 0) === (ch[1] > 0)) {
+    if (ch.length >= 2 && c0 !== 0 && Math.abs(c0) < TH && (c0 > 0) === (ch[1] > 0)) {
       var c2 = pc(d[0], d[2]);
-      if (Math.abs(c2) >= TH) return { kind: 'trend', pct: c2, from: d[2] };
+      var m2 = 0, p2 = ch.slice(2).map(Math.abs).sort(function (a, b) { return a - b; });
+      if (p2.length >= 2) m2 = p2[Math.floor(p2.length / 2)];
+      if (Math.abs(c2) >= Math.max(TH, 2 * m2)) return { kind: 'trend', pct: c2, from: d[2] };
     }
     return null;
   }
@@ -696,10 +701,22 @@ try {
         if (codes[t]) { code = t; break; }
       }
       var v = code && map[code];
+      if (v && v.kind === 'trend') v = null;
+      var arrow = cell.querySelector('.d-trend');
       first.classList.remove('d-up', 'd-down');
-      if (!v) continue;
+      if (!v) {
+        first.removeAttribute('title');
+        if (arrow) arrow.style.display = 'none';
+        continue;
+      }
       first.classList.add(v.pct > 0 ? 'd-up' : 'd-down');
       first.title = '較 ' + label(v.from) + ' ' + (v.pct > 0 ? '+' : '') + v.pct.toFixed(1) + '%' + KIND[v.kind];
+      if (arrow) {
+        arrow.style.display = '';
+        arrow.className = 'd-trend ' + (v.pct > 0 ? 'd-t-up' : 'd-t-down');
+        arrow.textContent = v.pct > 0 ? '\u25B2' : '\u25BC';
+        arrow.title = first.title;
+      }
     }
   }
   function queue() { if (!queued) { queued = true; requestAnimationFrame(apply); } }
