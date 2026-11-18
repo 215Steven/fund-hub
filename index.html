@@ -1008,7 +1008,8 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
      ① 單次變動：最近一次增減 TH% 以上。配息本來就忽高忽低的基金，
         門檻提高到「平常變動幅度的 2 倍」，免得每個月都上榜、把真正的調整淹沒。
      ② 連續小幅調整：連兩期同方向、每次都不到 TH%，但跟兩期前比合計 TH% 以上。
-     ③ 固定配息有調整：前幾期金額完全沒變，這次動了（0.5% 以上就算）。
+     ③ 固定配息調整：前 3 期配息都一樣、這次才調整，而且調整 TH% 以上。
+        不套用①的「平常變動 2 倍」，所以先前調過一階的穩定配息基金（如 MLE24）也會列。
      相鄰的一期用除息日判斷（相隔 20～45 天），中間漏一期就不往前比。 */
   function verdict(d) {
     if (!d || d.length < 2) return null;
@@ -1024,15 +1025,15 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
     }
     if (!ch.length) return null;
     var prev = ch.slice(1);
-    var flat = prev.length >= 2 && prev.every(function (x) { return Math.abs(x) < 0.01; });
+    var flat = prev.length >= 2 && Math.abs(prev[0]) < 0.01 && Math.abs(prev[1]) < 0.01;
     var med = 0;
     if (prev.length >= 2) {
       var s = prev.map(Math.abs).sort(function (a, b) { return a - b; });
       med = s[Math.floor(s.length / 2)];
     }
     var c0 = ch[0];
+    if (flat && Math.abs(c0) >= TH) return { kind: 'fixed', pct: c0, to: d[0], from: d[1] };
     if (Math.abs(c0) >= Math.max(TH, 2 * med)) return { kind: 'jump', pct: c0, to: d[0], from: d[1] };
-    if (flat && Math.abs(c0) >= 0.5) return { kind: 'fixed', pct: c0, to: d[0], from: d[1] };
     if (ch.length >= 2 && c0 !== 0 && Math.abs(c0) < TH && Math.abs(ch[1]) < TH &&
         (c0 > 0) === (ch[1] > 0)) {
       var c2 = pc(d[0], d[2]);
@@ -1116,7 +1117,7 @@ table.dvt .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
     sec.id = 'dv-sect';
     sec.innerHTML =
       '<div class="fav-head"><h2>配息變動 · 門檻 ' + TH + '% <span id="dv-cnt" class="muted"></span></h2></div>' +
-      '<p class="dv-note">列出三種情況：最近一次增減 ' + TH + '% 以上（配息本來就忽高忽低的基金，要超過平常變動的 2 倍才列）；連續兩期同方向調整、合計 ' + TH + '% 以上；固定配息的基金有任何調整。' +
+      '<p class="dv-note">列出兩種情況：最近一次增減 ' + TH + '% 以上（配息本來就忽高忽低的基金，要超過平常變動的 2 倍才列）；連續兩期同方向調整、合計 ' + TH + '% 以上。前 3 期配息都一樣、這次才調整的，標「固定配息調整」。' +
       '配息變多不代表賺得多，可能是配到本金，兩個方向都只是提醒你去看一下。' +
       '各檔除息日不同，每列都標出前後兩次的除息日；' +
       '兩次相隔超過 45 天（中間漏了一期）的不列入比較。</p>' +
