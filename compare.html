@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>標的比較 — 富邦投資型保單標的（非官方）</title>
+<meta name="description" content="挑 2 到 4 檔富邦投資型保單標的，並排比較走勢、配息與風險數字。非官方工具，不提供投資建議。">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{
+    --navy:#1a3a5c; --blue:#2657a0; --blue-soft:#eef4fd; --line:#e2e8f0; --muted:#64748b;
+    --bg:#f3f6fb; --text:#1f2a37; --r:12px; --sh:0 1px 4px rgba(20,45,80,.06),0 6px 20px rgba(20,45,80,.05);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+    line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 16px 56px}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 0 4px}
+  .top a{color:var(--blue);text-decoration:none;font-size:14px;font-weight:600}
+  .top .badge{font-size:12px;color:var(--muted)}
+  h1{font-size:23px;line-height:1.35;margin:6px 0 2px;color:var(--navy)}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 16px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:14px;box-shadow:var(--sh)}
+  .card h2{font-size:15px;margin:0 0 10px;color:var(--navy)}
+
+  /* 選標的 */
+  .pick{position:relative}
+  .pick input{width:100%;font:inherit;font-size:15px;padding:11px 14px;border:1px solid #c7d2e3;border-radius:10px;background:#fff;outline:none}
+  .pick input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(38,87,160,.14)}
+  .pick input:disabled{background:#f6f8fb;color:#94a3b8}
+  .res{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:20;background:#fff;border:1px solid var(--line);
+    border-radius:10px;box-shadow:0 10px 30px rgba(20,45,80,.14);max-height:340px;overflow:auto;display:none}
+  .res.open{display:block}
+  .res button{display:block;width:100%;text-align:left;border:0;background:none;padding:9px 14px;font:inherit;cursor:pointer;border-bottom:1px solid #f1f4f8}
+  .res button:hover,.res button.on{background:var(--blue-soft)}
+  .res .nm{display:block;font-size:14px;color:var(--text)}
+  .res .meta{display:block;font-size:12px;color:var(--muted)}
+  .res .none{padding:12px 14px;font-size:13.5px;color:var(--muted)}
+  .hint{font-size:13px;color:var(--muted);margin:8px 0 0}
+
+  .sel{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+  .sel:empty{display:none}
+  .chip{display:flex;align-items:center;gap:10px;padding:8px 10px 8px 12px;border:1px solid var(--line);border-radius:10px;background:#fbfcfe}
+  .dot{width:12px;height:12px;border-radius:50%;flex:none}
+  .chip .t{flex:1;min-width:0}
+  .chip .t b{font-size:13px;color:var(--navy);margin-right:6px}
+  .chip .t span{font-size:13.5px}
+  .chip .t em{display:block;font-style:normal;font-size:12px;color:var(--muted)}
+  .chip .x{flex:none;border:0;background:none;color:#94a3b8;font-size:20px;line-height:1;cursor:pointer;padding:4px 6px;border-radius:6px}
+  .chip .x:hover{color:var(--text);background:#eef2f7}
+
+  /* 控制列 */
+  .ctl{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-bottom:10px}
+  .seg{display:inline-flex;border:1px solid #c7d2e3;border-radius:9px;overflow:hidden}
+  .seg button{border:0;background:#fff;font:inherit;font-size:13px;padding:6px 11px;cursor:pointer;color:var(--text)}
+  .seg button+button{border-left:1px solid #e2e8f0}
+  .seg button.on{background:var(--blue);color:#fff}
+  .seg button:disabled{color:#b6c0cf;cursor:not-allowed;background:#f8fafc}
+  .period{font-size:12.5px;color:var(--muted)}
+
+  /* 走勢圖 */
+  .chart{position:relative;width:100%;min-height:240px}
+  .chart svg{display:block;width:100%;height:auto;touch-action:pan-y}
+  .chart .msg{display:flex;align-items:center;justify-content:center;min-height:240px;color:var(--muted);font-size:14px;text-align:center;padding:0 16px}
+  .tip{position:absolute;top:8px;pointer-events:none;background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:8px;
+    box-shadow:0 6px 18px rgba(20,45,80,.14);padding:7px 10px;font-size:12px;line-height:1.55;display:none;white-space:nowrap}
+  .tip .d{color:var(--muted);margin-bottom:2px}
+  .tip i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:1px}
+  .note{font-size:12.5px;color:var(--muted);margin:8px 0 0}
+
+  /* 並排表 */
+  .tbl{width:100%;border-collapse:collapse;table-layout:fixed;font-size:13.5px}
+  .tbl th,.tbl td{padding:8px 8px;border-bottom:1px solid #eef2f6;text-align:right;vertical-align:top;font-variant-numeric:tabular-nums}
+  .tbl th:first-child,.tbl td:first-child{text-align:left;color:var(--muted);font-weight:500;width:120px}
+  .tbl thead th{vertical-align:bottom;font-weight:600;color:var(--navy);border-bottom:2px solid #dde5f0}
+  .tbl thead .bar{display:block;height:4px;border-radius:2px;margin-bottom:6px}
+  .tbl thead .cd{display:block;font-size:13.5px}
+  .tbl thead .nm{display:block;font-size:11.5px;font-weight:400;color:var(--muted);line-height:1.4;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .tbl .sec td{background:#f7f9fc;color:var(--navy);font-weight:600;font-size:12.5px;text-align:left;padding:6px 8px}
+  .tbl .small{display:block;font-size:11px;color:var(--muted)}
+  .pill{display:inline-block;font-size:11px;padding:1px 6px;border-radius:6px;background:var(--blue-soft);color:var(--blue);margin:1px 0 1px 3px}
+  .disc{font-size:12.5px;color:var(--muted);line-height:1.7;margin-top:4px}
+  .empty{color:var(--muted);font-size:14px;text-align:center;padding:24px 8px}
+
+  @media (max-width:620px){
+    h1{font-size:20px}
+    .card{padding:13px}
+    .tbl{font-size:12.5px}
+    .tbl th,.tbl td{padding:7px 4px}
+    .tbl th:first-child,.tbl td:first-child{width:86px}
+    .tbl thead .nm{display:none}
+    .seg button{padding:6px 9px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a href="/">&larr; 回首頁</a>
+    <span class="badge">非官方工具</span>
+  </div>
+
+  <h1>標的比較</h1>
+  <p class="sub">挑 2～4 檔，並排看走勢、配息和風險數字。三張保單的標的都可以選。</p>
+
+  <section class="card">
+    <h2>選擇標的</h2>
+    <div class="pick">
+      <input id="q" type="search" autocomplete="off" placeholder="輸入基金名稱或代碼，例如 摩根、JFP11" aria-label="搜尋標的">
+      <div id="res" class="res" role="listbox"></div>
+    </div>
+    <p id="hint" class="hint">資料載入中…</p>
+    <div id="sel" class="sel"></div>
+  </section>
+
+  <section class="card" id="chartCard">
+    <h2>走勢比較</h2>
+    <div class="ctl">
+      <div class="seg" id="mode">
+        <button data-v="tr" class="on">含息</button><button data-v="nav">淨值</button>
+      </div>
+      <div class="seg" id="range">
+        <button data-v="6m">6月</button><button data-v="1y" class="on">1年</button><button data-v="3y">3年</button><button data-v="5y">5年</button><button data-v="all">全部</button>
+      </div>
+      <span class="period" id="period"></span>
+    </div>
+    <div class="chart" id="chart"><div class="msg">加入 2 檔以上就會顯示走勢比較。</div><div class="tip" id="tip"></div></div>
+    <p class="note" id="chartNote"></p>
+  </section>
+
+  <section class="card" id="tblCard">
+    <h2>數字並排</h2>
+    <div id="tbl"><div class="empty">加入 2 檔以上就會顯示比較表。</div></div>
+  </section>
+
+  <p class="disc">
+    走勢以比較區間第一天為 100。比較區間只取所有標的都有資料的期間，避免拿成立 1 年的和成立 5 年的比。
+    含息＝配息在除息日再投入；淨值＝不含配息。報酬、波動、回撤等數字以各標的計價幣別計算，
+    <strong>未計匯率與保單費用</strong>，不等於保戶實際可得的報酬。夏普、索提諾都以 0% 為基準，只適合站內互相比較。
+    資料整理自富邦投資型保險專區公開資訊，跟官網對不上時以官網為準。本站不提供任何投資建議或標的推薦。
+  </p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var CODES = ['VCCT', 'VBCT', 'UND'];
+  var COLORS = ['#2657a0', '#d97706', '#0f766e', '#9333ea'];
+  var MAX = 4;
+  var funds = {};          // code → 標的資料（含 ins：出現在哪些險種）
+  var list = [];           // 搜尋用
+  var sel = [];            // 已選代碼，順序即顏色
+  var hist = {};           // code → Promise<{dates, nav, tr, divs}>
+  var state = { mode: 'tr', range: '1y' };
+  var $ = function (id) { return document.getElementById(id); };
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function ymdSlash(d) { return d.getFullYear() + '/' + pad(d.getMonth() + 1) + '/' + pad(d.getDate()); }
+  function fmtDate(s) { return s ? s.replace(/-/g, '/') : ''; }
+  function pct(v, dg) { if (v == null || !isFinite(v)) return '—'; return (v > 0 ? '+' : '') + v.toFixed(dg == null ? 1 : dg) + '%'; }
+  function num(v, dg) { return (v == null || !isFinite(v)) ? '—' : v.toFixed(dg == null ? 2 : dg); }
+
+  // ───── 資料 ─────
+  function loadFunds() {
+    return Promise.all(CODES.map(function (c) {
+      return fetch('/api/data?code=' + c).then(function (r) { return r.json(); }).catch(function () { return null; });
+    })).then(function (all) {
+      all.forEach(function (j, ix) {
+        if (!j || !Array.isArray(j.report)) return;
+        j.report.forEach(function (r) {
+          if (!r.code) return;
+          var f = funds[r.code];
+          if (!f) { f = funds[r.code] = Object.assign({ ins: [] }, r); list.push(f); }
+          if (f.ins.indexOf(CODES[ix]) < 0) f.ins.push(CODES[ix]);
+        });
+      });
+      list.sort(function (a, b) { return String(a.name).localeCompare(String(b.name), 'zh-Hant'); });
+    });
+  }
+
+  function fbPost(path, body) {
+    return fetch('/api/post?path=' + encodeURIComponent(path), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    }).then(function (r) { if (!r.ok) throw new Error(path + ' ' + r.status); return r.json(); })
+      .then(function (j) { return (j && j.data) || []; });
+  }
+
+  // 淨值與配息一次抓齊，算出「含息」序列：除息日把配息加回去再投入
+  function loadHist(code) {
+    if (hist[code]) return hist[code];
+    var f = funds[code];
+    var etf = f.v41 === 'C';
+    var end = ymdSlash(new Date());
+    var body = { assetFbCode: f.v40, startDate: '1990/01/01', endDate: end };
+    hist[code] = Promise.all([
+      fbPost(etf ? '/api/etf/getEtfNavs' : '/api/fund/getFundNavs', body),
+      fbPost(etf ? '/api/etf/getEtfDividends' : '/api/fund/getFundDividends', body).catch(function () { return []; })
+    ]).then(function (res) {
+      var rows = res[0].map(function (x) {
+        var d = String(x.date || '').replace(/\//g, '-'), n = parseFloat(x.nav);
+        return d && n > 0 ? { d: d, n: n } : null;
+      }).filter(Boolean).sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : 0; });
+      var divs = res[1].map(function (x) {
+        var d = String(x.recordDate || x.dividendDate || x.date || '').replace(/\//g, '-').substring(0, 10);
+        var a = parseFloat(x.dividendPerUnit);
+        return d && a > 0 ? { d: d, a: a } : null;
+      }).filter(Boolean).sort(function (a, b) { return a.d < b.d ? -1 : 1; });
+      var dates = rows.map(function (x) { return x.d; });
+      var nav = rows.map(function (x) { return x.n; });
+      var tr = [], k = 0;
+      while (k < divs.length && dates.length && divs[k].d <= dates[0]) k++;
+      for (var i = 0; i < nav.length; i++) {
+        if (i === 0) { tr.push(nav[0]); continue; }
+        var dv = 0;
+        while (k < divs.length && divs[k].d <= dates[i]) { dv += divs[k].a; k++; }
+        tr.push(tr[i - 1] * (nav[i] + dv) / nav[i - 1]);
+      }
+      return { dates: dates, nav: nav, tr: tr, divs: divs };
+    }).catch(function () { return { dates: [], nav: [], tr: [], divs: [], err: true }; });
+    return hist[code];
+  }
+
+  // 統計口徑跟分析視窗、組合試算一致：年化用實際筆數÷年數換算，夏普與索提諾以 0% 為基準
+  function stats(dates, v) {
+    var n = v.length;
+    if (n < 2) return null;
+    var years = Math.max((new Date(dates[n - 1]) - new Date(dates[0])) / (365.25 * 864e5), 1 / 365);
+    var total = (v[n - 1] / v[0] - 1) * 100;
+    var cagr = (Math.pow(v[n - 1] / v[0], 1 / years) - 1) * 100;
+    var r = [];
+    for (var i = 1; i < n; i++) if (v[i - 1] > 0) r.push(v[i] / v[i - 1] - 1);
+    var m = r.reduce(function (s, x) { return s + x; }, 0) / r.length;
+    var vr = r.reduce(function (s, x) { return s + (x - m) * (x - m); }, 0) / r.length;
+    var dn = r.reduce(function (s, x) { return s + (x < 0 ? x * x : 0); }, 0) / r.length;
+    var ppy = r.length / years;
+    var vol = Math.sqrt(vr) * Math.sqrt(ppy) * 100;
+    var dsd = Math.sqrt(dn) * Math.sqrt(ppy) * 100;
+    var peak = v[0], pk = 0, mdd = 0, a = 0, b = 0;
+    for (var j = 0; j < n; j++) {
+      if (v[j] > peak) { peak = v[j]; pk = j; }
+      var dd = (v[j] - peak) / peak;
+      if (dd < mdd) { mdd = dd; a = pk; b = j; }
+    }
+    mdd *= 100;
+    return {
+      total: total, cagr: cagr, vol: vol, mdd: mdd, mddFrom: dates[a], mddTo: dates[b],
+      sharpe: vol > 0 ? cagr / vol : null,
+      sortino: dsd > 0 ? cagr / dsd : null,
+      calmar: mdd < 0 ? cagr / Math.abs(mdd) : null
+    };
+  }
+
+  // ───── 選標的 ─────
+  var q = $('q'), res = $('res'), cur = -1, shown = [];
+  function search() {
+    var s = q.value.trim().toLowerCase();
+    if (!s) { res.classList.remove('open'); return; }
+    shown = list.filter(function (f) {
+      return sel.indexOf(f.code) < 0 &&
+        (String(f.name).toLowerCase().indexOf(s) >= 0 || String(f.code).toLowerCase().indexOf(s) >= 0);
+    }).slice(0, 12);
+    cur = shown.length ? 0 : -1;
+    res.innerHTML = shown.length ? shown.map(function (f, i) {
+      return '<button type="button" data-i="' + i + '"' + (i === 0 ? ' class="on"' : '') + '>' +
+        '<span class="nm">' + esc(f.name) + '</span>' +
+        '<span class="meta">' + esc(f.code) + '・' + esc(f.cur || '') + '・' + f.ins.join(' / ') + '</span></button>';
+    }).join('') : '<div class="none">找不到符合的標的</div>';
+    res.classList.add('open');
+  }
+  function pick(i) {
+    var f = shown[i];
+    if (!f || sel.length >= MAX) return;
+    sel.push(f.code);
+    q.value = ''; res.classList.remove('open');
+    update();
+  }
+  q.addEventListener('input', search);
+  q.addEventListener('focus', search);
+  q.addEventListener('keydown', function (e) {
+    if (!res.classList.contains('open') || !shown.length) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      cur = (cur + (e.key === 'ArrowDown' ? 1 : -1) + shown.length) % shown.length;
+      [].forEach.call(res.querySelectorAll('button'), function (b, i) { b.classList.toggle('on', i === cur); });
+    } else if (e.key === 'Enter') { e.preventDefault(); pick(cur < 0 ? 0 : cur); }
+    else if (e.key === 'Escape') { res.classList.remove('open'); }
+  });
+  res.addEventListener('mousedown', function (e) {
+    var b = e.target.closest('button[data-i]');
+    if (b) { e.preventDefault(); pick(+b.getAttribute('data-i')); }
+  });
+  document.addEventListener('click', function (e) { if (!e.target.closest('.pick')) res.classList.remove('open'); });
+
+  function renderSel() {
+    $('sel').innerHTML = sel.map(function (c, i) {
+      var f = funds[c];
+      return '<div class="chip"><span class="dot" style="background:' + COLORS[i] + '"></span>' +
+        '<span class="t"><b>' + esc(c) + '</b><span>' + esc(f.name) + '</span>' +
+        '<em>' + esc(f.cur || '') + '・' + esc(f.rr || '') + '・可選：' + f.ins.join(' / ') + '</em></span>' +
+        '<button class="x" type="button" data-c="' + esc(c) + '" aria-label="移除 ' + esc(c) + '">&times;</button></div>';
+    }).join('');
+    var left = MAX - sel.length;
+    q.disabled = left <= 0;
+    q.placeholder = left <= 0 ? '最多比較 ' + MAX + ' 檔，先移除一檔才能再加' : '輸入基金名稱或代碼，例如 摩根、JFP11';
+    $('hint').textContent = sel.length < 2 ? '再加入 ' + (2 - sel.length) + ' 檔就可以開始比較（最多 ' + MAX + ' 檔）。'
+      : '還可以再加 ' + left + ' 檔。';
+  }
+  $('sel').addEventListener('click', function (e) {
+    var b = e.target.closest('.x');
+    if (!b) return;
+    sel = sel.filter(function (c) { return c !== b.getAttribute('data-c'); });
+    update();
+  });
+
+  // ───── 控制列 ─────
+  function seg(id, key) {
+    $(id).addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-v]');
+      if (!b || b.disabled) return;
+      state[key] = b.getAttribute('data-v');
+      [].forEach.call($(id).querySelectorAll('button'), function (x) { x.classList.toggle('on', x === b); });
+      update();
+    });
+  }
+  seg('mode', 'mode'); seg('range', 'range');
+  var MONTHS = { '6m': 6, '1y': 12, '3y': 36, '5y': 60 };
+
+  function syncUrl() {
+    var p = new URLSearchParams();
+    if (sel.length) p.set('c', sel.join(','));
+    if (state.range !== '1y') p.set('r', state.range);
+    if (state.mode !== 'tr') p.set('m', state.mode);
+    var s = p.toString();
+    history.replaceState(null, '', location.pathname + (s ? '?' + s : ''));
+  }
+
+  // ───── 主流程 ─────
+  var ticket = 0;
+  function update() {
+    renderSel(); syncUrl();
+    var my = ++ticket;
+    if (sel.length < 2) {
+      setChartMsg('加入 2 檔以上就會顯示走勢比較。');
+      $('chartNote').textContent = ''; $('period').textContent = '';
+      $('tbl').innerHTML = '<div class="empty">加入 2 檔以上就會顯示比較表。</div>';
+      return;
+    }
+    setChartMsg('正在抓取淨值與配息資料…');
+    Promise.all(sel.map(loadHist)).then(function (hs) {
+      if (my !== ticket) return;
+      draw(hs);
+    });
+  }
+
+  function setChartMsg(t) {
+    $('chart').innerHTML = '<div class="msg">' + esc(t) + '</div><div class="tip" id="tip"></div>';
+  }
+
+  function lastIdxLE(arr, d) { // 最後一個 <= d 的位置
+    var lo = 0, hi = arr.length - 1, ans = -1;
+    while (lo <= hi) { var mid = (lo + hi) >> 1; if (arr[mid] <= d) { ans = mid; lo = mid + 1; } else hi = mid - 1; }
+    return ans;
+  }
+  function firstIdxGE(arr, d) {
+    var lo = 0, hi = arr.length - 1, ans = arr.length;
+    while (lo <= hi) { var mid = (lo + hi) >> 1; if (arr[mid] >= d) { ans = mid; hi = mid - 1; } else lo = mid + 1; }
+    return ans;
+  }
+  function monthsBack(d, m) {
+    var x = new Date(d); x.setMonth(x.getMonth() - m);
+    return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate());
+  }
+
+  var view = null; // 給滑鼠提示用
+  function draw(hs) {
+    var bad = [], ok = [];
+    sel.forEach(function (c, i) { (hs[i].dates.length > 1 ? ok : bad).push(i); });
+    if (ok.length < 2) {
+      setChartMsg('抓不到足夠的淨值資料，請稍後再試或換一檔。');
+      $('tbl').innerHTML = '<div class="empty">資料不足，無法比較。</div>';
+      return;
+    }
+    // 重疊期間：最晚開始、最早結束
+    var start = '', end = '9999', limiter = '';
+    ok.forEach(function (i) {
+      var h = hs[i];
+      if (h.dates[0] > start) { start = h.dates[0]; limiter = sel[i]; }
+      if (h.dates[h.dates.length - 1] < end) end = h.dates[h.dates.length - 1];
+    });
+    var overlapStart = start;
+    var notes = [];
+    // 區間鈕：重疊期間不夠長的就停用
+    var spanMonths = (new Date(end) - new Date(overlapStart)) / (30.44 * 864e5);
+    [].forEach.call($('range').querySelectorAll('button'), function (b) {
+      var m = MONTHS[b.getAttribute('data-v')];
+      b.disabled = !!m && m > spanMonths + 0.5;
+    });
+    if (MONTHS[state.range] && MONTHS[state.range] > spanMonths + 0.5) {
+      state.range = 'all';
+      [].forEach.call($('range').querySelectorAll('button'), function (b) { b.classList.toggle('on', b.getAttribute('data-v') === 'all'); });
+      syncUrl();
+    }
+    if (MONTHS[state.range]) {
+      var want = monthsBack(end, MONTHS[state.range]);
+      if (want > start) start = want;
+    }
+    if (overlapStart === start && limiter) {
+      notes.push('比較區間從 ' + fmtDate(overlapStart) + ' 開始，受 ' + limiter + ' 的資料起始日限制。');
+    }
+    if (bad.length) notes.push(bad.map(function (i) { return sel[i]; }).join('、') + ' 抓不到淨值資料，暫時不列入比較。');
+
+    var series = ok.map(function (i) {
+      var h = hs[i], arr = state.mode === 'tr' ? h.tr : h.nav;
+      var a = firstIdxGE(h.dates, start), b = lastIdxLE(h.dates, end);
+      var d = h.dates.slice(a, b + 1), v = arr.slice(a, b + 1);
+      var base = v[0];
+      return { i: i, code: sel[i], color: COLORS[i], dates: d, raw: v, idx: v.map(function (x) { return x / base * 100; }), h: h };
+    });
+    $('period').textContent = fmtDate(start) + ' ～ ' + fmtDate(end) + '・' + (state.mode === 'tr' ? '含息' : '淨值');
+    $('chartNote').textContent = notes.join(' ');
+    drawChart(series, start, end);
+    drawTable(series, hs, start, end);
+  }
+
+  function drawChart(series, start, end) {
+    var box = $('chart');
+    var W = Math.max(300, box.clientWidth || 600);
+    var H = W < 520 ? 240 : 320;
+    var L = 46, R = 12, T = 12, B = 28;
+    var t0 = new Date(start).getTime(), t1 = new Date(end).getTime();
+    if (t1 <= t0) t1 = t0 + 864e5;
+    var lo = Infinity, hi = -Infinity;
+    series.forEach(function (s) { s.idx.forEach(function (v) { if (v < lo) lo = v; if (v > hi) hi = v; }); });
+    var padv = (hi - lo) * 0.06 || 2; lo -= padv; hi += padv;
+    function X(d) { return L + (new Date(d).getTime() - t0) / (t1 - t0) * (W - L - R); }
+    function Y(v) { return T + (hi - v) / (hi - lo) * (H - T - B); }
+    var g = '';
+    // 橫向格線與刻度
+    var step = niceStep((hi - lo) / 4), y0 = Math.ceil(lo / step) * step;
+    for (var v = y0; v <= hi; v += step) {
+      g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '" stroke="#eef2f6"/>' +
+        '<text x="' + (L - 6) + '" y="' + (Y(v) + 4).toFixed(1) + '" text-anchor="end" font-size="11" fill="#94a3b8">' + Math.round(v) + '</text>';
+    }
+    if (lo < 100 && hi > 100) g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(100).toFixed(1) + '" y2="' + Y(100).toFixed(1) + '" stroke="#94a3b8" stroke-dasharray="4 4"/>';
+    // 時間刻度
+    var ticks = W < 520 ? 3 : 5;
+    for (var k = 0; k <= ticks; k++) {
+      var tt = new Date(t0 + (t1 - t0) * k / ticks);
+      var lbl = tt.getFullYear() + '/' + pad(tt.getMonth() + 1);
+      var xx = L + (W - L - R) * k / ticks;
+      g += '<text x="' + xx.toFixed(1) + '" y="' + (H - 8) + '" text-anchor="' + (k === 0 ? 'start' : k === ticks ? 'end' : 'middle') + '" font-size="11" fill="#94a3b8">' + lbl + '</text>';
+    }
+    // 線：點太多時抽樣，畫起來比較輕
+    series.forEach(function (s) {
+      var n = s.dates.length, every = Math.max(1, Math.floor(n / (W * 1.5)));
+      var p = '';
+      for (var i = 0; i < n; i += every) p += (p ? 'L' : 'M') + X(s.dates[i]).toFixed(1) + ' ' + Y(s.idx[i]).toFixed(1);
+      p += 'L' + X(s.dates[n - 1]).toFixed(1) + ' ' + Y(s.idx[n - 1]).toFixed(1);
+      g += '<path d="' + p + '" fill="none" stroke="' + s.color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+    });
+    g += '<line id="cx" x1="0" x2="0" y1="' + T + '" y2="' + (H - B) + '" stroke="#64748b" stroke-width="1" style="display:none"/>';
+    box.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="走勢比較圖">' + g +
+      '<rect x="' + L + '" y="' + T + '" width="' + (W - L - R) + '" height="' + (H - T - B) + '" fill="transparent" id="hit"/></svg>' +
+      '<div class="tip" id="tip"></div>';
+    view = { series: series, X: X, t0: t0, t1: t1, L: L, R: R, W: W };
+    var svg = box.querySelector('svg');
+    svg.addEventListener('pointermove', hover);
+    svg.addEventListener('pointerdown', hover);
+    svg.addEventListener('pointerleave', function () { $('tip').style.display = 'none'; var c = $('cx'); if (c) c.style.display = 'none'; });
+  }
+  function niceStep(x) {
+    var p = Math.pow(10, Math.floor(Math.log10(x))), m = x / p;
+    return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
+  }
+  function hover(e) {
+    if (!view) return;
+    var svg = e.currentTarget, rc = svg.getBoundingClientRect();
+    var px = (e.clientX - rc.left) / rc.width * view.W;
+    if (px < view.L || px > view.W - view.R) return;
+    var t = view.t0 + (px - view.L) / (view.W - view.L - view.R) * (view.t1 - view.t0);
+    var dt = new Date(t), ds = dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate());
+    var rows = '', shownDate = '';
+    view.series.forEach(function (s) {
+      var i = lastIdxLE(s.dates, ds); if (i < 0) i = 0;
+      if (!shownDate || s.dates[i] > shownDate) shownDate = s.dates[i];
+      var v = s.idx[i];
+      rows += '<div><i style="background:' + s.color + '"></i>' + esc(s.code) + '　' + v.toFixed(1) + '（' + pct(v - 100) + '）</div>';
+    });
+    var tip = $('tip');
+    tip.innerHTML = '<div class="d">' + fmtDate(shownDate) + '</div>' + rows;
+    tip.style.display = 'block';
+    var x = view.X(shownDate) / view.W * rc.width;
+    var c = $('cx'); c.setAttribute('x1', view.X(shownDate)); c.setAttribute('x2', view.X(shownDate)); c.style.display = '';
+    var tw = tip.offsetWidth, left = x + 12;
+    if (left + tw > rc.width) left = x - tw - 12;
+    tip.style.left = Math.max(0, left) + 'px';
+  }
+
+  function drawTable(series, hs, start, end) {
+    var cols = sel.map(function (c, i) {
+      var s = null; series.forEach(function (x) { if (x.i === i) s = x; });
+      return { c: c, f: funds[c], color: COLORS[i], s: s, st: s ? stats(s.dates, s.raw) : null };
+    });
+    function row(label, fn) {
+      return '<tr><td>' + label + '</td>' + cols.map(function (x) { return '<td>' + fn(x) + '</td>'; }).join('') + '</tr>';
+    }
+    function sec(t) { return '<tr class="sec"><td colspan="' + (cols.length + 1) + '">' + t + '</td></tr>'; }
+    function lastDiv(x) {
+      var d = x.f.divs && x.f.divs[0];
+      if (!d) return '—';
+      var lb = d.ex ? d.ex.substring(5).replace('-', '/') : String(d.date || '').substring(2);
+      return num(d.amount, 4) + '<span class="small">' + lb + ' 除息</span>';
+    }
+    var h = '<table class="tbl"><thead><tr><th></th>' + cols.map(function (x) {
+      return '<th><span class="bar" style="background:' + x.color + '"></span><span class="cd">' + esc(x.c) + '</span><span class="nm">' + esc(x.f.name) + '</span></th>';
+    }).join('') + '</tr></thead><tbody>';
+    h += sec('基本資料');
+    h += row('可選險種', function (x) { return x.f.ins.map(function (c) { return '<span class="pill">' + c + '</span>'; }).join(''); });
+    h += row('計價幣別', function (x) { return esc(x.f.cur || '—'); });
+    h += row('風險等級', function (x) { return esc(x.f.rr || '—'); });
+    h += row('配息頻率', function (x) { return esc(x.f.freq && x.f.freq !== '無' ? x.f.freq : '不配息'); });
+    h += row('最新淨值', function (x) { return x.f.nav ? num(x.f.nav, 2) : '—'; });
+    h += row('年化配息率', function (x) { return x.f.rate ? x.f.rate + '%' : '—'; });
+    h += row('最新配息', lastDiv);
+    h += sec('區間表現（' + fmtDate(start) + ' ～ ' + fmtDate(end) + '，' + (state.mode === 'tr' ? '含息' : '淨值') + '）');
+    h += row('總報酬', function (x) { return x.st ? pct(x.st.total) : '—'; });
+    h += row('年化報酬', function (x) { return x.st ? pct(x.st.cagr) : '—'; });
+    h += row('年化波動', function (x) { return x.st ? num(x.st.vol, 1) + '%' : '—'; });
+    h += row('最大回撤', function (x) {
+      return x.st ? pct(x.st.mdd) + '<span class="small">' + fmtDate(x.st.mddFrom).substring(2) + '～' + fmtDate(x.st.mddTo).substring(2) + '</span>' : '—';
+    });
+    h += row('夏普', function (x) { return x.st ? num(x.st.sharpe) : '—'; });
+    h += row('索提諾', function (x) { return x.st ? num(x.st.sortino) : '—'; });
+    h += row('Calmar', function (x) { return x.st ? num(x.st.calmar) : '—'; });
+    h += sec('富邦公布報酬率');
+    h += row('近 6 個月', function (x) { return x.f.ret6m != null ? pct(x.f.ret6m, 2) : '—'; });
+    h += row('近 1 年', function (x) { return x.f.ret1y != null ? pct(x.f.ret1y, 2) : '—'; });
+    h += row('近 3 年', function (x) { return x.f.ret3y != null ? pct(x.f.ret3y, 2) : '—'; });
+    h += '</tbody></table>';
+    $('tbl').innerHTML = h;
+  }
+
+  var rz;
+  window.addEventListener('resize', function () {
+    clearTimeout(rz);
+    rz = setTimeout(function () { if (sel.length >= 2) update(); }, 200);
+  });
+
+  // ───── 啟動：網址可帶 ?c=JFP11,JFP7&r=3y&m=nav ─────
+  loadFunds().then(function () {
+    var p = new URLSearchParams(location.search);
+    var cs = (p.get('c') || '').split(',').map(function (s) { return s.trim().toUpperCase(); })
+      .filter(function (c, i, a) { return c && funds[c] && a.indexOf(c) === i; }).slice(0, MAX);
+    sel = cs;
+    if (p.get('r') && /^(6m|1y|3y|5y|all)$/.test(p.get('r'))) state.range = p.get('r');
+    if (p.get('m') === 'nav') state.mode = 'nav';
+    [].forEach.call($('range').querySelectorAll('button'), function (b) { b.classList.toggle('on', b.getAttribute('data-v') === state.range); });
+    [].forEach.call($('mode').querySelectorAll('button'), function (b) { b.classList.toggle('on', b.getAttribute('data-v') === state.mode); });
+    if (!list.length) { $('hint').textContent = '標的清單載入失敗，請重新整理。'; return; }
+    update();
+  });
+})();
+</script>
+</body>
+</html>
