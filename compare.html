@@ -136,8 +136,9 @@
   </section>
 
   <p class="disc">
-    走勢以比較區間第一天為 100。比較區間只取所有標的都有資料的期間，避免拿成立 1 年的和成立 5 年的比。
-    含息＝配息在除息日再投入；淨值＝不含配息。報酬、波動、回撤等數字以各標的計價幣別計算，
+    走勢以比較區間第一天為 100。比較區間只取所有標的都有資料的期間，避免拿成立 1 年的和成立 5 年的比；
+    每檔各自算到自己最新的淨值日，跟富邦公布報酬的算法相同。
+    含息＝配息在發放日再投入；淨值＝不含配息。報酬、波動、回撤等數字以各標的計價幣別計算，
     <strong>未計匯率與保單費用</strong>，不等於保戶實際可得的報酬。夏普、索提諾都以 0% 為基準，只適合站內互相比較。
     資料整理自富邦投資型保險專區公開資訊，跟官網對不上時以官網為準。本站不提供任何投資建議或標的推薦。
   </p>
@@ -188,7 +189,7 @@
       .then(function (j) { return (j && j.data) || []; });
   }
 
-  // 淨值與配息一次抓齊，算出「含息」序列：除息日把配息加回去再投入
+  // 淨值與配息一次抓齊，算出「含息」序列：配息在發放日加回去再投入（富邦公布的含息報酬也是這樣算）
   function loadHist(code) {
     if (hist[code]) return hist[code];
     var f = funds[code];
@@ -204,7 +205,7 @@
         return d && n > 0 ? { d: d, n: n } : null;
       }).filter(Boolean).sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : 0; });
       var divs = res[1].map(function (x) {
-        var d = String(x.recordDate || x.dividendDate || x.date || '').replace(/\//g, '-').substring(0, 10);
+        var d = String(x.dividendDate || x.recordDate || x.date || '').replace(/\//g, '-').substring(0, 10);
         var a = parseFloat(x.dividendPerUnit);
         return d && a > 0 ? { d: d, a: a } : null;
       }).filter(Boolean).sort(function (a, b) { return a.d < b.d ? -1 : 1; });
@@ -403,23 +404,29 @@
       [].forEach.call($('range').querySelectorAll('button'), function (b) { b.classList.toggle('on', b.getAttribute('data-v') === 'all'); });
       syncUrl();
     }
-    if (MONTHS[state.range]) {
-      var want = monthsBack(end, MONTHS[state.range]);
-      if (want > start) start = want;
-    }
-    if (overlapStart === start && limiter) {
+    // 每檔各自算到自己最新的淨值日，再往回推區間長度（跟富邦公布報酬同一個算法）；
+    // 起點不早於所有標的都有資料的那一天
+    var M = MONTHS[state.range];
+    var lastEnd = '';
+    ok.forEach(function (i) { var e = hs[i].dates[hs[i].dates.length - 1]; if (e > lastEnd) lastEnd = e; });
+    if ((!M || monthsBack(lastEnd, M) <= overlapStart) && limiter) {
       notes.push('比較區間從 ' + fmtDate(overlapStart) + ' 開始，受 ' + limiter + ' 的資料起始日限制。');
     }
     if (bad.length) notes.push(bad.map(function (i) { return sel[i]; }).join('、') + ' 抓不到淨值資料，暫時不列入比較。');
 
     var series = ok.map(function (i) {
       var h = hs[i], arr = state.mode === 'tr' ? h.tr : h.nav;
-      var a = firstIdxGE(h.dates, start), b = lastIdxLE(h.dates, end);
+      var b = h.dates.length - 1, want = M ? monthsBack(h.dates[b], M) : '';
+      var a = (M && want > overlapStart) ? Math.max(0, lastIdxLE(h.dates, want)) : firstIdxGE(h.dates, overlapStart);
       var d = h.dates.slice(a, b + 1), v = arr.slice(a, b + 1);
       var base = v[0];
       return { i: i, code: sel[i], color: COLORS[i], dates: d, raw: v, idx: v.map(function (x) { return x / base * 100; }), h: h };
     });
-    $('period').textContent = fmtDate(start) + ' ～ ' + fmtDate(end) + '・' + (state.mode === 'tr' ? '含息' : '淨值');
+    start = series.reduce(function (m, s) { return s.dates[0] < m ? s.dates[0] : m; }, '9999');
+    end = lastEnd;
+    var sameEnd = series.every(function (s) { return s.dates[s.dates.length - 1] === end; });
+    $('period').textContent = fmtDate(start) + ' ～ ' + fmtDate(end) + '・' + (state.mode === 'tr' ? '含息' : '淨值') +
+      (sameEnd ? '' : '・各檔算到自己最新的淨值日');
     $('chartNote').textContent = notes.join(' ');
     drawChart(series, start, end);
     drawTable(series, hs, start, end);
@@ -525,7 +532,10 @@
     h += row('最新淨值', function (x) { return x.f.nav ? num(x.f.nav, 2) : '—'; });
     h += row('年化配息率', function (x) { return x.f.rate ? x.f.rate + '%' : '—'; });
     h += row('最新配息', lastDiv);
-    h += sec('區間表現（' + fmtDate(start) + ' ～ ' + fmtDate(end) + '，' + (state.mode === 'tr' ? '含息' : '淨值') + '）');
+    h += sec('區間表現（' + (state.mode === 'tr' ? '含息' : '淨值') + '）');
+    h += row('計算期間', function (x) {
+      return x.s ? fmtDate(x.s.dates[0]).substring(2) + '<span class="small">至 ' + fmtDate(x.s.dates[x.s.dates.length - 1]).substring(2) + '</span>' : '—';
+    });
     h += row('總報酬', function (x) { return x.st ? pct(x.st.total) : '—'; });
     h += row('年化報酬', function (x) { return x.st ? pct(x.st.cagr) : '—'; });
     h += row('年化波動', function (x) { return x.st ? num(x.st.vol, 1) + '%' : '—'; });
@@ -535,7 +545,7 @@
     h += row('夏普', function (x) { return x.st ? num(x.st.sharpe) : '—'; });
     h += row('索提諾', function (x) { return x.st ? num(x.st.sortino) : '—'; });
     h += row('Calmar', function (x) { return x.st ? num(x.st.calmar) : '—'; });
-    h += sec('富邦公布報酬率');
+    h += sec('富邦公布報酬率（含息，算到最新淨值日）');
     h += row('近 6 個月', function (x) { return x.f.ret6m != null ? pct(x.f.ret6m, 2) : '—'; });
     h += row('近 1 年', function (x) { return x.f.ret1y != null ? pct(x.f.ret1y, 2) : '—'; });
     h += row('近 3 年', function (x) { return x.f.ret3y != null ? pct(x.f.ret3y, 2) : '—'; });
