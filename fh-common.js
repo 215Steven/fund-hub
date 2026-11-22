@@ -260,8 +260,8 @@ try {
      Calmar  每承擔一單位「最深的那次跌幅」換到多少
    Calmar 的分母只來自單一事件，換個區間可能差很多，別拿它單獨下結論。
 
-   口徑刻意跟站上現有的夏普完全一致：分子用同一個幾何年化報酬，
-   分母用日報酬年化。這樣三個數字可以並排比較，也跟畫面上的夏普對得起來。
+   夏普、索提諾的數字由 /fh-stats.js 算（月報酬、扣年 1% 無風險、不年化，同富邦官網），
+   這段只負責把索提諾、Calmar 兩張卡片放到夏普旁邊。
 
    MAR（索提諾的門檻）設 0，因為站上夏普的無風險利率也是 0，
    兩者才站在同一條基準線。注意 MAR=0 且 rf=0 時索提諾必定大於夏普，
@@ -270,37 +270,6 @@ try {
    會跟著含息／淨值切換走。配息型標的用淨值序列算，索提諾會嚴重失真
    （每月除息製造假下跌，而索提諾只罰下跌），所以預設已經是含息。 */
 (function () {
-  function series() {
-    var scope = document.querySelector('.bt-modal') || document.body;
-    var txt = scope.textContent.replace(/\s+/g, ' ');
-    var rg = txt.match(/資料區間[：:]\s*([\d-]+)\s*[～~]\s*([\d-]+)/);
-    if (!rg) return null;
-    var bs = window._btState, ps = window._pfState;
-    if (bs && bs.dates && bs.rawNavs) {
-      var a = bs.dates.indexOf(rg[1]), b = bs.dates.indexOf(rg[2]);
-      if (a < 0 || b <= a) return null;
-      var s = (bs.mode === 'adj' && bs.adjNavs) ? bs.adjNavs : bs.rawNavs;
-      return s.slice(a, b + 1);
-    }
-    if (ps && ps.dates && ps.funds && ps.funds.length) {
-      var a2 = ps.dates.indexOf(rg[1]), b2 = ps.dates.indexOf(rg[2]);
-      if (a2 < 0 || b2 <= a2) return null;
-      var out = [];
-      for (var i = a2; i <= b2; i++) {
-        var v = 0, ok = true;
-        for (var j = 0; j < ps.funds.length; j++) {
-          var fd = ps.funds[j];
-          var sj = (ps.mode === 'adj' && fd.filledAdj) ? fd.filledAdj : fd.filledRaw;
-          if (!(sj[a2] > 0) || !(sj[i] > 0)) { ok = false; break; }
-          v += fd.wNorm * (sj[i] / sj[a2]);
-        }
-        if (!ok) return null;
-        out.push(v);
-      }
-      return out;
-    }
-    return null;
-  }
   function mk(id, label, note) {
     var c = document.createElement('div');
     c.className = 'bt-stat'; c.setAttribute('data-fh', id);
@@ -708,3 +677,111 @@ try {
   queue();
 })();
 } catch (e) { if (window.console) console.error('[fh-common] fh-div-flag', e); }
+
+/* ════════ fh-compare ════════ */
+try {
+(function () {
+  /* 工具頁每一列「分析」旁邊加一顆「比較」，勾選後下方出現一條列，按「開始比較」帶進 /compare。
+     勾選清單存在 localStorage（fh-compare），三個工具頁和比較頁共用同一份，最多 4 檔。
+     嵌入部落格時（html.is-embed）比較頁開在新分頁，不要把讀者留在 iframe 裡。 */
+  var CODE = ((location.pathname.match(/(vcct|vbct|und)/i) || [])[1] || '').toUpperCase();
+  if (!CODE) return;
+  var KEY = 'fh-compare', MAX = 4;
+  function get() {
+    try { var a = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(a) ? a.slice(0, MAX) : []; }
+    catch (e) { return []; }
+  }
+  function put(a) { try { localStorage.setItem(KEY, JSON.stringify(a.slice(0, MAX))); } catch (e) {} }
+
+  var st = document.createElement('style');
+  st.textContent =
+    '.fh-cmp{margin-left:6px;font:inherit;font-size:11px;line-height:1.4;padding:4px 9px;border-radius:6px;' +
+    'border:1px solid #c3d8f5;background:#fff;color:#2657a0;cursor:pointer;white-space:nowrap;vertical-align:middle}' +
+    '.fh-cmp.on{background:#2657a0;color:#fff;border-color:#2657a0}' +
+    '.fh-cmp-bar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:9998;display:none;align-items:center;gap:10px;' +
+    'background:#1a3a5c;color:#fff;padding:8px 8px 8px 16px;border-radius:12px;box-shadow:0 8px 24px rgba(20,45,80,.25);' +
+    'font-size:13.5px;max-width:calc(100vw - 24px);white-space:nowrap}' +
+    '.fh-cmp-bar.show{display:flex}' +
+    '.fh-cmp-bar a{background:#fff;color:#1a3a5c;text-decoration:none;font-weight:700;padding:6px 12px;border-radius:8px}' +
+    '.fh-cmp-bar a.dis{opacity:.55;pointer-events:none}' +
+    '.fh-cmp-bar button{background:none;border:0;color:#c7d6ea;font:inherit;font-size:13px;cursor:pointer;padding:6px 6px}';
+  document.head.appendChild(st);
+
+  var bar = document.createElement('div');
+  bar.className = 'fh-cmp-bar';
+  bar.setAttribute('role', 'status');
+  document.body.appendChild(bar);
+  var embed = document.documentElement.classList.contains('is-embed');
+
+  function renderBar(note) {
+    var a = get();
+    if (!a.length) { bar.classList.remove('show'); return; }
+    var go = a.length >= 2;
+    bar.innerHTML = '<span>' + (note || ('已選 ' + a.length + ' 檔')) + '</span>' +
+      '<a href="/compare?c=' + encodeURIComponent(a.join(',')) + '"' + (embed ? ' target="_blank" rel="noopener"' : '') +
+      (go ? '' : ' class="dis" aria-disabled="true"') + '>' + (go ? '開始比較' : '再選 1 檔') + '</a>' +
+      '<button type="button" data-fh-cmp-clear>清除</button>';
+    bar.classList.add('show');
+  }
+
+  var codes = null, src = null;
+  function codeSet() {
+    var rows = window[CODE + '_ROWS'];
+    if (!rows || !rows.length) return null;
+    if (rows !== src) { src = rows; codes = {}; rows.forEach(function (r) { codes[r.code] = 1; }); }
+    return codes;
+  }
+  function rowCode(tr) {
+    var cs = codeSet(); if (!cs || !tr) return '';
+    for (var j = 0; j < tr.cells.length; j++) {
+      var t = tr.cells[j].textContent.trim();
+      if (cs[t]) return t;
+    }
+    return '';
+  }
+  function paint(btn, on) {
+    btn.classList.toggle('on', on);
+    btn.textContent = on ? '已加入' : '比較';
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+  var queued = false;
+  function apply() {
+    queued = false;
+    if (!codeSet()) return;
+    var sel = get();
+    var bs = document.querySelectorAll('.bt-open-btn:not([data-fh-cmp])');
+    for (var i = 0; i < bs.length; i++) {
+      var b = bs[i];
+      b.setAttribute('data-fh-cmp', '1');
+      var c = rowCode(b.closest('tr'));
+      if (!c) continue;
+      var t = document.createElement('button');
+      t.type = 'button'; t.className = 'fh-cmp'; t.setAttribute('data-code', c);
+      t.title = '加入標的比較（最多 ' + MAX + ' 檔）';
+      paint(t, sel.indexOf(c) >= 0);
+      b.insertAdjacentElement('afterend', t);
+    }
+  }
+  function repaintAll() {
+    var sel = get();
+    [].forEach.call(document.querySelectorAll('.fh-cmp'), function (t) { paint(t, sel.indexOf(t.getAttribute('data-code')) >= 0); });
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest && e.target.closest('.fh-cmp');
+    if (t) {
+      e.preventDefault(); e.stopPropagation();
+      var c = t.getAttribute('data-code'), a = get(), i = a.indexOf(c);
+      if (i >= 0) a.splice(i, 1);
+      else if (a.length >= MAX) { renderBar('最多比較 ' + MAX + ' 檔，先移除一檔'); return; }
+      else a.push(c);
+      put(a); repaintAll(); renderBar();
+      return;
+    }
+    if (e.target.closest && e.target.closest('[data-fh-cmp-clear]')) { put([]); repaintAll(); renderBar(); }
+  }, true);
+  window.addEventListener('storage', function (e) { if (e.key === KEY) { repaintAll(); renderBar(); } });
+  function queue() { if (!queued) { queued = true; requestAnimationFrame(apply); } }
+  new MutationObserver(queue).observe(document.body, { childList: true, subtree: true });
+  queue(); renderBar();
+})();
+} catch (e) { if (window.console) console.error('[fh-common] fh-compare', e); }
