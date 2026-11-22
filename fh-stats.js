@@ -108,6 +108,62 @@
     window.computeStats = w;
   }
 
-  window.FH_STATS = { RF: RF, monthly: monthly, find: find, remember: remember, patch: patch, annotate: annotate };
+  /* ── 含息序列：配息放在「發放日」再投入 ──
+     各頁原本的 mapDivToIndex 把每個月的配息放在「該月最後一個交易日」。
+     月中除息的基金（例如 JFP11 每月 7～11 日除息），除息後到月底那兩三週，
+     含息線會先出現一段假的下跌、月底才補回來：波動度被高估、區間報酬也會偏掉
+     （JFP11 近一年含息報酬算成 +7.10%，實際是 +6.0%，富邦公布 +6.05%）。
+     改成用每筆配息的發放日，找當天或之後第一個有淨值的交易日放上去，
+     跟富邦公布的含息報酬、標準差、夏普同一個算法。
+     配息資料只有月份（舊資料）時，才退回原本「該月最後一個交易日」的做法。 */
+  function firstGE(arr, d) {
+    var lo = 0, hi = arr.length - 1, ans = arr.length;
+    while (lo <= hi) { var mid = (lo + hi) >> 1; if (arr[mid] >= d) { ans = mid; hi = mid - 1; } else lo = mid + 1; }
+    return ans;
+  }
+  function mapDivToIndex(dates, divs) {
+    if (!divs || !divs.length || !dates || !dates.length) return null;
+    var ds = dates.map(iso), out = {}, matched = 0, monthLast = null;
+    divs.forEach(function (d) {
+      if (!d || !(d.amount > 0)) return;
+      var day = String(d.pay || d.ex || d.date || '').replace(/\//g, '-');
+      if (day.length >= 10) {
+        day = day.slice(0, 10);
+        if (day <= ds[0] || day > ds[ds.length - 1]) return;
+        var i = firstGE(ds, day);
+        out[i] = (out[i] || 0) + d.amount; matched++;
+      } else if (day.length >= 7) {
+        if (!monthLast) { monthLast = {}; ds.forEach(function (x, k) { monthLast[x.slice(0, 7)] = k; }); }
+        var k = monthLast[day.slice(0, 7)];
+        if (k != null) { out[k] = (out[k] || 0) + d.amount; matched++; }
+      }
+    });
+    return matched ? out : null;
+  }
+  // 工具頁的 buildAdjustedNav 用 淨值 ÷（淨值 − 配息），把除息後的淨值當成除息前，
+  // 每次多算一點點；改成標準的（淨值 + 配息）÷ 淨值。組合試算那支本來就是這個算法，不動它。
+  function buildAdjustedNav(dates, navs, divOnIdx) {
+    if (!divOnIdx) return null;
+    var out = new Array(navs.length), mult = 1;
+    for (var i = 0; i < navs.length; i++) {
+      var d = Number(divOnIdx[i]) || 0;
+      if (d > 0 && navs[i] > 0) mult *= (navs[i] + d) / navs[i];
+      out[i] = navs[i] * mult;
+    }
+    return out;
+  }
+  function patchDivs() {
+    if (typeof window.mapDivToIndex === 'function' && !window.mapDivToIndex.__fh) {
+      mapDivToIndex.__fh = true; window.mapDivToIndex = mapDivToIndex;
+    }
+    var b = window.buildAdjustedNav;
+    if (typeof b === 'function' && !b.__fh && /mult/.test(String(b))) {
+      buildAdjustedNav.__fh = true; window.buildAdjustedNav = buildAdjustedNav;
+    }
+  }
+
+  window.FH_STATS = { RF: RF, monthly: monthly, find: find, remember: remember, patch: patch, annotate: annotate,
+                     mapDivToIndex: mapDivToIndex, buildAdjustedNav: buildAdjustedNav };
   patch();
+  patchDivs();
 })();
