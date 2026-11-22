@@ -3884,56 +3884,10 @@ window.addEventListener('DOMContentLoaded', function() {
   function k8(x) { return String(x).replace(/-/g, ''); }
   function pd(x) { var s = k8(x); return new Date(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8)); }
   function compute() {
-    var ps = window._pfState;
-    if (!ps || !ps.dates || !ps.funds || !ps.funds.length) return null;
-    var ann = numOf('年化報酬'), vol = numOf('年化波動度'), mdd = numOf('最大回撤'), shp = numOf('夏普比率');
-    if (ann == null || vol == null || mdd == null) return null;
-    var N = ps.dates.length, i, j;
-    var useAdj = ps.mode === 'adj';
-    for (i = 0; i < ps.funds.length; i++) { var a0 = ps.funds[i].filledAdj; if (!a0 || a0.length !== N) { useAdj = false; break; } }
-    var arr = [];
-    for (i = 0; i < ps.funds.length; i++) {
-      var a1 = useAdj ? ps.funds[i].filledAdj : ps.funds[i].filledRaw;
-      if (!a1 || a1.length !== N) return null;
-      arr.push(a1);
-    }
-    var en = N - 1, st = 0;
-    var custom = ps.range === 'custom';
-    if (custom && ps.customEnd) { var ce = k8(ps.customEnd); for (j = N - 1; j >= 0; j--) if (k8(ps.dates[j]) <= ce) { en = j; break; } }
-    if (custom && ps.customStart) { var cs = k8(ps.customStart); for (j = 0; j < N; j++) if (k8(ps.dates[j]) >= cs) { st = j; break; } }
-    else if (typeof ps.range === 'number' && ps.range > 0) {
-      var ed = pd(ps.dates[en]);
-      var cd = new Date(ed.getFullYear() - ps.range, ed.getMonth(), ed.getDate());
-      var cut = '' + cd.getFullYear() + ('0' + (cd.getMonth() + 1)).slice(-2) + ('0' + cd.getDate()).slice(-2);
-      for (j = 0; j < N; j++) if (k8(ps.dates[j]) >= cut) { st = j; break; }
-    }
-    function calc(a, b) {
-      var L = b - a + 1; if (L < 30) return null;
-      var s = new Array(L), p, q, v;
-      for (p = 0; p < L; p++) { v = 0; for (q = 0; q < arr.length; q++) v += ps.funds[q].wNorm * (arr[q][a + p] / arr[q][a]); s[p] = v; }
-      if (!(s[0] > 0) || !(s[L - 1] > 0)) return null;
-      var r = new Array(L - 1);
-      for (p = 1; p < L; p++) r[p - 1] = s[p] / s[p - 1] - 1;
-      var u = 0; for (p = 0; p < r.length; p++) u += r[p]; u /= r.length;
-      var z = 0; for (p = 0; p < r.length; p++) z += (r[p] - u) * (r[p] - u);
-      var sd = Math.sqrt(z / (r.length - 1));
-      var yrs = (pd(ps.dates[b]) - pd(ps.dates[a])) / (365.25 * 864e5);
-      if (!(yrs > 0.08)) return null;
-      var kf = Math.sqrt(r.length / yrs);
-      var ds = 0; for (p = 0; p < r.length; p++) if (r[p] < 0) ds += r[p] * r[p];
-      return { A: (Math.pow(s[L - 1] / s[0], 1 / yrs) - 1) * 100, V: sd * kf * 100, D: Math.sqrt(ds / r.length) * kf * 100 };
-    }
-    var c0 = calc(st, en);
-    var err = c0 ? Math.abs(c0.A - ann) + Math.abs(c0.V - vol) : 1e9;
-    if (err > 0.25) {
-      for (var a2 = Math.max(0, st - 15); a2 <= st + 15; a2++) {
-        var x = calc(a2, en); if (!x) continue;
-        var e2 = Math.abs(x.A - ann) + Math.abs(x.V - vol);
-        if (e2 < err) { err = e2; c0 = x; }
-      }
-    }
-    var trust = !!c0 && err < 0.25 && (shp == null || Math.abs(c0.A / c0.V - shp) < 0.03);
-    // 索提諾改用月報酬算法（/fh-stats.js），跟夏普、富邦官網同一套
+    // 索提諾由 /fh-stats.js 在 computeStats 時算好並記下來（月報酬、門檻 1%、不年化，同富邦夏普的口徑），
+    // 這裡用畫面上的年化報酬與最大回撤對回同一次計算
+    var ann = numOf('年化報酬'), mdd = numOf('最大回撤');
+    if (ann == null || mdd == null) return null;
     var fm = window.FH_STATS ? window.FH_STATS.find(ann, mdd) : null;
     return { sortino: fm ? fm.sortino : null, calmar: (mdd < 0) ? ann / -mdd : null };
   }
