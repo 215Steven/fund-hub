@@ -1969,6 +1969,16 @@ function computeStats(dates, navs) {
     var dd = (navs[j] - peak) / peak;
     if (dd < maxDd) { maxDd = dd; mddPeakIdx = peakIdx; mddTroughIdx = j; }
   }
+  // 波動度、夏普、索提諾改用月報酬算法（/fh-stats.js），跟富邦官網、分析視窗、標的比較同一套
+  if (window.FH_STATS) {
+    var fhm = window.FH_STATS.monthly(dates, navs);
+    if (fhm) {
+      if (fhm.vol != null) annVol = fhm.vol;
+      sharpe = fhm.sharpe;
+      window.FH_STATS.remember(cagr, maxDd * 100, fhm);
+    }
+    setTimeout(window.FH_STATS.annotate, 0);
+  }
   return {
     totalRet: totalRet, cagr: cagr, annVol: annVol, sharpe: sharpe,
     mdd: maxDd * 100, high: Math.max.apply(null, navs), low: Math.min.apply(null, navs),
