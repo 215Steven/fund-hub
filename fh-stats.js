@@ -58,6 +58,10 @@
   // 頁面原本的函式照跑（報酬、回撤等都不動），只換掉波動度與夏普，
   // 並把這次的結果記下來，讓補上索提諾的那段程式拿去用。
   var recent = [];
+  function remember(cagr, mdd, m) {
+    recent.push({ cagr: cagr, mdd: mdd, m: m });
+    if (recent.length > 30) recent.shift();
+  }
   function find(cagr, mdd) {
     for (var i = recent.length - 1; i >= 0; i--) {
       var x = recent[i];
@@ -94,8 +98,7 @@
           s.sharpe = m.sharpe;
           s.sortinoM = m.sortino;
           s.monthsN = m.n;
-          recent.push({ cagr: s.cagr, mdd: s.mdd, m: m });
-          if (recent.length > 30) recent.shift();
+          remember(s.cagr, s.mdd, m);
         }
         setTimeout(annotate, 0);
       }
@@ -105,6 +108,6 @@
     window.computeStats = w;
   }
 
-  window.FH_STATS = { RF: RF, monthly: monthly, find: find, patch: patch, annotate: annotate };
+  window.FH_STATS = { RF: RF, monthly: monthly, find: find, remember: remember, patch: patch, annotate: annotate };
   patch();
 })();
