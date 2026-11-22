@@ -246,6 +246,10 @@ try {
 })();
 } catch (e) { if (window.console) console.error('[fh-common] fh-dd-detail', e); }
 
+/* ════════ fh-stats-load ════════ */
+/* 波動度、夏普、索提諾的共用算法（同富邦官網），分析視窗的 computeStats 由它接手 */
+try { if (!window.FH_STATS) { var fhs = document.createElement('script'); fhs.src = '/fh-stats.js'; document.head.appendChild(fhs); } } catch (e) {}
+
 /* ════════ fh-ratios ════════ */
 try {
 /* fh-ratios：在夏普旁邊補上索提諾與 Calmar。
@@ -321,19 +325,11 @@ try {
     var ann = num('年化報酬'), dd = num('最大回撤');
     if (ann == null || dd == null) return;
     dd = Math.abs(dd);
-    var s = series();
-    if (!s || s.length < 30) return;
-    var sum = 0, n = 0;
-    for (var k = 1; k < s.length; k++) {
-      if (!(s[k - 1] > 0) || !(s[k] > 0)) continue;
-      var r = s[k] / s[k - 1] - 1;
-      if (r < 0) sum += r * r;   // MAR = 0：只累計虧損的期間
-      n++;
-    }
-    if (!n) return;
-    var dsd = Math.sqrt(sum / n) * Math.sqrt(252) * 100;
+    // 索提諾改用月報酬算法（/fh-stats.js），跟夏普、富邦官網同一套；
+    // 結果是 computeStats 算的時候順手記下來的，這裡用年化報酬與最大回撤對回同一次計算
+    var fm = window.FH_STATS ? window.FH_STATS.find(ann, -dd) : null;
     var c1 = grid.querySelector('[data-fh=sortino]');
-    if (!c1) { c1 = mk('sortino', '索提諾比率', 'MAR 0%'); sharpe.insertAdjacentElement('afterend', c1); }
+    if (!c1) { c1 = mk('sortino', '索提諾比率', '月報酬、門檻 1%，未年化'); sharpe.insertAdjacentElement('afterend', c1); }
     var c2 = grid.querySelector('[data-fh=calmar]');
     if (!c2) { c2 = mk('calmar', 'Calmar 比率', '年化 ÷ 最大回撤'); c1.insertAdjacentElement('afterend', c2); }
     var set = function (card, v) {
@@ -341,7 +337,7 @@ try {
       var s2 = (v == null || !isFinite(v)) ? '—' : v.toFixed(2);
       if (el.textContent !== s2) el.textContent = s2;
     };
-    set(c1, dsd > 0 ? ann / dsd : null);
+    set(c1, fm ? fm.sortino : null);
     set(c2, dd > 0 ? ann / dd : null);
   }
   if (window.FH_TICK) FH_TICK.add(apply); else setInterval(apply, 400);
