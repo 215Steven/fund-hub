@@ -2362,7 +2362,7 @@ async function fetchDividendHistory(r) {
         const raw = x.recordDate || x.date || x.dividendDate;
         const amt = Number(x.dividendPerUnit != null ? x.dividendPerUnit : x.dividendAmount);
         if (!raw || !isFinite(amt) || amt <= 0) return null;
-        return { date: String(raw).replace(/\//g, "-"), amount: amt };
+        return { date: String(raw).replace(/\//g, "-"), pay: String(x.dividendDate || raw).replace(/\//g, "-"), amount: amt };
       }).filter(Boolean).sort(function (a, b) {
         return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0);
       });
