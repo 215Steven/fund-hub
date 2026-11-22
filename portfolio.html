@@ -3923,7 +3923,9 @@ window.addEventListener('DOMContentLoaded', function() {
       }
     }
     var trust = !!c0 && err < 0.25 && (shp == null || Math.abs(c0.A / c0.V - shp) < 0.03);
-    return { sortino: (trust && c0.D > 0) ? c0.A / c0.D : null, calmar: (mdd < 0) ? ann / -mdd : null };
+    // 索提諾改用月報酬算法（/fh-stats.js），跟夏普、富邦官網同一套
+    var fm = window.FH_STATS ? window.FH_STATS.find(ann, mdd) : null;
+    return { sortino: fm ? fm.sortino : null, calmar: (mdd < 0) ? ann / -mdd : null };
   }
   function mk(label, note) {
     var d = document.createElement('div');
@@ -3941,7 +3943,7 @@ window.addEventListener('DOMContentLoaded', function() {
     var c2 = document.querySelector('[data-fh-ratio="Calmar 比率"]');
     if (!c1 || c1.parentElement !== sharpe.parentElement) {
       if (c1 && c1.parentElement) c1.parentElement.removeChild(c1);
-      c1 = mk('索提諾比率', 'MAR 0%'); sharpe.insertAdjacentElement('afterend', c1);
+      c1 = mk('索提諾比率', '月報酬、門檻 1%，未年化'); sharpe.insertAdjacentElement('afterend', c1);
     }
     if (!c2 || c2.parentElement !== sharpe.parentElement || c2.previousElementSibling !== c1) {
       if (c2 && c2.parentElement) c2.parentElement.removeChild(c2);
@@ -4045,4 +4047,5 @@ window.addEventListener('DOMContentLoaded', function() {
   }, 500);
 })();
 </script>
+<script src="/fh-stats.js"></script>
 </html>
