@@ -233,14 +233,6 @@
     var years = Math.max((new Date(dates[n - 1]) - new Date(dates[0])) / (365.25 * 864e5), 1 / 365);
     var total = (v[n - 1] / v[0] - 1) * 100;
     var cagr = (Math.pow(v[n - 1] / v[0], 1 / years) - 1) * 100;
-    var r = [];
-    for (var i = 1; i < n; i++) if (v[i - 1] > 0) r.push(v[i] / v[i - 1] - 1);
-    var m = r.reduce(function (s, x) { return s + x; }, 0) / r.length;
-    var vr = r.reduce(function (s, x) { return s + (x - m) * (x - m); }, 0) / r.length;
-    var dn = r.reduce(function (s, x) { return s + (x < 0 ? x * x : 0); }, 0) / r.length;
-    var ppy = r.length / years;
-    var vol = Math.sqrt(vr) * Math.sqrt(ppy) * 100;
-    var dsd = Math.sqrt(dn) * Math.sqrt(ppy) * 100;
     var peak = v[0], pk = 0, mdd = 0, a = 0, b = 0;
     for (var j = 0; j < n; j++) {
       if (v[j] > peak) { peak = v[j]; pk = j; }
@@ -339,6 +331,8 @@
     if (state.mode !== 'tr') p.set('m', state.mode);
     var s = p.toString();
     history.replaceState(null, '', location.pathname + (s ? '?' + s : ''));
+    // 跟三個工具頁的「比較」按鈕共用同一份清單
+    try { localStorage.setItem('fh-compare', JSON.stringify(sel)); } catch (e) {}
   }
 
   // ───── 主流程 ─────
@@ -565,7 +559,9 @@
   // ───── 啟動：網址可帶 ?c=JFP11,JFP7&r=3y&m=nav ─────
   loadFunds().then(function () {
     var p = new URLSearchParams(location.search);
-    var cs = (p.get('c') || '').split(',').map(function (s) { return s.trim().toUpperCase(); })
+    var raw = p.get('c');
+    if (!raw) { try { raw = (JSON.parse(localStorage.getItem('fh-compare') || '[]') || []).join(','); } catch (e) { raw = ''; } }
+    var cs = (raw || '').split(',').map(function (s) { return s.trim().toUpperCase(); })
       .filter(function (c, i, a) { return c && funds[c] && a.indexOf(c) === i; }).slice(0, MAX);
     sel = cs;
     if (p.get('r') && /^(6m|1y|3y|5y|all)$/.test(p.get('r'))) state.range = p.get('r');
