@@ -139,11 +139,13 @@
     走勢以比較區間第一天為 100。比較區間只取所有標的都有資料的期間，避免拿成立 1 年的和成立 5 年的比；
     每檔各自算到自己最新的淨值日，跟富邦公布報酬的算法相同。
     含息＝配息在發放日再投入；淨值＝不含配息。報酬、波動、回撤等數字以各標的計價幣別計算，
-    <strong>未計匯率與保單費用</strong>，不等於保戶實際可得的報酬。夏普、索提諾都以 0% 為基準，只適合站內互相比較。
+    <strong>未計匯率與保單費用</strong>，不等於保戶實際可得的報酬。
+    波動度、夏普、索提諾跟富邦官網同一套算法：用含息月報酬計算，扣年 1% 無風險利率，夏普與索提諾不年化（國際常見的年化數字約再乘 3.46）。
     資料整理自富邦投資型保險專區公開資訊，跟官網對不上時以官網為準。本站不提供任何投資建議或標的推薦。
   </p>
 </div>
 
+<script src="/fh-stats.js"></script>
 <script>
 (function () {
   'use strict';
@@ -224,7 +226,7 @@
     return hist[code];
   }
 
-  // 統計口徑跟分析視窗、組合試算一致：年化用實際筆數÷年數換算，夏普與索提諾以 0% 為基準
+  // 報酬、回撤用日資料；波動度、夏普、索提諾改用月報酬（/fh-stats.js），跟富邦官網、分析視窗、組合試算同一套
   function stats(dates, v) {
     var n = v.length;
     if (n < 2) return null;
@@ -246,10 +248,11 @@
       if (dd < mdd) { mdd = dd; a = pk; b = j; }
     }
     mdd *= 100;
+    var fm = window.FH_STATS ? window.FH_STATS.monthly(dates, v) : null;
     return {
-      total: total, cagr: cagr, vol: vol, mdd: mdd, mddFrom: dates[a], mddTo: dates[b],
-      sharpe: vol > 0 ? cagr / vol : null,
-      sortino: dsd > 0 ? cagr / dsd : null,
+      total: total, cagr: cagr, vol: fm ? fm.vol : null, mdd: mdd, mddFrom: dates[a], mddTo: dates[b],
+      sharpe: fm ? fm.sharpe : null,
+      sortino: fm ? fm.sortino : null,
       calmar: mdd < 0 ? cagr / Math.abs(mdd) : null
     };
   }
@@ -538,12 +541,12 @@
     });
     h += row('總報酬', function (x) { return x.st ? pct(x.st.total) : '—'; });
     h += row('年化報酬', function (x) { return x.st ? pct(x.st.cagr) : '—'; });
-    h += row('年化波動', function (x) { return x.st ? num(x.st.vol, 1) + '%' : '—'; });
+    h += row('年化波動<span class="small">月報酬年化</span>', function (x) { return x.st && x.st.vol != null ? num(x.st.vol, 2) + '%' : '—'; });
     h += row('最大回撤', function (x) {
       return x.st ? pct(x.st.mdd) + '<span class="small">' + fmtDate(x.st.mddFrom).substring(2) + '～' + fmtDate(x.st.mddTo).substring(2) + '</span>' : '—';
     });
-    h += row('夏普', function (x) { return x.st ? num(x.st.sharpe) : '—'; });
-    h += row('索提諾', function (x) { return x.st ? num(x.st.sortino) : '—'; });
+    h += row('夏普<span class="small">未年化，同富邦</span>', function (x) { return x.st ? num(x.st.sharpe) : '—'; });
+    h += row('索提諾<span class="small">未年化</span>', function (x) { return x.st ? num(x.st.sortino) : '—'; });
     h += row('Calmar', function (x) { return x.st ? num(x.st.calmar) : '—'; });
     h += sec('富邦公布報酬率（含息，算到最新淨值日）');
     h += row('近 6 個月', function (x) { return x.f.ret6m != null ? pct(x.f.ret6m, 2) : '—'; });
