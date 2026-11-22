@@ -2208,7 +2208,7 @@ async function fetchDividendHistory(r) {
       var ds = x.recordDate || x.dividendDate || x.date || '';
       var am = parseFloat(x.dividendPerUnit);
       if (!ds || isNaN(am) || am <= 0) return null;
-      return { date: String(ds).replace(/\//g, '-').substring(0, 7), amount: am };
+      return { date: String(ds).replace(/\//g, '-').substring(0, 7), pay: String(x.dividendDate || ds).replace(/\//g, '-').substring(0, 10), amount: am };
     }).filter(Boolean);
     // 新版清單沒有配息頻率，拿到明細後用間隔回寫
     var fq = guessFreq(rows);
